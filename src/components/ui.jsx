@@ -7,7 +7,7 @@ export function Stat({ label, value, sub, tone }) {
   return (
     <div className="card">
       <div className="text-xs text-slate-500">{label}</div>
-      <div className={`text-lg font-semibold ${tone === 'neg' ? 'text-red-600' : tone === 'pos' ? 'text-emerald-600' : ''}`}>{value}</div>
+      <div className={`text-base sm:text-lg font-semibold break-words ${tone === 'neg' ? 'text-red-600' : tone === 'pos' ? 'text-emerald-600' : ''}`}>{value}</div>
       {sub && <div className="text-xs text-slate-400">{sub}</div>}
     </div>
   )

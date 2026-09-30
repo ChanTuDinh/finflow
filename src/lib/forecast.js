@@ -86,3 +86,19 @@ export function defaultScenarios(baseline, minTotal) {
     { id: 'pct', name: 'Trả theo % thu nhập', mode: 'pct', pct: 0.3, order: 'avalanche' },
   ]
 }
+
+// Gộp series theo tháng | quý | năm: số dư/tiền mặt lấy cuối kỳ, lãi/trả nợ cộng dồn trong kỳ.
+export function aggregateSeries(series, level) {
+  if (level === 'month') return series
+  const keyOf = level === 'year' ? (p) => p.slice(0, 4) : (p) => `${p.slice(0, 4)}-Q${Math.ceil(Number(p.slice(5, 7)) / 3)}`
+  const out = []
+  for (const s of series) {
+    const k = keyOf(s.period)
+    const last = out[out.length - 1]
+    if (last && last.period === k) {
+      last.balance = s.balance; last.cash = s.cash; last.cumInterest = s.cumInterest
+      last.interest += s.interest; last.payment += s.payment
+    } else out.push({ ...s, period: k })
+  }
+  return out
+}

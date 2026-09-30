@@ -1,0 +1,64 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { ALL, fromKey, inPeriod, parent, crumbs, shift, childKeys, childKeyFn, monthsIn } from './period.js'
+import { byYear, byMonth } from './calc.js'
+
+test('fromKey nhận đúng cấp, từ chối ngày', () => {
+  assert.equal(fromKey('2026').level, 'year')
+  assert.equal(fromKey('2026-Q3').level, 'quarter')
+  assert.equal(fromKey('2026-09').level, 'month')
+  assert.equal(fromKey('2026-09-05'), null)
+  assert.equal(fromKey('2026-13'), null)
+})
+
+test('inPeriod ở ranh giới quý/năm', () => {
+  const q = fromKey('2026-Q3')
+  assert.ok(inPeriod(q, '2026-07-01') && inPeriod(q, '2026-09-30'))
+  assert.ok(!inPeriod(q, '2026-06-30') && !inPeriod(q, '2026-10-01'))
+  assert.ok(inPeriod(fromKey('2026'), '2026-12-31') && !inPeriod(fromKey('2026'), '2027-01-01'))
+  assert.ok(inPeriod(ALL, '1999-01-01'))
+})
+
+test('parent và breadcrumb', () => {
+  assert.deepEqual(parent(fromKey('2026-09')), fromKey('2026-Q3'))
+  assert.deepEqual(parent(fromKey('2026-Q3')), fromKey('2026'))
+  assert.deepEqual(parent(fromKey('2026')), ALL)
+  assert.deepEqual(crumbs(fromKey('2026-09')).map((c) => c.key), ['', '2026', '2026-Q3', '2026-09'])
+})
+
+test('shift qua ranh giới năm', () => {
+  assert.equal(shift(fromKey('2026-Q1'), -1).key, '2025-Q4')
+  assert.equal(shift(fromKey('2026-Q4'), 1).key, '2027-Q1')
+  assert.equal(shift(fromKey('2026-01'), -1).key, '2025-12')
+  assert.equal(shift(fromKey('2026'), 1).key, '2027')
+})
+
+test('childKeys lấp kỳ trống và khớp childKeyFn', () => {
+  assert.deepEqual(childKeys(fromKey('2026')), ['2026-Q1', '2026-Q2', '2026-Q3', '2026-Q4'])
+  assert.deepEqual(childKeys(fromKey('2026-Q4')), ['2026-10', '2026-11', '2026-12'])
+  assert.equal(childKeys(fromKey('2024-02')).length, 29)
+  assert.deepEqual(childKeys(ALL, [2024, 2026]), ['2024', '2025', '2026'])
+  assert.equal(childKeyFn(fromKey('2026'))('2026-08-15'), '2026-Q3')
+  assert.equal(childKeyFn(ALL)('2026-08-15'), '2026')
+})
+
+test('byYear và monthsIn', () => {
+  const rows = [{ date: '2025-12-31', type: 'Income', amount: 10 }, { date: '2026-01-01', type: 'Expense', amount: 4 }]
+  assert.deepEqual(byYear(rows).map((r) => [r.period, r.net]), [['2025', 10], ['2026', -4]])
+  assert.equal(byMonth(rows).length, 2)
+  assert.equal(monthsIn(ALL, rows), 2)
+  assert.equal(monthsIn(fromKey('2026-Q1')), 3)
+})
+
+import { breakdown } from './period.js'
+test('breakdown lấp kỳ trống và chỉ lấy trong kỳ', () => {
+  const rows = [
+    { date: '2026-02-10', type: 'Income', amount: 100 },
+    { date: '2026-08-10', type: 'Expense', amount: 30 },
+    { date: '2025-08-10', type: 'Income', amount: 999 },
+  ]
+  const b = breakdown(rows, fromKey('2026'))
+  assert.deepEqual(b.map((e) => e.net), [100, 0, -30, 0]) // Q1..Q4, năm 2025 bị loại
+  assert.equal(b.length, 4)
+  assert.equal(breakdown(rows, ALL).length, 2)
+})

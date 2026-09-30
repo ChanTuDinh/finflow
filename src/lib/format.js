@@ -8,3 +8,4 @@ export function makeMoney(currency = 'VND') {
 export const compact = (n) => new Intl.NumberFormat('vi-VN', { notation: 'compact', maximumFractionDigits: 1 }).format(n || 0)
 export const pct = (n) => `${(n * 100).toFixed(1)}%`
 export const todayIso = () => new Date().toISOString().slice(0, 10)
+export const yearKey = (iso) => iso.slice(0, 4)

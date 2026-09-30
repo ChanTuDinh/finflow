@@ -6,6 +6,7 @@ import Debts from './pages/Debts.jsx'
 import Reports from './pages/Reports.jsx'
 import Forecast from './pages/Forecast.jsx'
 import Settings from './pages/Settings.jsx'
+import PeriodBar from './components/PeriodBar.jsx'
 
 const PAGES = [
   ['dashboard', 'Tổng quan'],
@@ -38,6 +39,7 @@ export default function App() {
           </button>
         ))}
       </nav>
+      {page !== 'settings' && page !== 'forecast' && <PeriodBar />}
       {page === 'dashboard' && <Dashboard />}
       {(page === 'personal' || page === 'business') && <CashFlow key={page} kind={page} />}
       {page === 'debts' && <Debts />}

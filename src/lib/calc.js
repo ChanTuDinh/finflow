@@ -55,3 +55,5 @@ export function compareByMonth(personal, business, months) {
     businessIncome: b.get(m)?.income || 0,
   }))
 }
+
+export const byYear = (rows) => summarize(rows, (iso) => iso.slice(0, 4))

@@ -1,23 +1,35 @@
 import { useState } from 'react'
 import { useStore } from '../lib/store.jsx'
 import { Stat } from '../components/ui.jsx'
+import { usePeriod } from '../lib/period.jsx'
+import { inPeriod, monthsIn, labelOf, levelName } from '../lib/period.js'
+import { DEBT_PAYMENT_CATEGORY } from '../lib/schema.js'
 import EntryForm from '../components/EntryForm.jsx'
 
 export default function Debts() {
   const { data, money, remove } = useStore()
   const [editing, setEditing] = useState(null)
+  const { period } = usePeriod()
   const active = data.debts.filter((d) => d.status !== 'Paid')
   const total = active.reduce((s, d) => s + d.balance, 0)
   const min = active.reduce((s, d) => s + d.min_payment, 0)
   const interest = active.reduce((s, d) => s + (d.balance * d.apr) / 1200, 0)
+  const cash = [...data.personal, ...data.business]
+  const paidInPeriod = cash.filter((r) => r.category === DEBT_PAYMENT_CATEGORY && r.type === 'Expense' && inPeriod(period, r.date)).reduce((s, r) => s + r.amount, 0)
+  const interestInPeriod = interest * monthsIn(period, cash)
+  const periodTitle = period.level === 'all' ? levelName.all : `${levelName[period.level]} ${labelOf(period)}`
 
   return (
     <div className="space-y-4">
       <div className="flex"><button className="btn ml-auto" onClick={() => setEditing({})}>+ Thêm khoản nợ</button></div>
-      <div className="grid grid-cols-3 gap-3">
-        <Stat label="Tổng dư nợ" value={money(total)} />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <Stat label="Tổng dư nợ hiện tại" value={money(total)} />
         <Stat label="Trả tối thiểu / tháng" value={money(min)} />
         <Stat label="Lãi phát sinh / tháng" value={money(interest)} tone="neg" />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Stat label={`Đã trả nợ — ${periodTitle}`} value={money(paidInPeriod)} sub="Tổng giao dịch chi 'Trả nợ' (cá nhân + DN)" />
+        <Stat label={`Lãi ước tính — ${periodTitle}`} value={money(interestInPeriod)} tone="neg" sub="Ước tính theo dư nợ hiện tại × số tháng" />
       </div>
       <div className="card overflow-x-auto p-0">
         <table className="w-full text-sm">

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { CartesianGrid, Legend, Line, LineChart, Tooltip, XAxis, YAxis } from 'recharts'
 import { useStore } from '../lib/store.jsx'
 import { addMonths } from '../lib/calc.js'
-import { simulate, defaultScenarios } from '../lib/forecast.js'
+import { simulate, defaultScenarios, aggregateSeries } from '../lib/forecast.js'
 import { baselineFrom, buildInsights } from '../lib/insights.js'
 import { compact, todayIso } from '../lib/format.js'
 import { Chart, SERIES } from '../components/ui.jsx'
@@ -14,6 +14,7 @@ export default function Forecast() {
   const [scope, setScope] = useState('all')
   const [years, setYears] = useState(5)
   const [growth, setGrowth] = useState(0)
+  const [level, setLevel] = useState('year')
   const startYm = todayIso().slice(0, 7)
   const endYm = addMonths(startYm, -1) // tháng đã đủ dữ liệu gần nhất
 
@@ -26,7 +27,8 @@ export default function Forecast() {
   const patch = (id, p) => setScenarios(scs.map((s) => (s.id === id ? { ...s, ...p } : s)))
 
   const results = useMemo(() => scs.map((scenario) => simulate({ debts, scenario, baseline, startYm, years, incomeGrowth: growth / 100 })), [scs, debts, baseline, startYm, years, growth])
-  const merged = results[0].series.map((_, i) => Object.fromEntries([['period', results[0].series[i].period], ...results.flatMap((r) => [[`bal_${r.scenario.id}`, r.series[i].balance], [`cash_${r.scenario.id}`, r.series[i].cash]])]))
+  const agg = results.map((r) => aggregateSeries(r.series, level))
+  const merged = agg[0].map((_, i) => Object.fromEntries([['period', agg[0][i].period], ...results.flatMap((r, j) => [[`bal_${r.scenario.id}`, agg[j][i].balance], [`cash_${r.scenario.id}`, agg[j][i].cash], [`pay_${r.scenario.id}`, agg[j][i].payment], [`int_${r.scenario.id}`, agg[j][i].interest]])]))
   const insights = useMemo(() => buildInsights({ rows, debts, endYm, money }), [rows, debts, endYm, money])
   const chart = (prefix, title) => (
     <section className="card">
@@ -53,6 +55,12 @@ export default function Forecast() {
           </select></div>
         <div><label className="label">Số năm</label>
           <select className="input" value={years} onChange={(e) => setYears(Number(e.target.value))}>{[3, 4, 5].map((y) => <option key={y} value={y}>{y} năm</option>)}</select></div>
+        <div><label className="label">Xem theo</label>
+          <div className="flex rounded-lg border border-slate-300 overflow-hidden text-sm">
+            {[['month', 'Tháng'], ['quarter', 'Quý'], ['year', 'Năm']].map(([k, l]) => (
+              <button key={k} onClick={() => setLevel(k)} className={`px-3 py-1.5 ${level === k ? 'bg-slate-900 text-white' : 'bg-white hover:bg-slate-100'}`}>{l}</button>
+            ))}
+          </div></div>
         <div><label className="label">Tăng thu nhập / năm (%)</label>
           <input type="number" className="input !w-28" value={growth} onChange={(e) => setGrowth(Number(e.target.value))} /></div>
         <div className="text-xs text-slate-500 ml-auto">Cơ sở (TB 3 tháng, chưa gồm tiền trả nợ): thu {money(baseline.income)} · chi {money(baseline.expense)} / tháng</div>
@@ -93,6 +101,28 @@ export default function Forecast() {
           </tbody>
         </table>
       </div>
+
+      <section className="card overflow-x-auto p-0">
+        <h2 className="font-semibold px-4 pt-3">Theo {level === 'month' ? 'tháng' : level === 'quarter' ? 'quý' : 'năm'}: dư nợ cuối kỳ · trả nợ · lãi</h2>
+        <table className="w-full text-sm mt-2">
+          <thead className="text-xs text-slate-500 text-right">
+            <tr><th className="px-3 py-2 text-left">Kỳ</th>{results.map((r) => <th key={r.scenario.id} className="px-3 py-2">{r.scenario.name}</th>)}</tr>
+          </thead>
+          <tbody>
+            {merged.slice(1).map((row) => (
+              <tr key={row.period} className="border-t border-slate-100 text-right">
+                <td className="px-3 py-1.5 text-left">{row.period}</td>
+                {results.map((r) => (
+                  <td key={r.scenario.id} className="px-3 py-1.5 whitespace-nowrap">
+                    <div>{money(row[`bal_${r.scenario.id}`])}</div>
+                    <div className="text-xs text-slate-400">trả {money(row[`pay_${r.scenario.id}`])} · lãi {money(row[`int_${r.scenario.id}`])}</div>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
 
       {chart('bal', 'Dư nợ theo thời gian')}
       {chart('cash', 'Tiền mặt tích luỹ (thu − chi − trả nợ)')}
