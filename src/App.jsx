@@ -13,8 +13,8 @@ const PAGES = [
   ['personal', 'Cá nhân'],
   ['business', 'Doanh nghiệp'],
   ['debts', 'Nợ'],
+  ['forecast', 'Forecast Nợ'],
   ['reports', 'Báo cáo'],
-  ['forecast', 'Forecast nợ'],
   ['settings', 'Cài đặt'],
 ]
 
