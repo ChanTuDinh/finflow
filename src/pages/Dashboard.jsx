@@ -2,17 +2,18 @@ import { Bar, BarChart, CartesianGrid, Legend, Tooltip, XAxis, YAxis } from 'rec
 import { useStore } from '../lib/store.jsx'
 import { usePeriod } from '../lib/period.jsx'
 import { breakdown, dataYears, inPeriod, labelOf, levelName } from '../lib/period.js'
+import FilterBar from '../components/FilterBar.jsx'
 import { totals } from '../lib/calc.js'
 import { compact, pct } from '../lib/format.js'
 import { Chart, COLORS, Stat } from '../components/ui.jsx'
 
 export default function Dashboard() {
   const { data, money } = useStore()
-  const { period, drill } = usePeriod()
+  const { period, grain, drill } = usePeriod()
   const years = dataYears(data.personal, data.business)
   const inP = (rows) => totals(rows.filter((r) => inPeriod(period, r.date)))
-  const p = breakdown(data.personal, period, years)
-  const b = breakdown(data.business, period, years)
+  const p = breakdown(data.personal, period, years, grain)
+  const b = breakdown(data.business, period, years, grain)
   const cmp = p.map((e, i) => ({ period: e.period, personalNet: e.net, businessNet: b[i].net }))
   const debt = (owner) => data.debts.filter((d) => d.status !== 'Paid' && d.owner === owner).reduce((s, d) => s + d.balance, 0)
   const saved = (owner) => data.savings.filter((a) => a.status !== 'Closed' && a.owner === owner).reduce((x, a) => x + a.balance, 0)
@@ -25,6 +26,7 @@ export default function Dashboard() {
   ]
   return (
     <div className="space-y-4">
+      <FilterBar grain />
       <div className="grid md:grid-cols-2 gap-4">
         {blocks.map(([name, color, t, d, inLabel, sv]) => (
           <section key={name} className="card space-y-3" style={{ borderTop: `3px solid ${color}` }}>
@@ -47,7 +49,7 @@ export default function Dashboard() {
         <Chart>
           <BarChart data={cmp}>
             <CartesianGrid stroke={COLORS.grid} vertical={false} />
-            <XAxis dataKey="period" fontSize={11} tickFormatter={(k) => (period.level === 'month' ? k.slice(8) : k)} minTickGap={12} />
+            <XAxis dataKey="period" fontSize={11} tickFormatter={(k) => (grain === 'day' ? k.slice(8) : k)} minTickGap={12} />
             <YAxis tickFormatter={compact} fontSize={11} />
             <Tooltip formatter={(v) => money(v)} />
             <Legend />

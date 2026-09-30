@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '../lib/store.jsx'
-import { Stat } from '../components/ui.jsx'
+import { Stat, SelectField } from '../components/ui.jsx'
+import FilterBar from '../components/FilterBar.jsx'
 import { usePeriod } from '../lib/period.jsx'
 import { inPeriod, monthsIn, labelOf, levelName } from '../lib/period.js'
 import { DEBT_PAYMENT_CATEGORY } from '../lib/schema.js'
@@ -10,18 +11,23 @@ export default function Debts() {
   const { data, money, remove } = useStore()
   const [editing, setEditing] = useState(null)
   const { period } = usePeriod()
-  const active = data.debts.filter((d) => d.status !== 'Paid')
+  const [scope, setScope] = useState('all')
+  const owner = scope === 'personal' ? 'Personal' : scope === 'business' ? 'Business' : null
+  const debts = data.debts.filter((d) => !owner || d.owner === owner)
+  const active = debts.filter((d) => d.status !== 'Paid')
   const total = active.reduce((s, d) => s + d.balance, 0)
   const min = active.reduce((s, d) => s + d.min_payment, 0)
   const interest = active.reduce((s, d) => s + (d.balance * d.apr) / 1200, 0)
-  const cash = [...data.personal, ...data.business]
+  const cash = scope === 'personal' ? data.personal : scope === 'business' ? data.business : [...data.personal, ...data.business]
   const paidInPeriod = cash.filter((r) => r.category === DEBT_PAYMENT_CATEGORY && r.type === 'Expense' && inPeriod(period, r.date)).reduce((s, r) => s + r.amount, 0)
   const interestInPeriod = interest * monthsIn(period, cash)
   const periodTitle = period.level === 'all' ? levelName.all : `${levelName[period.level]} ${labelOf(period)}`
 
   return (
     <div className="space-y-4">
-      <div className="flex"><button className="btn ml-auto" onClick={() => setEditing({})}>+ Thêm khoản nợ</button></div>
+      <FilterBar
+        lead={<SelectField label="Phạm vi" value={scope} onChange={setScope} options={[{ value: 'all', label: 'Cá nhân + Doanh nghiệp' }, { value: 'personal', label: 'Chỉ cá nhân' }, { value: 'business', label: 'Chỉ doanh nghiệp' }]} />}
+        action={<button className="btn" onClick={() => setEditing({})}>+ Thêm khoản nợ</button>} />
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Stat label="Tổng dư nợ hiện tại" value={money(total)} />
         <Stat label="Trả tối thiểu / tháng" value={money(min)} />
@@ -35,7 +41,7 @@ export default function Debts() {
         <table className="w-full text-sm">
           <thead className="text-xs text-slate-500 text-left"><tr>{['Khoản nợ', 'Bên cho vay', 'Thuộc về', 'Dư nợ', 'Lãi %/năm', 'Tối thiểu', 'Hạn', 'Trạng thái', ''].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr></thead>
           <tbody>
-            {data.debts.map((d) => (
+            {debts.map((d) => (
               <tr key={d.id} className={`border-t border-slate-100 ${d.status === 'Paid' ? 'opacity-50' : ''}`}>
                 <td className="px-3 py-1.5 font-medium">{d.name}</td>
                 <td className="px-3 py-1.5">{d.lender}</td>
@@ -51,7 +57,7 @@ export default function Debts() {
                 </td>
               </tr>
             ))}
-            {!data.debts.length && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-400">Chưa có khoản nợ</td></tr>}
+            {!debts.length && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-400">Chưa có khoản nợ</td></tr>}
           </tbody>
         </table>
       </div>

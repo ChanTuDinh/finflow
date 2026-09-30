@@ -6,7 +6,7 @@ import { aggregateSeries } from '../lib/forecast.js'
 import { baselineFrom } from '../lib/insights.js'
 import { activeAccounts, compareDebtVsSave, goalStatus, projectSavings } from '../lib/savings.js'
 import { compact, todayIso } from '../lib/format.js'
-import { Chart, SERIES, Stat } from '../components/ui.jsx'
+import { Chart, SERIES, Stat, SelectField, Segmented, FilterRow } from '../components/ui.jsx'
 
 const OWNER_OF = { personal: 'Personal', business: 'Business' }
 const DEFAULT_SCENARIOS = [
@@ -75,20 +75,12 @@ export default function ForecastSavings() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-3 items-end">
-        <div><label className="label">Phạm vi</label>
-          <select className="input" value={scope} onChange={(e) => { setScope(e.target.value); setExtraIn(null); setRetIn(null) }}>
-            <option value="all">Cá nhân + Doanh nghiệp</option><option value="personal">Chỉ cá nhân</option><option value="business">Chỉ doanh nghiệp</option>
-          </select></div>
-        <div><label className="label">Số năm</label>
-          <select className="input" value={years} onChange={(e) => setYears(Number(e.target.value))}>{[3, 4, 5].map((y) => <option key={y} value={y}>{y} năm</option>)}</select></div>
-        <div><label className="label">Xem theo</label>
-          <div className="flex rounded-lg border border-slate-300 overflow-hidden text-sm">
-            {[['month', 'Tháng'], ['quarter', 'Quý'], ['year', 'Năm']].map(([k, l]) => (
-              <button key={k} onClick={() => setLevel(k)} className={`px-3 py-1.5 ${level === k ? 'bg-slate-900 text-white' : 'bg-white hover:bg-slate-100'}`}>{l}</button>
-            ))}
-          </div></div>
-      </div>
+      <FilterRow>
+        <SelectField label="Phạm vi" value={scope} onChange={(v) => { setScope(v); setExtraIn(null); setRetIn(null) }}
+          options={[{ value: 'all', label: 'Cá nhân + Doanh nghiệp' }, { value: 'personal', label: 'Chỉ cá nhân' }, { value: 'business', label: 'Chỉ doanh nghiệp' }]} />
+        <SelectField label="Số năm" value={String(years)} onChange={(v) => setYears(Number(v))} options={[3, 4, 5].map((y) => ({ value: String(y), label: `${y} năm` }))} />
+        <Segmented label="Xem theo" value={level} onChange={setLevel} options={[{ value: 'month', label: 'Tháng' }, { value: 'quarter', label: 'Quý' }, { value: 'year', label: 'Năm' }]} />
+      </FilterRow>
 
       {!accounts.length && <div className="card text-sm text-slate-500">Chưa có khoản tích lũy trong phạm vi này — thêm ở tab <b>Tích lũy</b> để thấy dự báo.</div>}
 

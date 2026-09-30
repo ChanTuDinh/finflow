@@ -6,6 +6,7 @@ import { usePeriod } from '../lib/period.jsx'
 import { inPeriod } from '../lib/period.js'
 import { Stat } from '../components/ui.jsx'
 import EntryForm from '../components/EntryForm.jsx'
+import FilterBar from '../components/FilterBar.jsx'
 
 export default function CashFlow({ kind }) {
   const { data, money, remove } = useStore()
@@ -18,9 +19,7 @@ export default function CashFlow({ kind }) {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <button className="btn ml-auto" onClick={() => setEditing({})}>+ Thêm giao dịch</button>
-      </div>
+      <FilterBar action={<button className="btn" onClick={() => setEditing({})}>+ Thêm giao dịch</button>} />
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Stat label={inLabel} value={money(t.income)} />
         <Stat label="Chi" value={money(t.expense)} />

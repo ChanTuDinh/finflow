@@ -62,3 +62,25 @@ test('breakdown lấp kỳ trống và chỉ lấy trong kỳ', () => {
   assert.equal(b.length, 4)
   assert.equal(breakdown(rows, ALL).length, 2)
 })
+
+import { resolveGrain, validGrains, childKeys as ck } from './period.js'
+test('grain: hợp lệ theo kỳ, rơi về mặc định khi không còn hợp lệ', () => {
+  assert.deepEqual(validGrains(fromKey('2026')), ['month', 'quarter'])
+  assert.equal(resolveGrain(fromKey('2026'), 'month'), 'month')
+  assert.equal(resolveGrain(fromKey('2026-Q2'), 'quarter'), 'month') // quý không chia theo quý
+  assert.equal(resolveGrain(ALL, null), 'year')
+  assert.equal(resolveGrain(fromKey('2026-05'), 'month'), 'day')
+})
+test('childKeys theo grain tường minh', () => {
+  assert.equal(ck(fromKey('2026'), [], 'month').length, 12)
+  assert.deepEqual(ck(ALL, [2025, 2026], 'quarter'), ['2025-Q1', '2025-Q2', '2025-Q3', '2025-Q4', '2026-Q1', '2026-Q2', '2026-Q3', '2026-Q4'])
+  assert.equal(ck(ALL, [2024, 2026], 'month').length, 36)
+  assert.deepEqual(ck(fromKey('2026-Q2'), [], 'month'), ['2026-04', '2026-05', '2026-06'])
+})
+test('breakdown theo tháng trong một năm', () => {
+  const rows = [{ date: '2026-03-05', type: 'Income', amount: 10 }, { date: '2026-03-20', type: 'Expense', amount: 4 }]
+  const b = breakdown(rows, fromKey('2026'), undefined, 'month')
+  assert.equal(b.length, 12)
+  assert.equal(b[2].net, 6)
+  assert.equal(b.filter((e) => e.net !== 0).length, 1)
+})

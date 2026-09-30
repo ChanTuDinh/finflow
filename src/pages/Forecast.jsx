@@ -5,7 +5,7 @@ import { addMonths } from '../lib/calc.js'
 import { simulate, defaultScenarios, aggregateSeries } from '../lib/forecast.js'
 import { baselineFrom, buildInsights } from '../lib/insights.js'
 import { compact, todayIso } from '../lib/format.js'
-import { Chart, SERIES } from '../components/ui.jsx'
+import { Chart, SERIES, SelectField, Segmented, FilterRow, Field } from '../components/ui.jsx'
 
 const ICON = { ok: '✅', warn: '⚠️', info: '💡' }
 
@@ -48,23 +48,14 @@ export default function Forecast() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-3 items-end">
-        <div><label className="label">Phạm vi</label>
-          <select className="input" value={scope} onChange={(e) => { setScope(e.target.value); setScenarios(null) }}>
-            <option value="all">Cá nhân + Doanh nghiệp</option><option value="personal">Chỉ cá nhân</option><option value="business">Chỉ doanh nghiệp</option>
-          </select></div>
-        <div><label className="label">Số năm</label>
-          <select className="input" value={years} onChange={(e) => setYears(Number(e.target.value))}>{[3, 4, 5].map((y) => <option key={y} value={y}>{y} năm</option>)}</select></div>
-        <div><label className="label">Xem theo</label>
-          <div className="flex rounded-lg border border-slate-300 overflow-hidden text-sm">
-            {[['month', 'Tháng'], ['quarter', 'Quý'], ['year', 'Năm']].map(([k, l]) => (
-              <button key={k} onClick={() => setLevel(k)} className={`px-3 py-1.5 ${level === k ? 'bg-slate-900 text-white' : 'bg-white hover:bg-slate-100'}`}>{l}</button>
-            ))}
-          </div></div>
-        <div><label className="label">Tăng thu nhập / năm (%)</label>
-          <input type="number" className="input !w-28" value={growth} onChange={(e) => setGrowth(Number(e.target.value))} /></div>
+      <FilterRow>
+        <SelectField label="Phạm vi" value={scope} onChange={(v) => { setScope(v); setScenarios(null) }}
+          options={[{ value: 'all', label: 'Cá nhân + Doanh nghiệp' }, { value: 'personal', label: 'Chỉ cá nhân' }, { value: 'business', label: 'Chỉ doanh nghiệp' }]} />
+        <SelectField label="Số năm" value={String(years)} onChange={(v) => setYears(Number(v))} options={[3, 4, 5].map((y) => ({ value: String(y), label: `${y} năm` }))} />
+        <Segmented label="Xem theo" value={level} onChange={setLevel} options={[{ value: 'month', label: 'Tháng' }, { value: 'quarter', label: 'Quý' }, { value: 'year', label: 'Năm' }]} />
+        <Field label="Tăng thu nhập / năm (%)"><input type="number" className="input !w-28" value={growth} onChange={(e) => setGrowth(Number(e.target.value))} /></Field>
         <div className="text-xs text-slate-500 ml-auto">Cơ sở (TB 3 tháng, chưa gồm tiền trả nợ): thu {money(baseline.income)} · chi {money(baseline.expense)} / tháng</div>
-      </div>
+      </FilterRow>
 
       <section className="card space-y-2">
         <h2 className="font-semibold">Kịch bản</h2>

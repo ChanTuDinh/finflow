@@ -8,7 +8,6 @@ import Forecast from './pages/Forecast.jsx'
 import Settings from './pages/Settings.jsx'
 import Savings from './pages/Savings.jsx'
 import ForecastSavings from './pages/ForecastSavings.jsx'
-import PeriodBar from './components/PeriodBar.jsx'
 
 const PAGES = [
   ['dashboard', 'Tổng quan'],
@@ -43,7 +42,6 @@ export default function App() {
           </button>
         ))}
       </nav>
-      {['dashboard', 'personal', 'business', 'debts', 'reports'].includes(page) && <PeriodBar />}
       {page === 'dashboard' && <Dashboard />}
       {(page === 'personal' || page === 'business') && <CashFlow key={page} kind={page} />}
       {page === 'debts' && <Debts />}

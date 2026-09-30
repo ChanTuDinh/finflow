@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../lib/store.jsx'
-import { Stat } from '../components/ui.jsx'
+import { Stat, SelectField, Segmented, FilterRow } from '../components/ui.jsx'
 import EntryForm from '../components/EntryForm.jsx'
 import { activeAccounts, goalStatus } from '../lib/savings.js'
 import { addMonths } from '../lib/calc.js'
@@ -11,8 +11,14 @@ const OWNER = { Personal: 'Cá nhân', Business: 'Doanh nghiệp' }
 export default function Savings() {
   const { data, money, remove } = useStore()
   const [editing, setEditing] = useState(null) // { kind, row }
+  const [scope, setScope] = useState('all')
+  const [show, setShow] = useState('active') // active | all
+  const owner = scope === 'personal' ? 'Personal' : scope === 'business' ? 'Business' : null
+  const inScope = (x) => !owner || x.owner === owner
+  const savings = data.savings.filter(inScope).filter((a) => show === 'all' || a.status !== 'Closed')
+  const goals = data.goals.filter(inScope).filter((g) => show === 'all' || g.status !== 'Done')
   const startYm = todayIso().slice(0, 7)
-  const accs = activeAccounts(data.savings)
+  const accs = activeAccounts(data.savings.filter(inScope))
   const total = accs.reduce((s, a) => s + a.balance, 0)
   const monthly = accs.reduce((s, a) => s + a.monthly_contribution, 0)
   const yearly = accs.reduce((s, a) => s + (a.balance * a.annual_return) / 100, 0)
@@ -22,6 +28,10 @@ export default function Savings() {
   return (
     <div className="space-y-4">
       {missing.length > 0 && <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm p-2">Sheet chưa có tab {missing.map((k) => (k === 'savings' ? 'Savings' : 'Goals')).join(', ')}. Chạy lại <code>setup.gs</code> (không xoá dữ liệu cũ) hoặc tạo tab đúng tên để lưu dữ liệu tích lũy.</div>}
+      <FilterRow>
+        <SelectField label="Phạm vi" value={scope} onChange={setScope} options={[{ value: 'all', label: 'Cá nhân + Doanh nghiệp' }, { value: 'personal', label: 'Chỉ cá nhân' }, { value: 'business', label: 'Chỉ doanh nghiệp' }]} />
+        <Segmented label="Hiển thị" value={show} onChange={setShow} options={[{ value: 'active', label: 'Đang dùng' }, { value: 'all', label: 'Tất cả' }]} />
+      </FilterRow>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Stat label="Tổng tích lũy" value={money(total)} />
         <Stat label="Góp mỗi tháng" value={money(monthly)} />
@@ -31,7 +41,7 @@ export default function Savings() {
       <section className="space-y-2">
         <div className="flex items-center"><h2 className="font-semibold">Mục tiêu</h2><button className="btn ml-auto" onClick={() => setEditing({ kind: 'goals' })}>+ Thêm mục tiêu</button></div>
         <div className="grid md:grid-cols-2 gap-3">
-          {data.goals.map((g) => {
+          {goals.map((g) => {
             const st = goalStatus({ goal: g, accounts: data.savings, startYm })
             const done = g.status === 'Done' || st.pct >= 1
             return (
@@ -54,7 +64,7 @@ export default function Savings() {
               </div>
             )
           })}
-          {!data.goals.length && <div className="text-sm text-slate-400">Chưa có mục tiêu</div>}
+          {!goals.length && <div className="text-sm text-slate-400">Chưa có mục tiêu</div>}
         </div>
       </section>
 
@@ -64,7 +74,7 @@ export default function Savings() {
           <table className="w-full text-sm">
             <thead className="text-xs text-slate-500 text-left"><tr>{['Tên', 'Loại', 'Thuộc về', 'Số dư', 'Góp / tháng', 'Lãi %/năm', 'Mục tiêu', 'Trạng thái', ''].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr></thead>
             <tbody>
-              {data.savings.map((a) => (
+              {savings.map((a) => (
                 <tr key={a.id} className={`border-t border-slate-100 ${a.status === 'Closed' ? 'opacity-50' : ''}`}>
                   <td className="px-3 py-1.5 font-medium">{a.name}</td>
                   <td className="px-3 py-1.5">{a.type}</td>
@@ -80,7 +90,7 @@ export default function Savings() {
                   </td>
                 </tr>
               ))}
-              {!data.savings.length && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-400">Chưa có khoản tích lũy</td></tr>}
+              {!savings.length && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-400">Chưa có khoản tích lũy</td></tr>}
             </tbody>
           </table>
         </div>

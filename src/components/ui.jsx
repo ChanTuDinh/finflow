@@ -29,3 +29,29 @@ export function Modal({ title, onClose, children }) {
 }
 
 export const Field = ({ label, children }) => (<div><label className="label">{label}</label>{children}</div>)
+
+// Bộ điều khiển bộ lọc dùng chung: nhãn nhỏ phía trên + ô chọn / nút chuyển.
+export function SelectField({ label, value, onChange, options, disabled }) {
+  return (
+    <Field label={label}>
+      <select className="input" value={value} disabled={disabled} onChange={(e) => onChange(e.target.value)}>
+        {options.map((o) => (typeof o === 'string' ? <option key={o}>{o}</option> : <option key={o.value} value={o.value}>{o.label}</option>))}
+      </select>
+    </Field>
+  )
+}
+
+export function Segmented({ label, value, onChange, options }) {
+  return (
+    <Field label={label}>
+      <div className="flex rounded-lg border border-slate-300 overflow-hidden text-sm">
+        {options.map((o) => (
+          <button key={o.value} type="button" onClick={() => onChange(o.value)}
+            className={`px-3 py-1.5 ${value === o.value ? 'bg-slate-900 text-white' : 'bg-white hover:bg-slate-100'}`}>{o.label}</button>
+        ))}
+      </div>
+    </Field>
+  )
+}
+
+export const FilterRow = ({ children }) => <div className="flex flex-wrap items-end gap-3 mb-4">{children}</div>

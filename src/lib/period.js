@@ -56,29 +56,46 @@ export function shift(p, d) {
   return p
 }
 
-// Hàm gom nhóm theo kỳ con: all -> năm, năm -> quý, quý -> tháng, tháng -> ngày
-export function childKeyFn(p) {
-  if (p.level === 'all') return (iso) => iso.slice(0, 4)
-  if (p.level === 'year') return quarterKey
-  if (p.level === 'quarter') return monthKey
+// "Xem theo" (grain): đơn vị gom nhóm trong kỳ đang chọn.
+export const GRAIN_LABEL = { day: 'Ngày', month: 'Tháng', quarter: 'Quý', year: 'Năm' }
+const DEFAULT_GRAIN = { all: 'year', year: 'quarter', quarter: 'month', month: 'day' }
+const VALID_GRAINS = { all: ['month', 'quarter', 'year'], year: ['month', 'quarter'], quarter: ['month'], month: ['day'] }
+export const defaultGrain = (p) => DEFAULT_GRAIN[p.level]
+export const validGrains = (p) => VALID_GRAINS[p.level]
+// chosen: lựa chọn của người dùng (có thể không còn hợp lệ với kỳ mới) -> mặc định là cấp con liền kề
+export const resolveGrain = (p, chosen) => (VALID_GRAINS[p.level].includes(chosen) ? chosen : DEFAULT_GRAIN[p.level])
+
+export function grainKeyFn(grain) {
+  if (grain === 'year') return (iso) => iso.slice(0, 4)
+  if (grain === 'quarter') return quarterKey
+  if (grain === 'month') return monthKey
   return (iso) => iso
 }
+export const childKeyFn = (p, grain = defaultGrain(p)) => grainKeyFn(grain)
 
-// Danh sách kỳ con (lấp số 0 cho kỳ trống). years: các năm có dữ liệu (dùng cho level 'all').
-export function childKeys(p, years = []) {
+// Các tháng (yyyy-mm) nằm trong kỳ. 'all': từ tháng 1 của năm đầu đến tháng 12 của năm cuối có dữ liệu.
+function monthsOf(p, years) {
+  const fill = (y) => Array.from({ length: 12 }, (_, i) => `${y}-${String(i + 1).padStart(2, '0')}`)
   if (p.level === 'all') {
     if (!years.length) return []
     const lo = Math.min(...years), hi = Math.max(...years)
-    return Array.from({ length: hi - lo + 1 }, (_, i) => String(lo + i))
+    return Array.from({ length: hi - lo + 1 }, (_, i) => fill(lo + i)).flat()
   }
-  if (p.level === 'year') return [1, 2, 3, 4].map((q) => `${p.key}-Q${q}`)
-  if (p.level === 'quarter') {
-    const y = p.key.slice(0, 4), q = Number(p.key.slice(6))
-    return [0, 1, 2].map((i) => `${y}-${String((q - 1) * 3 + i + 1).padStart(2, '0')}`)
+  if (p.level === 'year') return fill(p.key)
+  if (p.level === 'quarter') return fill(p.key.slice(0, 4)).slice((Number(p.key.slice(6)) - 1) * 3, Number(p.key.slice(6)) * 3)
+  return [p.key]
+}
+
+// Danh sách kỳ theo grain (lấp số 0 cho kỳ trống). years: các năm có dữ liệu (dùng cho level 'all').
+export function childKeys(p, years = [], grain = defaultGrain(p)) {
+  if (grain === 'day') {
+    const [y, m] = p.key.split('-').map(Number)
+    const days = new Date(Date.UTC(y, m, 0)).getUTCDate()
+    return Array.from({ length: days }, (_, i) => `${p.key}-${String(i + 1).padStart(2, '0')}`)
   }
-  const [y, m] = p.key.split('-').map(Number)
-  const days = new Date(Date.UTC(y, m, 0)).getUTCDate()
-  return Array.from({ length: days }, (_, i) => `${p.key}-${String(i + 1).padStart(2, '0')}`)
+  const months = monthsOf(p, years)
+  if (grain === 'month') return months
+  return [...new Set(months.map((m) => (grain === 'quarter' ? quarterKey(`${m}-01`) : m.slice(0, 4))))]
 }
 
 // Số tháng trong kỳ (dùng ước tính lãi). 'all': số tháng có dữ liệu.
@@ -92,8 +109,8 @@ export function monthsIn(p, rows = []) {
 export const dataYears = (...rowSets) => [...new Set(rowSets.flat().filter((r) => r.date).map((r) => Number(r.date.slice(0, 4))))].sort()
 
 // Gom rows theo kỳ con của p, lấp 0 cho kỳ trống: [{ period, income, expense, net }]
-export function breakdown(rows, p, years) {
+export function breakdown(rows, p, years, grain = defaultGrain(p)) {
   const inP = rows.filter((r) => inPeriod(p, r.date))
-  const map = new Map(summarize(inP, childKeyFn(p)).map((e) => [e.period, e]))
-  return childKeys(p, years ?? dataYears(rows)).map((k) => map.get(k) || { period: k, income: 0, expense: 0, net: 0 })
+  const map = new Map(summarize(inP, grainKeyFn(grain)).map((e) => [e.period, e]))
+  return childKeys(p, years ?? dataYears(rows), grain).map((k) => map.get(k) || { period: k, income: 0, expense: 0, net: 0 })
 }
