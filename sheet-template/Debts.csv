@@ -1,0 +1,4 @@
+id,name,lender,owner,balance,apr,min_payment,due_day,status,note
+d001,Thẻ tín dụng,Techcombank,Personal,45000000,30,2500000,15,Active,
+d002,Vay mua xe,VPBank,Personal,180000000,11,3000000,25,Active,
+d003,Vay vốn kinh doanh,Agribank,Business,120000000,9,4000000,5,Active,

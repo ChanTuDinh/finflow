@@ -1,0 +1,5 @@
+id,date,type,category,amount,account,note,created_by
+p001,2026-09-05,Income,Lương,40000000,Vietcombank,Lương tháng 9,me
+p002,2026-09-06,Expense,Nhà ở,9000000,Vietcombank,Tiền thuê nhà,me
+p003,2026-09-10,Expense,Ăn uống,7000000,Vietcombank,,me
+p004,2026-09-25,Expense,Trả nợ,5500000,Vietcombank,Trả góp + thẻ,me
