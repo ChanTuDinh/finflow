@@ -20,23 +20,38 @@ const TABS = {
     validation: { 4: ['Personal', 'Business'], 9: ['Active', 'Paid'] },
     sample: [['d001', 'Thẻ tín dụng', 'Techcombank', 'Personal', 45000000, 30, 2500000, 15, 'Active', '']],
   },
+  Savings: {
+    header: ['id', 'name', 'type', 'owner', 'balance', 'monthly_contribution', 'annual_return', 'goal_id', 'status', 'note'],
+    validation: { 3: ['Tiết kiệm', 'Chứng khoán', 'Vàng', 'Quỹ dự phòng', 'Quỹ đầu tư', 'Khác'], 4: ['Personal', 'Business'], 9: ['Active', 'Closed'] },
+    sample: [['s001', 'Sổ tiết kiệm VCB', 'Tiết kiệm', 'Personal', 60000000, 4000000, 5.5, 'g001', 'Active', '']],
+  },
+  Goals: {
+    header: ['id', 'name', 'owner', 'target_amount', 'target_date', 'status', 'note'],
+    validation: { 3: ['Personal', 'Business'], 6: ['Active', 'Done'] },
+    sample: [['g001', 'Quỹ khẩn cấp 6 tháng', 'Personal', 150000000, '2028-03-31', 'Active', '']],
+    textCols: [5], // target_date dạng chữ yyyy-mm-dd
+  },
 };
 
 function setupFinFlow() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   Object.keys(TABS).forEach((name) => {
     const cfg = TABS[name];
-    const sh = ss.getSheetByName(name) || ss.insertSheet(name);
-    sh.clear();
+    let sh = ss.getSheetByName(name);
+    const existed = !!sh;
+    if (!existed) sh = ss.insertSheet(name);
+    // Chạy lại nhiều lần vẫn an toàn: tab đã có dữ liệu thì chỉ bổ sung header/dropdown, không xoá.
+    const hasData = existed && sh.getLastRow() > 1;
     sh.getRange(1, 1, 1, cfg.header.length).setValues([cfg.header]).setFontWeight('bold').setBackground('#e2e8f0');
     sh.setFrozenRows(1);
-    if (cfg.sample.length) sh.getRange(2, 1, cfg.sample.length, cfg.sample[0].length).setValues(cfg.sample);
+    if (!hasData && cfg.sample.length) sh.getRange(2, 1, cfg.sample.length, cfg.sample[0].length).setValues(cfg.sample);
     Object.keys(cfg.validation).forEach((col) => {
       const rule = SpreadsheetApp.newDataValidation().requireValueInList(cfg.validation[col], true).build();
       sh.getRange(2, Number(col), 1000, 1).setDataValidation(rule);
     });
     // Ngày ở dạng chữ yyyy-mm-dd để app đọc ổn định (Personal/Business: cột 2)
     if (cfg.header[1] === 'date') sh.getRange(2, 2, 1000, 1).setNumberFormat('@');
+    (cfg.textCols || []).forEach((c) => sh.getRange(2, c, 1000, 1).setNumberFormat('@'));
   });
   const def = ss.getSheetByName('Sheet1');
   if (def && ss.getSheets().length > 1) ss.deleteSheet(def);

@@ -109,7 +109,7 @@ export default function Forecast() {
             <tr><th className="px-3 py-2 text-left">Kỳ</th>{results.map((r) => <th key={r.scenario.id} className="px-3 py-2">{r.scenario.name}</th>)}</tr>
           </thead>
           <tbody>
-            {merged.slice(1).map((row) => (
+            {(level === 'month' ? merged.slice(1) : merged).map((row) => (
               <tr key={row.period} className="border-t border-slate-100 text-right">
                 <td className="px-3 py-1.5 text-left">{row.period}</td>
                 {results.map((r) => (

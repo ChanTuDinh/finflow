@@ -1,0 +1,4 @@
+id,name,type,owner,balance,monthly_contribution,annual_return,goal_id,status,note
+s001,Sổ tiết kiệm VCB,Tiết kiệm,Personal,60000000,4000000,5.5,g001,Active,
+s002,Quỹ trái phiếu,Quỹ đầu tư,Personal,30000000,2000000,8,,Active,
+s003,Tài khoản DN dự phòng,Quỹ dự phòng,Business,50000000,3000000,4.5,g002,Active,

@@ -26,11 +26,29 @@ export const TABS = {
   },
 }
 
+TABS.savings = {
+  tab: 'Savings',
+  columns: ['id', 'name', 'type', 'owner', 'balance', 'monthly_contribution', 'annual_return', 'goal_id', 'status', 'note'],
+  types: ['Tiết kiệm', 'Chứng khoán', 'Vàng', 'Quỹ dự phòng', 'Quỹ đầu tư', 'Khác'],
+  owners: ['Personal', 'Business'],
+  statuses: ['Active', 'Closed'],
+}
+TABS.goals = {
+  tab: 'Goals',
+  columns: ['id', 'name', 'owner', 'target_amount', 'target_date', 'status', 'note'],
+  owners: ['Personal', 'Business'],
+  statuses: ['Active', 'Done'],
+}
+// Các tab bắt buộc phải có trong Sheet; savings/goals là tuỳ chọn (thiếu thì coi như rỗng).
+export const CORE_KINDS = ['personal', 'business', 'debts']
+export const EMPTY_DATA = () => ({ personal: [], business: [], debts: [], savings: [], goals: [] })
+
 export const DEBT_PAYMENT_CATEGORY = 'Trả nợ'
 export const isInflow = (row) => row.type === 'Income' || row.type === 'Revenue'
 export const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 
-const NUMERIC = new Set(['amount', 'balance', 'apr', 'min_payment', 'due_day'])
+const NUMERIC = new Set(['amount', 'balance', 'apr', 'min_payment', 'due_day', 'monthly_contribution', 'annual_return', 'target_amount'])
+const DATE_COLS = new Set(['date', 'target_date'])
 
 // Sheet serial date -> yyyy-mm-dd
 function serialToIso(n) {
@@ -58,7 +76,7 @@ export function rowFromValues(kind, values) {
   const obj = {}
   TABS[kind].columns.forEach((c, i) => {
     const v = values[i] ?? ''
-    obj[c] = c === 'date' ? normalizeDate(v) : NUMERIC.has(c) ? parseNumber(v) : String(v)
+    obj[c] = DATE_COLS.has(c) ? normalizeDate(v) : NUMERIC.has(c) ? parseNumber(v) : String(v)
   })
   return obj
 }

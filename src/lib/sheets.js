@@ -1,6 +1,6 @@
 // Google Sheets qua REST + Google Identity Services (OAuth, chạy hoàn toàn ở trình duyệt).
 // Mỗi người dùng đăng nhập bằng tài khoản Google của mình và cần được share quyền Editor trên Sheet.
-import { TABS, rowFromValues, valuesFromRow } from './schema.js'
+import { TABS, CORE_KINDS, EMPTY_DATA, rowFromValues, valuesFromRow } from './schema.js'
 
 const SCOPE = 'https://www.googleapis.com/auth/spreadsheets'
 const API = 'https://sheets.googleapis.com/v4/spreadsheets'
@@ -45,6 +45,14 @@ export function signOut() {
   token = null
 }
 
+function friendlyError(status, msg = '') {
+  if (status === 401) return 'Phiên đăng nhập Google đã hết hạn — bấm Kết nối lại trong Cài đặt'
+  if (status === 403) return 'Tài khoản Google này chưa có quyền Editor trên Sheet — nhờ chủ Sheet share lại'
+  if (status === 404) return 'Không tìm thấy Sheet — kiểm tra lại Spreadsheet ID trong Cài đặt'
+  if (/Unable to parse range|not found/i.test(msg)) return 'Sheet thiếu một tab cần thiết (Savings / Goals?) — chạy lại setup.gs hoặc tạo tab đúng tên'
+  return msg || `Sheets API ${status}`
+}
+
 async function call(path, options = {}) {
   if (!isSignedIn()) throw new Error('Phiên đăng nhập Google đã hết hạn — hãy kết nối lại')
   const res = await fetch(`${API}${path}`, {
@@ -53,7 +61,7 @@ async function call(path, options = {}) {
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    throw new Error(body.error?.message || `Sheets API ${res.status}`)
+    throw new Error(friendlyError(res.status, body.error?.message))
   }
   return res.json()
 }
@@ -61,15 +69,19 @@ async function call(path, options = {}) {
 const q = (s) => encodeURIComponent(s)
 
 export async function loadAll(sheetId) {
-  const ranges = Object.values(TABS).map((t) => `ranges=${q(`${t.tab}!A2:Z`)}`).join('&')
+  const meta = await call(`/${sheetId}?fields=sheets.properties.title`)
+  const have = new Set(meta.sheets.map((x) => x.properties.title))
+  const kinds = Object.keys(TABS).filter((k) => have.has(TABS[k].tab))
+  const missingCore = CORE_KINDS.filter((k) => !kinds.includes(k))
+  if (missingCore.length) throw new Error(`Sheet thiếu tab: ${missingCore.map((k) => TABS[k].tab).join(', ')}`)
+  const ranges = kinds.map((k) => `ranges=${q(`${TABS[k].tab}!A2:Z`)}`).join('&')
   const data = await call(`/${sheetId}/values:batchGet?${ranges}&valueRenderOption=UNFORMATTED_VALUE`)
-  const out = {}
-  Object.keys(TABS).forEach((kind, i) => {
+  const out = EMPTY_DATA()
+  kinds.forEach((kind, i) => {
     const rows = data.valueRanges[i].values || []
-    out[kind] = rows
-      .map((vals, idx) => ({ ...rowFromValues(kind, vals), _row: idx + 2 }))
-      .filter((r) => r.id !== '')
+    out[kind] = rows.map((vals, idx) => ({ ...rowFromValues(kind, vals), _row: idx + 2 })).filter((r) => r.id !== '')
   })
+  out._missing = Object.keys(TABS).filter((k) => !kinds.includes(k))
   return out
 }
 

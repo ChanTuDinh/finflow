@@ -15,17 +15,18 @@ export default function Dashboard() {
   const b = breakdown(data.business, period, years)
   const cmp = p.map((e, i) => ({ period: e.period, personalNet: e.net, businessNet: b[i].net }))
   const debt = (owner) => data.debts.filter((d) => d.status !== 'Paid' && d.owner === owner).reduce((s, d) => s + d.balance, 0)
+  const saved = (owner) => data.savings.filter((a) => a.status !== 'Closed' && a.owner === owner).reduce((x, a) => x + a.balance, 0)
   const title = period.level === 'all' ? levelName.all : `${levelName[period.level]} ${labelOf(period)}`
   const onBar = (d) => { const k = d?.period ?? d?.payload?.period; if (k) drill(k) }
 
   const blocks = [
-    ['Cá nhân', COLORS.personal, inP(data.personal), debt('Personal'), 'Thu nhập'],
-    ['Doanh nghiệp', COLORS.business, inP(data.business), debt('Business'), 'Doanh thu'],
+    ['Cá nhân', COLORS.personal, inP(data.personal), debt('Personal'), 'Thu nhập', saved('Personal')],
+    ['Doanh nghiệp', COLORS.business, inP(data.business), debt('Business'), 'Doanh thu', saved('Business')],
   ]
   return (
     <div className="space-y-4">
       <div className="grid md:grid-cols-2 gap-4">
-        {blocks.map(([name, color, t, d, inLabel]) => (
+        {blocks.map(([name, color, t, d, inLabel, sv]) => (
           <section key={name} className="card space-y-3" style={{ borderTop: `3px solid ${color}` }}>
             <h2 className="font-semibold">{name} <span className="text-xs font-normal text-slate-400">{title}</span></h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -33,8 +34,9 @@ export default function Dashboard() {
               <Stat label="Chi" value={money(t.expense)} />
               <Stat label="Ròng" value={money(t.net)} tone={t.net < 0 ? 'neg' : 'pos'} />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <Stat label="Tỷ lệ giữ lại (ròng / thu)" value={t.income > 0 ? pct(t.net / t.income) : '—'} tone={t.net < 0 ? 'neg' : undefined} />
+              <Stat label="Tích lũy hiện tại" value={money(sv)} tone="pos" />
               <Stat label="Dư nợ hiện tại" value={money(d)} />
             </div>
           </section>

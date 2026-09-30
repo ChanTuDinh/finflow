@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import * as sheets from './sheets.js'
 import { demoData } from './demo.js'
-import { newId } from './schema.js'
+import { newId, EMPTY_DATA } from './schema.js'
 import { makeMoney, todayIso } from './format.js'
 
 const Ctx = createContext(null)
@@ -9,6 +9,13 @@ export const useStore = () => useContext(Ctx)
 
 const LS = 'finflow:v1'
 const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d } catch { return d } }
+// Dữ liệu demo cũ trong localStorage có thể chưa có savings/goals: bổ sung để không lỗi.
+const loadDemo = () => {
+  const fresh = demoData(todayIso().slice(0, 7))
+  const saved = load(`${LS}:demo`, null)
+  if (!saved) return fresh
+  return { ...EMPTY_DATA(), ...saved, savings: saved.savings ?? fresh.savings, goals: saved.goals ?? fresh.goals }
+}
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch { /* ignore */ } }
 
 export function StoreProvider({ children }) {
@@ -20,7 +27,7 @@ export function StoreProvider({ children }) {
     ...load(`${LS}:settings`, {}),
   }))
   const [mode, setMode] = useState('demo') // 'demo' | 'sheets'
-  const [data, setData] = useState(() => load(`${LS}:demo`, null) || demoData(todayIso().slice(0, 7)))
+  const [data, setData] = useState(loadDemo)
   const [status, setStatus] = useState({ loading: false, error: '' })
 
   useEffect(() => save(`${LS}:settings`, { ...settings, clientId: settings.clientId }), [settings])
@@ -41,13 +48,13 @@ export function StoreProvider({ children }) {
     setData(await sheets.loadAll(settings.sheetId))
     setMode('sheets')
   })
-  const disconnect = () => { sheets.signOut(); setMode('demo'); setData(load(`${LS}:demo`, null) || demoData(todayIso().slice(0, 7))) }
+  const disconnect = () => { sheets.signOut(); setMode('demo'); setData(loadDemo()) }
   const resetDemo = () => setData(demoData(todayIso().slice(0, 7)))
 
   // Thêm / sửa / xoá. Sheets: ghi rồi tải lại để giữ số hàng (_row) đúng khi nhiều người cùng sửa.
   const upsert = (kind, row) => run(async () => {
     const isNew = !row.id
-    const r = { ...row, id: row.id || newId(), ...(isNew && kind !== 'debts' ? { created_by: settings.user || 'me' } : {}) }
+    const r = { ...row, id: row.id || newId(), ...(isNew && (kind === 'personal' || kind === 'business') ? { created_by: settings.user || 'me' } : {}) }
     if (mode === 'sheets') {
       if (isNew) await sheets.appendRow(settings.sheetId, kind, r)
       else await sheets.updateRow(settings.sheetId, kind, r)

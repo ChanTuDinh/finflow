@@ -26,5 +26,13 @@ export function demoData(endYm) {
   d('Thẻ tín dụng', 'Techcombank', 'Personal', 45_000_000, 30, 2_500_000, 15)
   d('Vay mua xe', 'VPBank', 'Personal', 180_000_000, 11, 3_000_000, 25)
   d('Vay vốn kinh doanh', 'Agribank', 'Business', 120_000_000, 9, 4_000_000, 5)
-  return { personal: P, business: B, debts: D }
+  const G = [], S = []
+  const goal = (id, name, owner, target_amount, months) => G.push({ id, name, owner, target_amount, target_date: `${addMonths(endYm, months)}-28`, status: 'Active', note: '' })
+  goal('g1', 'Quỹ khẩn cấp 6 tháng', 'Personal', 150_000_000, 18)
+  goal('g2', 'Vốn dự phòng doanh nghiệp', 'Business', 200_000_000, 30)
+  const sv = (name, type, owner, balance, monthly_contribution, annual_return, goal_id) => S.push({ id: newId(), name, type, owner, balance, monthly_contribution, annual_return, goal_id, status: 'Active', note: '' })
+  sv('Sổ tiết kiệm VCB', 'Tiết kiệm', 'Personal', 60_000_000, 4_000_000, 5.5, 'g1')
+  sv('Quỹ trái phiếu', 'Quỹ đầu tư', 'Personal', 30_000_000, 2_000_000, 8, '')
+  sv('Tài khoản DN dự phòng', 'Quỹ dự phòng', 'Business', 50_000_000, 3_000_000, 4.5, 'g2')
+  return { personal: P, business: B, debts: D, savings: S, goals: G }
 }

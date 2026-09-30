@@ -4,39 +4,74 @@ import { todayIso } from '../lib/format.js'
 import { Field, Modal } from './ui.jsx'
 import { useStore } from '../lib/store.jsx'
 
-// Form thêm/sửa cho Personal_CashFlow, Business_CashFlow (kind = personal | business) và Debts.
+const TITLES = { personal: 'giao dịch cá nhân', business: 'giao dịch doanh nghiệp', debts: 'khoản nợ', savings: 'khoản tích lũy', goals: 'mục tiêu' }
+const EMPTY = {
+  debts: { name: '', lender: '', owner: 'Personal', balance: 0, apr: 0, min_payment: 0, due_day: 1, status: 'Active', note: '' },
+  savings: { name: '', type: 'Tiết kiệm', owner: 'Personal', balance: 0, monthly_contribution: 0, annual_return: 0, goal_id: '', status: 'Active', note: '' },
+  goals: { name: '', owner: 'Personal', target_amount: 0, target_date: '', status: 'Active', note: '' },
+}
+
+// Form thêm/sửa cho mọi tab dữ liệu: personal | business | debts | savings | goals.
 export default function EntryForm({ kind, row, onClose }) {
-  const { upsert, status } = useStore()
+  const { upsert, status, data } = useStore()
   const cfg = TABS[kind]
-  const isDebt = kind === 'debts'
-  const [f, setF] = useState(() => row || (isDebt
-    ? { name: '', lender: '', owner: 'Personal', balance: 0, apr: 0, min_payment: 0, due_day: 1, status: 'Active', note: '' }
-    : { date: todayIso(), type: cfg.types[1], category: cfg.categories[cfg.types[1]][0], amount: 0, [kind === 'personal' ? 'account' : 'counterparty']: '', note: '' }))
+  const cash = kind === 'personal' || kind === 'business'
+  const [f, setF] = useState(() => row || EMPTY[kind] || {
+    date: todayIso(), type: cfg.types[1], category: cfg.categories[cfg.types[1]][0], amount: 0,
+    [kind === 'personal' ? 'account' : 'counterparty']: '', note: '',
+  })
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
   const num = (k) => (e) => set(k, e.target.value === '' ? '' : Number(e.target.value))
   const submit = async (e) => { e.preventDefault(); if (await upsert(kind, f)) onClose() }
   const who = kind === 'personal' ? ['account', 'Tài khoản / ví'] : ['counterparty', 'Đối tác / khách hàng']
+  const select = (k, options) => <select className="input" value={f[k]} onChange={(e) => set(k, e.target.value)}>{options.map((o) => <option key={o}>{o}</option>)}</select>
+  const text = (k, required) => <input required={required} className="input" value={f[k] ?? ''} onChange={(e) => set(k, e.target.value)} />
+  const number = (k, extra = {}) => <input type="number" min="0" className="input" value={f[k]} onChange={num(k)} {...extra} />
+  const goalOptions = data.goals.filter((g) => g.owner === f.owner)
 
   return (
-    <Modal title={`${row ? 'Sửa' : 'Thêm'} — ${isDebt ? 'khoản nợ' : kind === 'personal' ? 'cá nhân' : 'doanh nghiệp'}`} onClose={onClose}>
+    <Modal title={`${row ? 'Sửa' : 'Thêm'} — ${TITLES[kind]}`} onClose={onClose}>
       <form onSubmit={submit} className="grid grid-cols-2 gap-3">
-        {isDebt ? (<>
-          <div className="col-span-2"><Field label="Tên khoản nợ"><input required className="input" value={f.name} onChange={(e) => set('name', e.target.value)} /></Field></div>
-          <Field label="Bên cho vay"><input className="input" value={f.lender} onChange={(e) => set('lender', e.target.value)} /></Field>
-          <Field label="Thuộc về"><select className="input" value={f.owner} onChange={(e) => set('owner', e.target.value)}>{cfg.owners.map((o) => <option key={o}>{o}</option>)}</select></Field>
-          <Field label="Dư nợ hiện tại"><input type="number" min="0" className="input" value={f.balance} onChange={num('balance')} /></Field>
-          <Field label="Lãi suất (%/năm)"><input type="number" step="0.01" min="0" className="input" value={f.apr} onChange={num('apr')} /></Field>
-          <Field label="Trả tối thiểu / tháng"><input type="number" min="0" className="input" value={f.min_payment} onChange={num('min_payment')} /></Field>
-          <Field label="Ngày đến hạn (1-31)"><input type="number" min="1" max="31" className="input" value={f.due_day} onChange={num('due_day')} /></Field>
-          <Field label="Trạng thái"><select className="input" value={f.status} onChange={(e) => set('status', e.target.value)}>{cfg.statuses.map((o) => <option key={o}>{o}</option>)}</select></Field>
-        </>) : (<>
+        {kind === 'debts' && (<>
+          <div className="col-span-2"><Field label="Tên khoản nợ">{text('name', true)}</Field></div>
+          <Field label="Bên cho vay">{text('lender')}</Field>
+          <Field label="Thuộc về">{select('owner', cfg.owners)}</Field>
+          <Field label="Dư nợ hiện tại">{number('balance')}</Field>
+          <Field label="Lãi suất (%/năm)">{number('apr', { step: '0.01' })}</Field>
+          <Field label="Trả tối thiểu / tháng">{number('min_payment')}</Field>
+          <Field label="Ngày đến hạn (1-31)">{number('due_day', { max: 31, min: 1 })}</Field>
+          <Field label="Trạng thái">{select('status', cfg.statuses)}</Field>
+        </>)}
+        {kind === 'savings' && (<>
+          <div className="col-span-2"><Field label="Tên khoản tích lũy">{text('name', true)}</Field></div>
+          <Field label="Loại">{select('type', cfg.types)}</Field>
+          <Field label="Thuộc về">{select('owner', cfg.owners)}</Field>
+          <Field label="Số dư hiện tại">{number('balance')}</Field>
+          <Field label="Góp mỗi tháng">{number('monthly_contribution')}</Field>
+          <Field label="Lãi/lợi nhuận kỳ vọng (%/năm)">{number('annual_return', { step: '0.01' })}</Field>
+          <Field label="Trạng thái">{select('status', cfg.statuses)}</Field>
+          <div className="col-span-2"><Field label="Gắn với mục tiêu">
+            <select className="input" value={f.goal_id} onChange={(e) => set('goal_id', e.target.value)}>
+              <option value="">— Không gắn —</option>
+              {goalOptions.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+            </select>
+          </Field></div>
+        </>)}
+        {kind === 'goals' && (<>
+          <div className="col-span-2"><Field label="Tên mục tiêu">{text('name', true)}</Field></div>
+          <Field label="Thuộc về">{select('owner', cfg.owners)}</Field>
+          <Field label="Trạng thái">{select('status', cfg.statuses)}</Field>
+          <Field label="Số tiền đích">{number('target_amount')}</Field>
+          <Field label="Hạn đạt (tuỳ chọn)"><input type="date" className="input" value={f.target_date} onChange={(e) => set('target_date', e.target.value)} /></Field>
+        </>)}
+        {cash && (<>
           <Field label="Ngày"><input type="date" required className="input" value={f.date} onChange={(e) => set('date', e.target.value)} /></Field>
           <Field label="Loại"><select className="input" value={f.type} onChange={(e) => setF((p) => ({ ...p, type: e.target.value, category: cfg.categories[e.target.value][0] }))}>{cfg.types.map((t) => <option key={t}>{t}</option>)}</select></Field>
-          <Field label="Danh mục"><select className="input" value={f.category} onChange={(e) => set('category', e.target.value)}>{cfg.categories[f.type].map((c) => <option key={c}>{c}</option>)}</select></Field>
-          <Field label="Số tiền"><input type="number" min="0" required className="input" value={f.amount} onChange={num('amount')} /></Field>
-          <div className="col-span-2"><Field label={who[1]}><input className="input" value={f[who[0]] || ''} onChange={(e) => set(who[0], e.target.value)} /></Field></div>
+          <Field label="Danh mục">{select('category', cfg.categories[f.type])}</Field>
+          <Field label="Số tiền">{number('amount', { required: true })}</Field>
+          <div className="col-span-2"><Field label={who[1]}>{text(who[0])}</Field></div>
         </>)}
-        <div className="col-span-2"><Field label="Ghi chú"><input className="input" value={f.note} onChange={(e) => set('note', e.target.value)} /></Field></div>
+        <div className="col-span-2"><Field label="Ghi chú">{text('note')}</Field></div>
         <div className="col-span-2 flex justify-end gap-2">
           <button type="button" className="btn-ghost" onClick={onClose}>Huỷ</button>
           <button className="btn" disabled={status.loading}>Lưu</button>
