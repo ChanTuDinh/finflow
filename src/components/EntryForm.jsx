@@ -4,12 +4,15 @@ import { todayIso } from '../lib/format.js'
 import { Field, Modal } from './ui.jsx'
 import { useStore } from '../lib/store.jsx'
 
-const TITLES = { personal: 'giao dịch cá nhân', business: 'giao dịch doanh nghiệp', debts: 'khoản nợ', savings: 'khoản tích lũy', goals: 'mục tiêu' }
+const TITLES = { personal: 'giao dịch cá nhân', business: 'giao dịch doanh nghiệp', debts: 'khoản nợ', savings: 'khoản tích lũy', goals: 'mục tiêu', accounts: 'tài khoản ngân hàng', rules: 'quy tắc phân loại' }
 const EMPTY = {
   debts: { name: '', lender: '', owner: 'Personal', balance: 0, apr: 0, min_payment: 0, due_day: 1, status: 'Active', note: '' },
   savings: { name: '', type: 'Tiết kiệm', owner: 'Personal', balance: 0, monthly_contribution: 0, annual_return: 0, goal_id: '', status: 'Active', note: '' },
   goals: { name: '', owner: 'Personal', target_amount: 0, target_date: '', status: 'Active', note: '' },
+  accounts: { name: '', bank: '', owner: 'Personal', preset: '', status: 'Active', note: '' },
+  rules: { keyword: '', category: 'Khác', direction: 'out', owner: '' },
 }
+const ALL_CATEGORIES = [...new Set([...Object.values(TABS.personal.categories), ...Object.values(TABS.business.categories)].flat())].filter((c) => c !== 'Chuyển nội bộ')
 
 // Form thêm/sửa cho mọi tab dữ liệu: personal | business | debts | savings | goals.
 export default function EntryForm({ kind, row, onClose }) {
@@ -64,6 +67,18 @@ export default function EntryForm({ kind, row, onClose }) {
           <Field label="Số tiền đích">{number('target_amount')}</Field>
           <Field label="Hạn đạt (tuỳ chọn)"><input type="date" className="input" value={f.target_date} onChange={(e) => set('target_date', e.target.value)} /></Field>
         </>)}
+        {kind === 'accounts' && (<>
+          <div className="col-span-2"><Field label="Tên tài khoản (hiển thị, vd. Vietcombank chính)">{text('name', true)}</Field></div>
+          <Field label="Ngân hàng">{text('bank')}</Field>
+          <Field label="Thuộc về">{select('owner', cfg.owners)}</Field>
+          <Field label="Trạng thái">{select('status', cfg.statuses)}</Field>
+        </>)}
+        {kind === 'rules' && (<>
+          <div className="col-span-2"><Field label="Từ khóa trong nội dung giao dịch (không cần dấu)">{text('keyword', true)}</Field></div>
+          <Field label="Danh mục"><select className="input" value={f.category} onChange={(e) => set('category', e.target.value)}>{ALL_CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></Field>
+          <Field label="Áp dụng cho"><select className="input" value={f.direction} onChange={(e) => set('direction', e.target.value)}><option value="out">Khoản chi</option><option value="in">Khoản thu</option><option value="any">Cả hai</option></select></Field>
+          <Field label="Phạm vi"><select className="input" value={f.owner} onChange={(e) => set('owner', e.target.value)}><option value="">Cả cá nhân và DN</option><option value="Personal">Chỉ cá nhân</option><option value="Business">Chỉ doanh nghiệp</option></select></Field>
+        </>)}
         {cash && (<>
           <Field label="Ngày"><input type="date" required className="input" value={f.date} onChange={(e) => set('date', e.target.value)} /></Field>
           <Field label="Loại"><select className="input" value={f.type} onChange={(e) => setF((p) => ({ ...p, type: e.target.value, category: cfg.categories[e.target.value][0] }))}>{cfg.types.map((t) => <option key={t}>{t}</option>)}</select></Field>
@@ -71,7 +86,7 @@ export default function EntryForm({ kind, row, onClose }) {
           <Field label="Số tiền">{number('amount', { required: true })}</Field>
           <div className="col-span-2"><Field label={who[1]}>{text(who[0])}</Field></div>
         </>)}
-        <div className="col-span-2"><Field label="Ghi chú">{text('note')}</Field></div>
+        {kind !== 'rules' && <div className="col-span-2"><Field label="Ghi chú">{text('note')}</Field></div>}
         <div className="col-span-2 flex justify-end gap-2">
           <button type="button" className="btn-ghost" onClick={onClose}>Huỷ</button>
           <button className="btn" disabled={status.loading}>Lưu</button>

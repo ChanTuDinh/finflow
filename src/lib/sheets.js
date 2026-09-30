@@ -94,6 +94,15 @@ export async function appendRow(sheetId, kind, row) {
   )
 }
 
+// Ghi nhiều dòng bằng một lệnh API (dùng khi nhập sao kê)
+export async function appendRows(sheetId, kind, rows) {
+  if (!rows.length) return
+  await call(
+    `/${sheetId}/values/${q(`${TABS[kind].tab}!A:${lastCol(kind)}`)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+    { method: 'POST', body: JSON.stringify({ values: rows.map((r) => valuesFromRow(kind, r)) }) },
+  )
+}
+
 export async function updateRow(sheetId, kind, row) {
   const r = row._row
   await call(`/${sheetId}/values/${q(`${TABS[kind].tab}!A${r}:${lastCol(kind)}${r}`)}?valueInputOption=RAW`, {

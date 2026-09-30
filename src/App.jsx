@@ -7,6 +7,7 @@ import Reports from './pages/Reports.jsx'
 import Forecast from './pages/Forecast.jsx'
 import Settings from './pages/Settings.jsx'
 import Savings from './pages/Savings.jsx'
+import Import from './pages/Import.jsx'
 import ForecastSavings from './pages/ForecastSavings.jsx'
 
 const PAGES = [
@@ -43,7 +44,8 @@ export default function App() {
         ))}
       </nav>
       {page === 'dashboard' && <Dashboard />}
-      {(page === 'personal' || page === 'business') && <CashFlow key={page} kind={page} />}
+      {(page === 'personal' || page === 'business') && <CashFlow key={page} kind={page} onImport={() => setPage('import')} />}
+      {page === 'import' && <Import onBack={() => setPage('personal')} />}
       {page === 'debts' && <Debts />}
       {page === 'reports' && <Reports />}
       {page === 'forecast' && <Forecast />}

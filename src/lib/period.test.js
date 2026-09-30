@@ -84,3 +84,16 @@ test('breakdown theo tháng trong một năm', () => {
   assert.equal(b[2].net, 6)
   assert.equal(b.filter((e) => e.net !== 0).length, 1)
 })
+
+test('Transfer không tính vào thu/chi', async () => {
+  const { totals, byMonth, expenseByCategory } = await import('./calc.js')
+  const rows = [
+    { date: '2026-03-01', type: 'Income', category: 'Lương', amount: 100 },
+    { date: '2026-03-02', type: 'Expense', category: 'Khác', amount: 30 },
+    { date: '2026-03-03', type: 'Transfer', category: 'Chuyển nội bộ', amount: 500 },
+    { date: '2026-03-03', type: 'Transfer', category: 'Chuyển nội bộ', amount: 500 },
+  ]
+  assert.deepEqual(totals(rows), { income: 100, expense: 30, net: 70 })
+  assert.equal(byMonth(rows)[0].expense, 30)
+  assert.deepEqual(expenseByCategory(rows).map((e) => e.category), ['Khác'])
+})

@@ -15,13 +15,15 @@ Cách B: tạo 3 tab tên đúng `Personal_CashFlow`, `Business_CashFlow`, `Debt
 
 | Tab | Cột (hàng 1 = header, giữ đúng thứ tự) |
 |---|---|
-| Personal_CashFlow | id, date, type (Income/Expense), category, amount, account, note, created_by |
-| Business_CashFlow | id, date, type (Revenue/Expense), category, amount, counterparty, note, created_by |
+| Personal_CashFlow | id, date, type (Income/Expense/Transfer), category, amount, account, note, created_by, ref |
+| Business_CashFlow | id, date, type (Revenue/Expense/Transfer), category, amount, counterparty, note, created_by, account, ref |
 | Debts | id, name, lender, owner (Personal/Business), balance, apr (%/năm), min_payment, due_day, status (Active/Paid), note |
 | Savings | id, name, type, owner, balance, monthly_contribution, annual_return (%/năm), goal_id, status (Active/Closed), note |
+| Accounts | id, name, bank, owner, preset, status, note (tài khoản ngân hàng; `preset` do app tự lưu) |
+| Rules | id, keyword, category, direction (out/in/any), owner |
 | Goals | id, name, owner, target_amount, target_date (yyyy-mm-dd), status (Active/Done), note |
 
-`Savings` và `Goals` là tab tuỳ chọn: Sheet cũ chưa có thì app vẫn chạy, chỉ cần chạy lại `setup.gs` (không xoá dữ liệu tab đã có) để thêm. `goal_id` trong Savings trỏ tới `id` trong Goals.
+`Savings`, `Goals`, `Accounts`, `Rules` là tab tuỳ chọn: Sheet cũ chưa có thì app vẫn chạy, chỉ cần chạy lại `setup.gs` (không xoá dữ liệu tab đã có) để thêm. `goal_id` trong Savings trỏ tới `id` trong Goals.
 
 Quy ước: `date` dạng `yyyy-mm-dd`; `amount` là số dương (loại thu/chi nằm ở cột `type`); `id` bất kỳ, duy nhất (nhập tay thì cứ đặt p101, p102…). Tiền trả nợ ghi là Expense với category `Trả nợ` — forecast loại khoản này khỏi chi cơ sở để không tính trùng.
 
@@ -33,3 +35,10 @@ Quy ước: `date` dạng `yyyy-mm-dd`; `amount` là số dương (loại thu/ch
 
 ## Tính năng
 Tổng quan (cá nhân vs DN, tách riêng) · Xem theo Năm › Quý › Tháng (bấm xuống từng cấp) · Cá nhân/Doanh nghiệp (form thêm/sửa/xoá) · Nợ · Báo cáo tháng/quý · Forecast nợ 3-5 năm (trả tối thiểu / trả nhanh / % thu nhập, avalanche hoặc snowball, lãi riêng từng khoản) · Gợi ý cải thiện · Tích lũy & mục tiêu · Forecast Tích lũy (tài sản sau 3-5 năm, bao lâu đạt mục tiêu, trả nợ nhanh vs tích lũy).
+
+## Nhập sao kê nhiều ngân hàng
+Cá nhân / Doanh nghiệp › **Nhập sao kê**.
+1. Thêm mỗi tài khoản ngân hàng một lần (chọn thuộc Cá nhân hay Doanh nghiệp).
+2. Chọn tài khoản → chọn file `.xlsx` / `.csv` tải từ app ngân hàng. Lần đầu, kiểm tra các cột app tự nhận (ngày, nội dung, chi/thu hoặc một cột số tiền có dấu, mã giao dịch); sau khi nhập app nhớ cách đọc cho tài khoản đó.
+3. Xem trước: danh mục tự gán theo **quy tắc từ khóa** (bấm “＋ quy tắc” để dạy app), giao dịch đã có bị bỏ chọn (**loại trùng**), cặp chi–thu cùng số tiền giữa 2 tài khoản của bạn trong ±2 ngày được đánh dấu **Chuyển nội bộ** (kể cả khi 2 ngân hàng nhập ở 2 lần khác nhau, hoặc cá nhân ↔ doanh nghiệp) và không tính vào thu/chi.
+4. Bấm Nhập. File sao kê được đọc hoàn toàn trong trình duyệt; chỉ các giao dịch bạn duyệt mới ghi vào Sheet. File `.xls` cũ: mở bằng Excel, lưu lại thành `.xlsx`.

@@ -14,7 +14,7 @@ const loadDemo = () => {
   const fresh = demoData(todayIso().slice(0, 7))
   const saved = load(`${LS}:demo`, null)
   if (!saved) return fresh
-  return { ...EMPTY_DATA(), ...saved, savings: saved.savings ?? fresh.savings, goals: saved.goals ?? fresh.goals }
+  return { ...EMPTY_DATA(), ...saved, savings: saved.savings ?? fresh.savings, goals: saved.goals ?? fresh.goals, accounts: saved.accounts ?? fresh.accounts, rules: saved.rules ?? fresh.rules }
 }
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch { /* ignore */ } }
 
@@ -63,6 +63,20 @@ export function StoreProvider({ children }) {
       setData((d) => ({ ...d, [kind]: isNew ? [...d[kind], r] : d[kind].map((x) => (x.id === r.id ? r : x)) }))
     }
   })
+  // Ghi một lô sao kê đã duyệt: dòng mới (personal/business) + đổi các dòng đã có thành Transfer.
+  const importBatch = ({ personal = [], business = [], convert = [] }) => run(async () => {
+    if (mode === 'sheets') {
+      await sheets.appendRows(settings.sheetId, 'personal', personal)
+      await sheets.appendRows(settings.sheetId, 'business', business)
+      for (const c of convert) await sheets.updateRow(settings.sheetId, c.kind, c.row)
+      setData(await sheets.loadAll(settings.sheetId))
+    } else {
+      setData((d) => {
+        const swap = (kind) => d[kind].map((x) => convert.find((c) => c.kind === kind && c.row.id === x.id)?.row ?? x)
+        return { ...d, personal: [...swap('personal'), ...personal], business: [...swap('business'), ...business] }
+      })
+    }
+  })
   const remove = (kind, row) => run(async () => {
     if (mode === 'sheets') {
       await sheets.deleteRow(settings.sheetId, kind, row)
@@ -71,7 +85,7 @@ export function StoreProvider({ children }) {
   })
 
   return (
-    <Ctx.Provider value={{ data, mode, settings, setSettings, money, status, connect, disconnect, refresh, resetDemo, upsert, remove }}>
+    <Ctx.Provider value={{ data, mode, settings, setSettings, money, status, connect, disconnect, refresh, resetDemo, upsert, remove, importBatch }}>
       {children}
     </Ctx.Provider>
   )

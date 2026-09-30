@@ -34,5 +34,16 @@ export function demoData(endYm) {
   sv('Sổ tiết kiệm VCB', 'Tiết kiệm', 'Personal', 60_000_000, 4_000_000, 5.5, 'g1')
   sv('Quỹ trái phiếu', 'Quỹ đầu tư', 'Personal', 30_000_000, 2_000_000, 8, '')
   sv('Tài khoản DN dự phòng', 'Quỹ dự phòng', 'Business', 50_000_000, 3_000_000, 4.5, 'g2')
-  return { personal: P, business: B, debts: D, savings: S, goals: G }
+  const A = [
+    { id: 'a1', name: 'Vietcombank', bank: 'Vietcombank', owner: 'Personal', preset: '', status: 'Active', note: '' },
+    { id: 'a2', name: 'Techcombank', bank: 'Techcombank', owner: 'Personal', preset: '', status: 'Active', note: '' },
+    { id: 'a3', name: 'VCB Doanh nghiệp', bank: 'Vietcombank', owner: 'Business', preset: '', status: 'Active', note: '' },
+  ]
+  const R = [
+    { id: 'r1', keyword: 'grab', category: 'Đi lại', direction: 'out', owner: '' },
+    { id: 'r2', keyword: 'shopee', category: 'Mua sắm', direction: 'out', owner: 'Personal' },
+    { id: 'r3', keyword: 'luong', category: 'Lương', direction: 'in', owner: 'Personal' },
+    { id: 'r4', keyword: 'tien nha', category: 'Nhà ở', direction: 'out', owner: 'Personal' },
+  ]
+  return { personal: P, business: B, debts: D, savings: S, goals: G, accounts: A, rules: R }
 }

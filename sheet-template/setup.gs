@@ -5,14 +5,14 @@
  */
 const TABS = {
   Personal_CashFlow: {
-    header: ['id', 'date', 'type', 'category', 'amount', 'account', 'note', 'created_by'],
-    validation: { 3: ['Income', 'Expense'] },
+    header: ['id', 'date', 'type', 'category', 'amount', 'account', 'note', 'created_by', 'ref'],
+    validation: { 3: ['Income', 'Expense', 'Transfer'] },
     sample: [['p001', '2026-09-05', 'Income', 'Lương', 40000000, 'Vietcombank', 'Lương tháng 9', 'me'],
              ['p002', '2026-09-06', 'Expense', 'Nhà ở', 9000000, 'Vietcombank', 'Tiền thuê nhà', 'me']],
   },
   Business_CashFlow: {
-    header: ['id', 'date', 'type', 'category', 'amount', 'counterparty', 'note', 'created_by'],
-    validation: { 3: ['Revenue', 'Expense'] },
+    header: ['id', 'date', 'type', 'category', 'amount', 'counterparty', 'note', 'created_by', 'account', 'ref'],
+    validation: { 3: ['Revenue', 'Expense', 'Transfer'] },
     sample: [['b001', '2026-09-08', 'Revenue', 'Dịch vụ', 25000000, 'Khách A', 'Hợp đồng tư vấn', 'me']],
   },
   Debts: {
@@ -24,6 +24,18 @@ const TABS = {
     header: ['id', 'name', 'type', 'owner', 'balance', 'monthly_contribution', 'annual_return', 'goal_id', 'status', 'note'],
     validation: { 3: ['Tiết kiệm', 'Chứng khoán', 'Vàng', 'Quỹ dự phòng', 'Quỹ đầu tư', 'Khác'], 4: ['Personal', 'Business'], 9: ['Active', 'Closed'] },
     sample: [['s001', 'Sổ tiết kiệm VCB', 'Tiết kiệm', 'Personal', 60000000, 4000000, 5.5, 'g001', 'Active', '']],
+  },
+  Accounts: {
+    // preset: app tự ghi cấu hình cột sao kê (JSON) — không cần sửa tay
+    header: ['id', 'name', 'bank', 'owner', 'preset', 'status', 'note'],
+    validation: { 4: ['Personal', 'Business'], 6: ['Active', 'Closed'] },
+    sample: [['a001', 'Vietcombank', 'Vietcombank', 'Personal', '', 'Active', '']],
+  },
+  Rules: {
+    // direction: out (chi) | in (thu) | any ; owner: Personal | Business | để trống = cả hai
+    header: ['id', 'keyword', 'category', 'direction', 'owner'],
+    validation: { 4: ['out', 'in', 'any'] },
+    sample: [['r001', 'grab', 'Đi lại', 'out', ''], ['r002', 'luong', 'Lương', 'in', 'Personal']],
   },
   Goals: {
     header: ['id', 'name', 'owner', 'target_amount', 'target_date', 'status', 'note'],

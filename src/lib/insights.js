@@ -1,5 +1,5 @@
 // Phân tích pattern thu/chi hiện tại và gợi ý cải thiện kế hoạch trả nợ.
-import { isInflow, DEBT_PAYMENT_CATEGORY } from './schema.js'
+import { isInflow, isTransfer, DEBT_PAYMENT_CATEGORY } from './schema.js'
 import { lastMonths, byMonth, expenseByCategory } from './calc.js'
 import { simulate } from './forecast.js'
 import { pct } from './format.js'
@@ -8,7 +8,7 @@ export function baselineFrom(rows, endYm, n = 3) {
   const ms = new Set(lastMonths(endYm, n))
   const inWin = rows.filter((r) => ms.has(r.date.slice(0, 7)))
   const income = inWin.filter(isInflow).reduce((s, r) => s + r.amount, 0) / n
-  const expense = inWin.filter((r) => !isInflow(r) && r.category !== DEBT_PAYMENT_CATEGORY).reduce((s, r) => s + r.amount, 0) / n
+  const expense = inWin.filter((r) => !isInflow(r) && !isTransfer(r) && r.category !== DEBT_PAYMENT_CATEGORY).reduce((s, r) => s + r.amount, 0) / n
   return { income, expense }
 }
 
