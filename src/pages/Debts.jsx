@@ -19,6 +19,7 @@ export default function Debts({ kind = 'debts' }) {
   const [editing, setEditing] = useState(null)
   const [paying, setPaying] = useState(null) // khoản nợ đang ghi khoản trả
   const [editingPayment, setEditingPayment] = useState(null) // { payment, debt, limited }
+  const [tickedPay, setTickedPay] = useState([]) // các lần trả được tick trong lịch sử -> lọc bảng nợ phía trên
   const { period } = usePeriod()
   const [scope, setScope] = useState('all')
   const owner = SCOPE_OWNER[scope]
@@ -28,9 +29,6 @@ export default function Debts({ kind = 'debts' }) {
   const sel = useDebtSelection(kind)
   const chosen = sel.filter(debts)
   const active = chosen.filter((d) => d.status !== 'Paid')
-  const allTicked = debts.length > 0 && chosen.length === debts.length
-  const someTicked = chosen.length > 0 && chosen.length < debts.length
-  const tickAllRef = (el) => { if (el) el.indeterminate = someTicked } // dấu gạch ngang khi chỉ chọn một phần
   const total = active.reduce((s, d) => s + d.balance, 0)
   const min = active.reduce((s, d) => s + d.min_payment, 0)
   const interest = active.reduce((s, d) => s + (d.balance * d.apr) / 1200, 0)
@@ -40,6 +38,20 @@ export default function Debts({ kind = 'debts' }) {
   for (const x of data.payments) if (x.source === kind) latestPaymentId[x.debt_id] = x.id
   const chosenIds = new Set(chosen.map((d) => d.id))
   const history = data.payments.filter((x) => x.source === kind && chosenIds.has(x.debt_id) && inPeriod(period, x.date)).sort((a, b) => b.date.localeCompare(a.date))
+  // Tick lần trả trong lịch sử -> bảng nợ phía trên chỉ hiện khoản nợ liên quan; bỏ tick thì trở lại như cũ
+  const ticked = tickedPay.filter((id) => history.some((x) => x.id === id))
+  const relatedIds = new Set(history.filter((x) => ticked.includes(x.id)).map((x) => x.debt_id))
+  const filtering = ticked.length > 0
+  const shown = filtering ? debts.filter((d) => relatedIds.has(d.id)) : debts
+  // Ô chọn tất cả của bảng nợ áp dụng cho các dòng đang hiện
+  const shownChosen = sel.filter(shown)
+  const allTicked = shown.length > 0 && shownChosen.length === shown.length
+  const someTicked = shownChosen.length > 0 && shownChosen.length < shown.length
+  const tickAllRef = (el) => { if (el) el.indeterminate = someTicked } // dấu gạch ngang khi chỉ chọn một phần
+  const allPayTicked = history.length > 0 && ticked.length === history.length
+  const somePayTicked = ticked.length > 0 && !allPayTicked
+  const payTickAllRef = (el) => { if (el) el.indeterminate = somePayTicked }
+  const togglePay = (id) => setTickedPay((t) => (t.includes(id) ? t.filter((x) => x !== id) : [...t, id]))
   const paid = history.reduce((t, x) => ({ amount: t.amount + x.amount, principal: t.principal + x.principal, interest: t.interest + x.interest }), { amount: 0, principal: 0, interest: 0 })
   const interestInPeriod = interest * monthsIn(period, cash)
   const periodTitle = period.level === 'all' ? levelName.all : `${levelName[period.level]} ${labelOf(period)}`
@@ -65,21 +77,26 @@ export default function Debts({ kind = 'debts' }) {
         <Stat label={`Đã trả — ${periodTitle}`} value={money(paid.amount)} sub={`Gốc ${money(paid.principal)} · Lãi ${money(paid.interest)} (từ lịch sử trả nợ bên dưới)`} />
         <Stat label={`Lãi ước tính — ${periodTitle}`} value={money(interestInPeriod)} tone="neg" sub="Ước tính theo dư nợ hiện tại × số tháng" />
       </div>
+      {filtering && (
+        <div className="rounded-lg bg-blue-50 border border-blue-200 text-blue-900 text-sm px-3 py-2 flex items-center gap-2">
+          Bảng nợ đang lọc theo <b>{ticked.length}</b> lần trả đã tick trong Lịch sử trả nợ — hiện <b>{shown.length}</b> khoản nợ liên quan.
+          <button className="ml-auto underline whitespace-nowrap" onClick={() => setTickedPay([])}>Bỏ lọc</button>
+        </div>)}
       {/* Gộp thông tin vào ít cột để cả bảng vừa một màn hình, không phải cuộn ngang. Điện thoại: dạng thẻ. */}
       <div className="hidden md:block card p-0 overflow-hidden">
         <table className="w-full text-sm table-fixed">
           <colgroup><col style={{ width: 40 }} /><col style={{ width: '25%' }} /><col style={{ width: '15%' }} /><col style={{ width: 78 }} /><col style={{ width: '14%' }} /><col /><col style={{ width: 128 }} /></colgroup>
           <thead className="text-xs text-slate-500 text-left">
             <tr>
-              <th className="pl-3 py-2"><input ref={tickAllRef} type="checkbox" aria-label="Chọn tất cả" checked={allTicked} onChange={(e) => sel.setMany(debts.map((d) => d.id), e.target.checked)} /></th>
+              <th className="pl-3 py-2"><input ref={tickAllRef} type="checkbox" aria-label="Chọn tất cả" checked={allTicked} onChange={(e) => sel.setMany(shown.map((d) => d.id), e.target.checked)} /></th>
               <th className="px-3 py-2">Khoản nợ</th><th className="px-3 py-2 text-right">Dư nợ</th>
               <th className="px-2 py-2 text-center bg-amber-100 text-amber-800">Lãi %/năm</th>
               <th className="px-3 py-2 text-right">Trả / tháng</th><th className="px-3 py-2">Ghi chú</th><th />
             </tr>
           </thead>
           <tbody>
-            {debts.map((d) => (
-              <tr key={d.id} className={`border-t border-slate-100 align-top ${d.status === 'Paid' ? 'opacity-50' : !sel.isSelected(d.id) ? 'text-slate-400' : ''}`}>
+            {shown.map((d) => (
+              <tr key={d.id} className={`border-t border-slate-100 align-top ${d.status === 'Paid' ? 'opacity-50' : !sel.isSelected(d.id) ? 'text-slate-400' : ''} ${filtering ? 'bg-blue-50/50' : ''}`}>
                 <td className="pl-3 py-2"><input type="checkbox" aria-label={`Chọn ${d.name}`} checked={sel.isSelected(d.id)} onChange={() => sel.toggle(d.id)} /></td>
                 <td className="px-3 py-2">
                   <div className="font-medium break-words">{d.name}{d.status === 'Paid' && <span className="ml-1 text-xs font-normal rounded bg-slate-200 px-1.5">Đã trả hết</span>}</div>
@@ -102,13 +119,13 @@ export default function Debts({ kind = 'debts' }) {
                 </td>
               </tr>
             ))}
-            {!debts.length && <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-400">Chưa có khoản nợ</td></tr>}
+            {!shown.length && <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-400">Chưa có khoản nợ</td></tr>}
           </tbody>
         </table>
       </div>
       <div className="md:hidden space-y-2">
-        {debts.length > 0 && <label className="flex items-center gap-2 text-sm text-slate-500"><input ref={tickAllRef} type="checkbox" checked={allTicked} onChange={(e) => sel.setMany(debts.map((d) => d.id), e.target.checked)} /> Chọn tất cả</label>}
-        {debts.map((d) => (
+        {shown.length > 0 && <label className="flex items-center gap-2 text-sm text-slate-500"><input ref={tickAllRef} type="checkbox" checked={allTicked} onChange={(e) => sel.setMany(shown.map((d) => d.id), e.target.checked)} /> Chọn tất cả</label>}
+        {shown.map((d) => (
           <div key={d.id} className={`card space-y-2 ${d.status === 'Paid' ? 'opacity-50' : !sel.isSelected(d.id) ? 'text-slate-400' : ''}`}>
             <div className="flex items-start gap-2">
               <input type="checkbox" className="mt-1" aria-label={`Chọn ${d.name}`} checked={sel.isSelected(d.id)} onChange={() => sel.toggle(d.id)} />
@@ -131,17 +148,18 @@ export default function Debts({ kind = 'debts' }) {
             </div>
           </div>
         ))}
-        {!debts.length && <div className="card text-center text-slate-400 text-sm">Chưa có khoản nợ</div>}
+        {!shown.length && <div className="card text-center text-slate-400 text-sm">Chưa có khoản nợ</div>}
       </div>
       <section className="space-y-2">
         <h2 className="font-semibold">Lịch sử trả nợ <span className="text-xs font-normal text-slate-400">— {periodTitle}, các khoản đã tick</span></h2>
         <div className="card p-0 overflow-hidden">
           <table className="w-full text-sm table-fixed">
-            <colgroup><col style={{ width: 104 }} /><col /><col style={{ width: 160 }} /><col className="hidden sm:table-column" style={{ width: 130 }} /><col style={{ width: 56 }} /></colgroup>
-            <thead className="text-xs text-slate-500 text-left"><tr><th className="px-3 py-2">Ngày</th><th className="px-3 py-2">Khoản nợ</th><th className="px-3 py-2 text-right">Số tiền</th><th className="px-3 py-2 text-right hidden sm:table-cell">Dư nợ sau</th><th /></tr></thead>
+            <colgroup><col style={{ width: 36 }} /><col style={{ width: 104 }} /><col /><col style={{ width: 160 }} /><col className="hidden sm:table-column" style={{ width: 130 }} /><col style={{ width: 56 }} /></colgroup>
+            <thead className="text-xs text-slate-500 text-left"><tr><th className="pl-3 py-2"><input ref={payTickAllRef} type="checkbox" aria-label="Chọn tất cả lần trả" checked={allPayTicked} onChange={(e) => setTickedPay(e.target.checked ? history.map((x) => x.id) : [])} /></th><th className="px-3 py-2">Ngày</th><th className="px-3 py-2">Khoản nợ</th><th className="px-3 py-2 text-right">Số tiền</th><th className="px-3 py-2 text-right hidden sm:table-cell">Dư nợ sau</th><th /></tr></thead>
             <tbody>
               {history.map((x) => (
-                <tr key={x.id} className="border-t border-slate-100 align-top">
+                <tr key={x.id} className={`border-t border-slate-100 align-top ${ticked.includes(x.id) ? 'bg-blue-50' : ''}`}>
+                  <td className="pl-3 py-2"><input type="checkbox" aria-label={`Chọn lần trả ${x.date}`} checked={ticked.includes(x.id)} onChange={() => togglePay(x.id)} /></td>
                   <td className="px-3 py-2 text-sm whitespace-nowrap">{x.date}</td>
                   <td className="px-3 py-2">
                     <div className="break-words">{x.debt_name} <span className="text-xs text-slate-500">· {x.type}</span></div>
@@ -162,7 +180,7 @@ export default function Debts({ kind = 'debts' }) {
                   </td>
                 </tr>
               ))}
-              {!history.length && <tr><td colSpan={5} className="px-3 py-6 text-center text-slate-400">Chưa có lần trả nào trong kỳ này — bấm “Ghi khoản trả” ở khoản nợ</td></tr>}
+              {!history.length && <tr><td colSpan={6} className="px-3 py-6 text-center text-slate-400">Chưa có lần trả nào trong kỳ này — bấm “Ghi khoản trả” ở khoản nợ</td></tr>}
             </tbody>
           </table>
         </div>
