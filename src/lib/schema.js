@@ -5,8 +5,8 @@ export const TABS = {
     columns: ['id', 'date', 'type', 'category', 'amount', 'account', 'note', 'created_by', 'ref'],
     types: ['Income', 'Expense', 'Transfer'],
     categories: {
-      Income: ['Lương', 'Thưởng', 'Side project', 'Đầu tư', 'Khác'],
-      Expense: ['Nhà ở', 'Ăn uống', 'Đi lại', 'Hoá đơn', 'Giải trí', 'Sức khoẻ', 'Học tập', 'Mua sắm', 'Trả nợ', 'Khác'],
+      Income: ['Lương', 'Thưởng', 'Side project', 'Đầu tư', 'Chuyển ví', 'Khác'],
+      Expense: ['Nhà ở', 'Ăn uống', 'Đi lại', 'Hoá đơn', 'Giải trí', 'Sức khoẻ', 'Học tập', 'Mua sắm', 'Trả nợ', 'Chuyển ví', 'Khác'],
       Transfer: ['Chuyển nội bộ'],
     },
   },
