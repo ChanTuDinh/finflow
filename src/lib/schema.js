@@ -41,6 +41,9 @@ TABS.goals = {
   owners: ['Personal', 'Business'],
   statuses: ['Active', 'Done'],
 }
+// Nguồn nợ thứ hai ("Nợ BM"): cùng cấu trúc với Debts, nằm ở tab Debts_BM, tách riêng hoàn toàn khỏi nguồn nợ chính.
+TABS.debts_bm = { ...TABS.debts, tab: 'Debts_BM' }
+export const DEBT_KINDS = ['debts', 'debts_bm']
 TABS.accounts = {
   tab: 'Accounts',
   columns: ['id', 'name', 'bank', 'owner', 'preset', 'status', 'note'], // preset: cấu hình cột sao kê (JSON) do app tự lưu
@@ -54,7 +57,7 @@ TABS.rules = {
 }
 // Các tab bắt buộc phải có trong Sheet; savings/goals là tuỳ chọn (thiếu thì coi như rỗng).
 export const CORE_KINDS = ['personal', 'business', 'debts']
-export const EMPTY_DATA = () => ({ personal: [], business: [], debts: [], savings: [], goals: [], accounts: [], rules: [] })
+export const EMPTY_DATA = () => ({ personal: [], business: [], debts: [], savings: [], goals: [], accounts: [], rules: [], debts_bm: [] })
 
 export const DEBT_PAYMENT_CATEGORY = 'Trả nợ'
 export const isInflow = (row) => row.type === 'Income' || row.type === 'Revenue'

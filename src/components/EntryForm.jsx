@@ -4,9 +4,11 @@ import { todayIso } from '../lib/format.js'
 import { Field, Modal } from './ui.jsx'
 import { useStore } from '../lib/store.jsx'
 
-const TITLES = { personal: 'giao dịch cá nhân', business: 'giao dịch doanh nghiệp', debts: 'khoản nợ', savings: 'khoản tích lũy', goals: 'mục tiêu', accounts: 'tài khoản ngân hàng', rules: 'quy tắc phân loại' }
+const TITLES = { personal: 'giao dịch cá nhân', business: 'giao dịch doanh nghiệp', debts: 'khoản nợ', debts_bm: 'khoản nợ BM', savings: 'khoản tích lũy', goals: 'mục tiêu', accounts: 'tài khoản ngân hàng', rules: 'quy tắc phân loại' }
+const DEBT_BLANK = { name: '', lender: '', owner: 'Personal', balance: 0, apr: 0, min_payment: 0, due_day: 1, status: 'Active', note: '' }
 const EMPTY = {
-  debts: { name: '', lender: '', owner: 'Personal', balance: 0, apr: 0, min_payment: 0, due_day: 1, status: 'Active', note: '' },
+  debts: DEBT_BLANK,
+  debts_bm: DEBT_BLANK,
   savings: { name: '', type: 'Tiết kiệm', owner: 'Personal', balance: 0, monthly_contribution: 0, annual_return: 0, goal_id: '', status: 'Active', note: '' },
   goals: { name: '', owner: 'Personal', target_amount: 0, target_date: '', status: 'Active', note: '' },
   accounts: { name: '', bank: '', owner: 'Personal', preset: '', status: 'Active', note: '' },
@@ -35,7 +37,7 @@ export default function EntryForm({ kind, row, onClose }) {
   return (
     <Modal title={`${row ? 'Sửa' : 'Thêm'} — ${TITLES[kind]}`} onClose={onClose}>
       <form onSubmit={submit} className="grid grid-cols-2 gap-3">
-        {kind === 'debts' && (<>
+        {(kind === 'debts' || kind === 'debts_bm') && (<>
           <div className="col-span-2"><Field label="Tên khoản nợ">{text('name', true)}</Field></div>
           <Field label="Bên cho vay">{text('lender')}</Field>
           <Field label="Thuộc về">{select('owner', cfg.owners)}</Field>

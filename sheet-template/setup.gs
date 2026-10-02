@@ -20,6 +20,12 @@ const TABS = {
     validation: { 4: ['Personal', 'Business'], 9: ['Active', 'Paid'] },
     sample: [['d001', 'Thẻ tín dụng', 'Techcombank', 'Personal', 45000000, 30, 2500000, 15, 'Active', '']],
   },
+  Debts_BM: {
+    // Nguồn nợ thứ hai ("Nợ BM"): cùng cấu trúc với Debts, dữ liệu tách riêng
+    header: ['id', 'name', 'lender', 'owner', 'balance', 'apr', 'min_payment', 'due_day', 'status', 'note'],
+    validation: { 4: ['Personal', 'Business'], 9: ['Active', 'Paid'] },
+    sample: [['m001', 'Vay BM #1', 'BM', 'Business', 90000000, 12, 3500000, 10, 'Active', '']],
+  },
   Savings: {
     header: ['id', 'name', 'type', 'owner', 'balance', 'monthly_contribution', 'annual_return', 'goal_id', 'status', 'note'],
     validation: { 3: ['Tiết kiệm', 'Chứng khoán', 'Vàng', 'Quỹ dự phòng', 'Quỹ đầu tư', 'Khác'], 4: ['Personal', 'Business'], 9: ['Active', 'Closed'] },

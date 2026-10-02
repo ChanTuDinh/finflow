@@ -18,6 +18,7 @@ Cách B: tạo 3 tab tên đúng `Personal_CashFlow`, `Business_CashFlow`, `Debt
 | Personal_CashFlow | id, date, type (Income/Expense/Transfer), category, amount, account, note, created_by, ref |
 | Business_CashFlow | id, date, type (Revenue/Expense/Transfer), category, amount, counterparty, note, created_by, account, ref |
 | Debts | id, name, lender, owner (Personal/Business), balance, apr (%/năm), min_payment, due_day, status (Active/Paid), note |
+| Debts_BM | Giống hệt Debts — nguồn nợ thứ hai ("Nợ BM"), tách riêng, tab tuỳ chọn |
 | Savings | id, name, type, owner, balance, monthly_contribution, annual_return (%/năm), goal_id, status (Active/Closed), note |
 | Accounts | id, name, bank, owner, preset, status, note (tài khoản ngân hàng; `preset` do app tự lưu) |
 | Rules | id, keyword, category, direction (out/in/any), owner |

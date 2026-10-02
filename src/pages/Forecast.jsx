@@ -9,7 +9,8 @@ import { Chart, SERIES, SelectField, Segmented, FilterRow, Field } from '../comp
 
 const ICON = { ok: '✅', warn: '⚠️', info: '💡' }
 
-export default function Forecast() {
+// kind: 'debts' | 'debts_bm' — cùng giao diện và cách tính, dữ liệu nợ riêng.
+export default function Forecast({ kind = 'debts' }) {
   const { data, money } = useStore()
   const [scope, setScope] = useState('all')
   const [years, setYears] = useState(5)
@@ -18,7 +19,7 @@ export default function Forecast() {
   const startYm = todayIso().slice(0, 7)
   const endYm = addMonths(startYm, -1) // tháng đã đủ dữ liệu gần nhất
 
-  const debts = useMemo(() => data.debts.filter((d) => scope === 'all' || d.owner === (scope === 'personal' ? 'Personal' : 'Business')), [data, scope])
+  const debts = useMemo(() => data[kind].filter((d) => scope === 'all' || d.owner === (scope === 'personal' ? 'Personal' : 'Business')), [data, kind, scope])
   const rows = useMemo(() => (scope === 'all' ? [...data.personal, ...data.business] : data[scope]), [data, scope])
   const baseline = useMemo(() => baselineFrom(rows, endYm), [rows, endYm])
   const minTotal = debts.filter((d) => d.status !== 'Paid').reduce((s, d) => s + d.min_payment, 0)

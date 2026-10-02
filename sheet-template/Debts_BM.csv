@@ -1,0 +1,3 @@
+id,name,lender,owner,balance,apr,min_payment,due_day,status,note
+m001,Vay BM #1,BM,Business,90000000,12,3500000,10,Active,
+m002,Vay BM #2,BM,Personal,40000000,8,1500000,20,Active,

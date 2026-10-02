@@ -16,6 +16,8 @@ const PAGES = [
   ['business', 'Doanh nghiệp'],
   ['debts', 'Nợ'],
   ['forecast', 'Forecast Nợ'],
+  ['debtsBm', 'Nợ BM'],
+  ['forecastBm', 'Nợ BM Forecast'],
   ['savings', 'Tích lũy'],
   ['forecastSavings', 'Forecast Tích lũy'],
   ['reports', 'Báo cáo'],
@@ -49,6 +51,8 @@ export default function App() {
       {page === 'debts' && <Debts />}
       {page === 'reports' && <Reports />}
       {page === 'forecast' && <Forecast />}
+      {page === 'debtsBm' && <Debts kind="debts_bm" />}
+      {page === 'forecastBm' && <Forecast kind="debts_bm" />}
       {page === 'savings' && <Savings />}
       {page === 'forecastSavings' && <ForecastSavings />}
       {page === 'settings' && <Settings />}

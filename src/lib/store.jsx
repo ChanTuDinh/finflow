@@ -14,7 +14,7 @@ const loadDemo = () => {
   const fresh = demoData(todayIso().slice(0, 7))
   const saved = load(`${LS}:demo`, null)
   if (!saved) return fresh
-  return { ...EMPTY_DATA(), ...saved, savings: saved.savings ?? fresh.savings, goals: saved.goals ?? fresh.goals, accounts: saved.accounts ?? fresh.accounts, rules: saved.rules ?? fresh.rules }
+  return { ...EMPTY_DATA(), ...saved, savings: saved.savings ?? fresh.savings, goals: saved.goals ?? fresh.goals, accounts: saved.accounts ?? fresh.accounts, rules: saved.rules ?? fresh.rules, debts_bm: saved.debts_bm ?? fresh.debts_bm }
 }
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch { /* ignore */ } }
 

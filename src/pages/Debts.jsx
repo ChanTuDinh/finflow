@@ -4,16 +4,18 @@ import { Stat, SelectField } from '../components/ui.jsx'
 import FilterBar from '../components/FilterBar.jsx'
 import { usePeriod } from '../lib/period.jsx'
 import { inPeriod, monthsIn, labelOf, levelName } from '../lib/period.js'
-import { DEBT_PAYMENT_CATEGORY } from '../lib/schema.js'
+import { DEBT_PAYMENT_CATEGORY, TABS } from '../lib/schema.js'
 import EntryForm from '../components/EntryForm.jsx'
 
-export default function Debts() {
+// kind: 'debts' (nguồn nợ chính) | 'debts_bm' (nguồn nợ BM) — cùng giao diện, dữ liệu riêng.
+export default function Debts({ kind = 'debts' }) {
   const { data, money, remove } = useStore()
   const [editing, setEditing] = useState(null)
   const { period } = usePeriod()
   const [scope, setScope] = useState('all')
   const owner = scope === 'personal' ? 'Personal' : scope === 'business' ? 'Business' : null
-  const debts = data.debts.filter((d) => !owner || d.owner === owner)
+  const main = kind === 'debts'
+  const debts = data[kind].filter((d) => !owner || d.owner === owner)
   const active = debts.filter((d) => d.status !== 'Paid')
   const total = active.reduce((s, d) => s + d.balance, 0)
   const min = active.reduce((s, d) => s + d.min_payment, 0)
@@ -33,8 +35,9 @@ export default function Debts() {
         <Stat label="Trả tối thiểu / tháng" value={money(min)} />
         <Stat label="Lãi phát sinh / tháng" value={money(interest)} tone="neg" />
       </div>
+      {data._missing?.includes(kind) && <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm p-2">Sheet chưa có tab {TABS[kind].tab}. Chạy lại <code>setup.gs</code> (không xoá dữ liệu cũ) hoặc tạo tab đúng tên để lưu dữ liệu.</div>}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <Stat label={`Đã trả nợ — ${periodTitle}`} value={money(paidInPeriod)} sub="Tổng giao dịch chi 'Trả nợ' (cá nhân + DN)" />
+        {main && <Stat label={`Đã trả nợ — ${periodTitle}`} value={money(paidInPeriod)} sub="Tổng giao dịch chi 'Trả nợ' (cá nhân + DN)" />}
         <Stat label={`Lãi ước tính — ${periodTitle}`} value={money(interestInPeriod)} tone="neg" sub="Ước tính theo dư nợ hiện tại × số tháng" />
       </div>
       <div className="card overflow-x-auto p-0">
@@ -53,7 +56,7 @@ export default function Debts() {
                 <td className="px-3 py-1.5">{d.status}</td>
                 <td className="px-3 py-1.5 whitespace-nowrap">
                   <button className="text-blue-600 mr-2" onClick={() => setEditing(d)}>Sửa</button>
-                  <button className="text-red-600" onClick={() => confirm('Xoá khoản nợ này?') && remove('debts', d)}>Xoá</button>
+                  <button className="text-red-600" onClick={() => confirm('Xoá khoản nợ này?') && remove(kind, d)}>Xoá</button>
                 </td>
               </tr>
             ))}
@@ -61,7 +64,7 @@ export default function Debts() {
           </tbody>
         </table>
       </div>
-      {editing && <EntryForm kind="debts" row={editing.id ? editing : null} onClose={() => setEditing(null)} />}
+      {editing && <EntryForm kind={kind} row={editing.id ? editing : null} onClose={() => setEditing(null)} />}
     </div>
   )
 }
