@@ -30,7 +30,7 @@ const TABS = {
   },
   Debt_Payments: {
     // Lịch sử trả nợ do app ghi (source: debts | debts_bm; type: Trả gốc | Trả lãi | Gốc + lãi)
-    header: ['id', 'date', 'source', 'debt_id', 'debt_name', 'type', 'amount', 'principal', 'interest', 'balance_after', 'note', 'created_by'],
+    header: ['id', 'date', 'source', 'debt_id', 'debt_name', 'type', 'amount', 'principal', 'interest', 'balance_after', 'note', 'created_by', 'adjust_prev'],
     validation: { 3: ['debts', 'debts_bm'], 6: ['Trả gốc', 'Trả lãi', 'Gốc + lãi'] },
     sample: [],
     textCols: [2], // date dạng chữ yyyy-mm-dd

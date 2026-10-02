@@ -57,3 +57,40 @@ test('cashRowFor: Business -> sổ doanh nghiệp, còn lại -> sổ cá nhân'
   const c = cashRowFor(bm, payment)
   assert.deepEqual([c.kind, c.row.type, c.row.category, c.row.amount], ['personal', 'Expense', 'Trả nợ', 1e6])
 })
+
+import { ADJUST, needsAdjust, levelPayment } from './payments.js'
+const loan = { id: 'd4', name: 'Vay BM #4', lender: 'Ky Nam', owner: 'BM', balance: 2e9, apr: 6.5, min_payment: 28e6, term_months: 91, status: 'Active', repay_type: REPAY.both, record_date: '2026-04-01' }
+
+test('trả gốc 700tr, giữ tiền trả/tháng -> rút ngắn thời hạn còn khoảng 54 tháng', () => {
+  const r = buildPayment({ debt: loan, kind: 'debts_bm', type: T.principal, amount: 700e6, date: '2026-04-01', adjust: ADJUST.shorten })
+  assert.equal(r.debt.balance, 1.3e9)
+  assert.equal(r.debt.min_payment, 28e6)
+  assert.equal(r.debt.term_months, 54)
+  assert.deepEqual(JSON.parse(r.payment.adjust_prev), { min_payment: 28e6, term_months: 91 })
+})
+
+test('trả gốc 700tr, giữ thời hạn -> tiền trả/tháng giảm còn khoảng 18,13tr', () => {
+  const r = buildPayment({ debt: loan, kind: 'debts_bm', type: T.principal, amount: 700e6, date: '2026-04-01', adjust: ADJUST.reduce })
+  assert.equal(r.debt.term_months, 91)
+  assert.ok(Math.abs(r.debt.min_payment - 18_132_514) < 5, String(r.debt.min_payment))
+  // đúng là khoản trả đều hết đúng 91 tháng
+  assert.ok(Math.abs(levelPayment(1.3e9, 6.5, 91) - r.debt.min_payment) < 1)
+})
+
+test('Không đổi / không biết số tháng / khoản trả lãi only / trả lãi -> không tự điều chỉnh', () => {
+  const none = buildPayment({ debt: loan, kind: 'debts_bm', type: T.principal, amount: 700e6, date: 'd', adjust: ADJUST.none })
+  assert.deepEqual([none.debt.min_payment, none.debt.term_months, none.payment.adjust_prev], [28e6, 91, ''])
+  const noTerm = buildPayment({ debt: { ...loan, term_months: 0 }, kind: 'debts_bm', type: T.principal, amount: 700e6, date: 'd', adjust: ADJUST.reduce })
+  assert.equal(noTerm.debt.min_payment, 28e6) // không có số tháng để giữ
+  assert.equal(needsAdjust({ ...loan, repay_type: REPAY.interestOnly }, 1e8), false)
+  assert.equal(needsAdjust(loan, 0), false)
+  assert.equal(needsAdjust(loan, 2e9), false) // trả hết
+})
+
+test('xoá lần trả đã điều chỉnh -> hoàn lại cả dư nợ, tiền trả/tháng và số tháng', () => {
+  for (const adjust of [ADJUST.shorten, ADJUST.reduce]) {
+    const r = buildPayment({ debt: loan, kind: 'debts_bm', type: T.principal, amount: 700e6, date: 'd', adjust })
+    const back = reversePayment(r.debt, r.payment)
+    assert.deepEqual([back.balance, back.min_payment, back.term_months], [2e9, 28e6, 91])
+  }
+})

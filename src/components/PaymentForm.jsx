@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '../lib/store.jsx'
 import { Field, Modal, Segmented, focusNextOnEnter } from './ui.jsx'
-import { PAY_TYPES, buildPayment, cashRowFor } from '../lib/payments.js'
+import { PAY_TYPES, ADJUST, buildPayment, cashRowFor, needsAdjust } from '../lib/payments.js'
 import { isInterestOnly } from '../lib/schema.js'
 import { todayIso } from '../lib/format.js'
 
@@ -14,14 +14,14 @@ const HINT = {
 // Ghi một lần trả cho một khoản nợ (kind: 'debts' | 'debts_bm').
 export default function PaymentForm({ kind, debt, onClose }) {
   const { recordPayment, settings, money, status } = useStore()
-  const [f, setF] = useState({ date: todayIso(), amount: '', type: PAY_TYPES.principal, note: '', cash: false })
+  const [f, setF] = useState({ date: todayIso(), amount: '', type: PAY_TYPES.principal, note: '', cash: false, adjust: ADJUST.shorten })
   const [err, setErr] = useState('')
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
-  const built = useMemo(() => (Number(f.amount) > 0 ? buildPayment({ debt, kind, type: f.type, amount: f.amount, date: f.date, note: f.note, createdBy: settings.user || 'me' }) : null), [debt, kind, f, settings.user])
+  const built = useMemo(() => (Number(f.amount) > 0 ? buildPayment({ debt, kind, type: f.type, amount: f.amount, date: f.date, note: f.note, createdBy: settings.user || 'me', adjust: f.adjust }) : null), [debt, kind, f, settings.user])
 
   const submit = async (e) => {
     e.preventDefault()
-    const r = buildPayment({ debt, kind, type: f.type, amount: f.amount, date: f.date, note: f.note, createdBy: settings.user || 'me' })
+    const r = buildPayment({ debt, kind, type: f.type, amount: f.amount, date: f.date, note: f.note, createdBy: settings.user || 'me', adjust: f.adjust })
     if (r.error) return setErr(r.error)
     if (await recordPayment({ kind, debt: r.debt, payment: r.payment, cash: f.cash ? cashRowFor(debt, r.payment) : null })) onClose()
   }
@@ -41,8 +41,19 @@ export default function PaymentForm({ kind, debt, onClose }) {
             {built.error ? built.error : (<>
               Gốc <b>{money(built.payment.principal)}</b> · Lãi <b>{money(built.payment.interest)}</b><br />
               Dư nợ: {money(debt.balance)} → <b>{money(built.debt.balance)}</b>{built.debt.status === 'Paid' && ' (đã trả hết)'}
-              {isInterestOnly(debt) && built.debt.balance > 0 && built.debt.min_payment !== debt.min_payment && <><br />Tiền lãi hàng tháng mới: <b>{money(built.debt.min_payment)}</b></>}
+              {built.debt.balance > 0 && built.debt.min_payment !== debt.min_payment && <><br />{isInterestOnly(debt) ? 'Tiền lãi hàng tháng mới' : 'Tiền trả mỗi tháng'}: {money(debt.min_payment)} → <b>{money(built.debt.min_payment)}</b></>}
+              {built.debt.term_months !== debt.term_months && built.debt.balance > 0 && <><br />Thời hạn còn lại: {debt.term_months || '?'} → <b>{built.debt.term_months} tháng</b></>}
             </>)}
+          </div>
+        )}
+        {built && !built.error && needsAdjust(debt, built.payment.principal) && (
+          <div className="col-span-2 space-y-1">
+            <Field label="Sau khi trả bớt gốc, ngân hàng điều chỉnh thế nào?">
+              <select className="input" value={f.adjust} onChange={(e) => set('adjust', e.target.value)}>
+                {Object.values(ADJUST).map((v) => <option key={v}>{v}</option>)}
+              </select>
+            </Field>
+            <p className="text-xs text-slate-500">Xem hợp đồng hoặc hỏi ngân hàng. Chọn “Không đổi” nếu chưa rõ — bạn vẫn sửa được ở nút Sửa.</p>
           </div>
         )}
         <div className="col-span-2"><Field label="Ghi chú"><input className="input" value={f.note} onChange={(e) => set('note', e.target.value)} /></Field></div>

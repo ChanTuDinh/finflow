@@ -1,6 +1,13 @@
 // Ghi một lần trả nợ: tách gốc/lãi, cập nhật dư nợ; hoàn lại khi xoá. Logic thuần.
 import { isInterestOnly, newId } from './schema.js'
+import { estimateTerm } from './rate.js'
 
+// Sau khi trả bớt gốc ở khoản "Trả gốc và lãi", ngân hàng thường xử lý theo một trong hai cách:
+export const ADJUST = {
+  shorten: 'Giữ tiền trả mỗi tháng, rút ngắn thời hạn',
+  reduce: 'Giữ thời hạn, giảm tiền trả mỗi tháng',
+  none: 'Không đổi',
+}
 export const PAY_TYPES = { principal: 'Trả gốc', interest: 'Trả lãi', both: 'Gốc + lãi' }
 const r2 = (x) => Math.round(x * 100) / 100
 export const monthlyInterest = (balance, apr) => r2((balance * apr) / 1200)
@@ -33,27 +40,48 @@ function rebalance(debt, balance) {
   return next
 }
 
-export function applyPayment(debt, principal, date, kind) {
+// Tiền trả đều hàng tháng để hết balance trong n tháng với lãi suất năm apr (%)
+export const levelPayment = (balance, apr, n) => (apr === 0 ? r2(balance / n) : r2((balance * (apr / 1200)) / (1 - Math.pow(1 + apr / 1200, -n))))
+
+/** Có cần chọn cách điều chỉnh không: khoản trả gốc và lãi, lần trả có phần gốc, và chưa trả hết nợ. */
+export const needsAdjust = (debt, principal) => !isInterestOnly(debt) && principal > 0 && principal < debt.balance - 0.5
+
+export function applyPayment(debt, principal, date, kind, adjust = ADJUST.none) {
   const next = principal > 0 ? rebalance(debt, debt.balance - principal) : { ...debt }
   if (kind === 'debts_bm') next.record_date = date
-  return next
+  let prev = null
+  if (needsAdjust(debt, principal) && next.balance > 0) {
+    if (adjust === ADJUST.shorten) {
+      const t = estimateTerm({ balance: next.balance, apr: debt.apr, payment: debt.min_payment })
+      if (!t.error && t.months !== debt.term_months) { prev = { min_payment: debt.min_payment, term_months: debt.term_months }; next.term_months = t.months }
+    } else if (adjust === ADJUST.reduce && debt.term_months > 0) {
+      const pay = levelPayment(next.balance, debt.apr, debt.term_months)
+      if (pay !== debt.min_payment) { prev = { min_payment: debt.min_payment, term_months: debt.term_months }; next.min_payment = pay }
+    }
+  }
+  return { next, prev }
 }
 
 export function reversePayment(debt, payment) {
-  return payment.principal > 0 ? rebalance(debt, debt.balance + payment.principal) : { ...debt }
+  const back = payment.principal > 0 ? rebalance(debt, debt.balance + payment.principal) : { ...debt }
+  try { // hoàn lại tiền trả/tháng và số tháng nếu lần trả này đã làm tool điều chỉnh
+    const prev = payment.adjust_prev ? JSON.parse(payment.adjust_prev) : null
+    if (prev) { back.min_payment = prev.min_payment; back.term_months = prev.term_months }
+  } catch { /* dữ liệu cũ/hỏng: bỏ qua */ }
+  return back
 }
 
 /** Trả { payment, debt } (bản ghi lịch sử + khoản nợ sau khi cập nhật) hoặc { error }. */
-export function buildPayment({ debt, kind, type, amount, date, note = '', createdBy = 'me' }) {
+export function buildPayment({ debt, kind, type, amount, date, note = '', createdBy = 'me', adjust = ADJUST.none }) {
   const split = splitPayment({ type, amount, balance: debt.balance, apr: debt.apr })
   if (split.error) return { error: split.error }
-  const next = applyPayment(debt, split.principal, date, kind)
+  const { next, prev } = applyPayment(debt, split.principal, date, kind, adjust)
   return {
     debt: next,
     payment: {
       id: newId(), date, source: kind, debt_id: debt.id, debt_name: debt.name, type,
       amount: r2(Number(amount)), principal: split.principal, interest: split.interest,
-      balance_after: next.balance, note, created_by: createdBy,
+      balance_after: next.balance, note, created_by: createdBy, adjust_prev: prev ? JSON.stringify(prev) : '',
     },
   }
 }

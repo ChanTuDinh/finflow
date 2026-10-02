@@ -19,7 +19,7 @@ Cách B: tạo 3 tab tên đúng `Personal_CashFlow`, `Business_CashFlow`, `Debt
 | Business_CashFlow | id, date, type (Revenue/Expense/Transfer), category, amount, counterparty, note, created_by, account, ref |
 | Debts | id, name, lender, owner (Personal/Business), balance, apr (%/năm), min_payment (số tiền trả mỗi tháng), due_day, status (Active/Paid), note, repay_type (`Trả gốc và lãi` / `Trả lãi only`), term_months (số tháng còn lại) |
 | Debts_BM | Giống Debts (`owner` có thêm giá trị `BM`) + `record_date`, `repay_type`, `term_months` (ngày ghi nhận, yyyy-mm-dd) — nguồn nợ thứ hai ("Nợ BM"), tách riêng, tab tuỳ chọn |
-| Debt_Payments | id, date, source (`debts`/`debts_bm`), debt_id, debt_name, type (Trả gốc / Trả lãi / Gốc + lãi), amount, principal, interest, balance_after, note, created_by — lịch sử trả nợ do app ghi, tab tuỳ chọn |
+| Debt_Payments | id, date, source (`debts`/`debts_bm`), debt_id, debt_name, type (Trả gốc / Trả lãi / Gốc + lãi), amount, principal, interest, balance_after, note, created_by, adjust_prev — lịch sử trả nợ do app ghi, tab tuỳ chọn |
 | Savings | id, name, type, owner, balance, monthly_contribution, annual_return (%/năm), goal_id, status (Active/Closed), note |
 | Accounts | id, name, bank, owner, preset, status, note (tài khoản ngân hàng; `preset` do app tự lưu) |
 | Rules | id, keyword, category, direction (out/in/any), owner |
@@ -52,4 +52,4 @@ Khi thêm khoản nợ, chọn **Hình thức trả**, nhập dư nợ và số 
 Lãi suất là lãi danh nghĩa theo năm (lãi tháng × 12), cùng cách tính với phần Forecast. Nếu ngân hàng cho sẵn lãi suất, chọn “Tôi tự nhập”. Với khoản chỉ trả lãi, Forecast mô phỏng mỗi tháng trả đúng tiền lãi (dư nợ không giảm cho tới khi trả thêm gốc); chưa tính việc tất toán gốc một lần khi đáo hạn.
 
 ## Ghi khoản trả nợ
-Ở tab Nợ / Nợ BM, bấm **Ghi khoản trả** ở khoản nợ: nhập ngày, tổng số tiền, và chọn *Trả gốc* (toàn bộ vào gốc), *Trả lãi* (dư nợ không đổi) hoặc *Gốc + lãi* (tool tách: lãi một tháng trước, còn lại vào gốc). Tool lưu vào tab `Debt_Payments`, tự trừ dư nợ, và với khoản “Trả lãi only” tự tính lại tiền lãi hàng tháng. Xoá một lần trả sẽ hoàn lại phần gốc. Ô “ghi thêm vào dòng tiền” để tắt nếu bạn nhập sao kê ngân hàng (tránh tính trùng).
+Ở tab Nợ / Nợ BM, bấm **Ghi khoản trả** ở khoản nợ: nhập ngày, tổng số tiền, và chọn *Trả gốc* (toàn bộ vào gốc), *Trả lãi* (dư nợ không đổi) hoặc *Gốc + lãi* (tool tách: lãi một tháng trước, còn lại vào gốc). Tool lưu vào tab `Debt_Payments`, tự trừ dư nợ, và với khoản “Trả lãi only” tự tính lại tiền lãi hàng tháng. Xoá một lần trả sẽ hoàn lại phần gốc. Với khoản *Trả gốc và lãi*, sau khi trả bớt gốc bạn chọn ngân hàng xử lý thế nào: *giữ tiền trả mỗi tháng, rút ngắn thời hạn* hoặc *giữ thời hạn, giảm tiền trả mỗi tháng* (tool tự tính lại Trả/tháng hoặc Số tháng còn lại; xoá lần trả sẽ hoàn lại). Ô “ghi thêm vào dòng tiền” để tắt nếu bạn nhập sao kê ngân hàng (tránh tính trùng).

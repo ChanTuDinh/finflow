@@ -57,7 +57,7 @@ export const DEBT_KINDS = ['debts', 'debts_bm']
 // Lịch sử trả nợ (dùng chung cho Nợ và Nợ BM, phân biệt bằng cột source). debt_name chép lại tên để đọc Sheet cho dễ.
 TABS.payments = {
   tab: 'Debt_Payments',
-  columns: ['id', 'date', 'source', 'debt_id', 'debt_name', 'type', 'amount', 'principal', 'interest', 'balance_after', 'note', 'created_by'],
+  columns: ['id', 'date', 'source', 'debt_id', 'debt_name', 'type', 'amount', 'principal', 'interest', 'balance_after', 'note', 'created_by', 'adjust_prev'], // adjust_prev: JSON giá trị cũ (trả/tháng, số tháng) nếu lần trả này làm tool điều chỉnh, để hoàn lại khi xoá
 }
 TABS.accounts = {
   tab: 'Accounts',
