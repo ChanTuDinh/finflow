@@ -63,6 +63,7 @@ Lãi suất là lãi danh nghĩa theo năm (lãi tháng × 12), cùng cách tín
 
 ## Trạng thái và việc chưa làm
 - Làm việc trên nhánh `claude/finflow-finance-manager-ra1340` (chưa merge vào `main`); Vercel cần trỏ Production Branch vào nhánh này. Phiên mới: lấy bản mới nhất của nhánh và đọc file này là đủ.
+- **Quy tắc đẩy code (chủ dự án đã cho phép sẵn):** sau mỗi lần làm xong, đẩy commit vào `claude/finflow-finance-manager-ra1340` để Vercel tự deploy — không cần hỏi lại.
 - Kiểm tra: `npm test` và `npm run build`. Logic nằm trong `src/lib/` (có test), giao diện trong `src/pages/` và `src/components/`.
 - Chưa làm: preset đọc sao kê theo từng ngân hàng (cần file mẫu đã ẩn thông tin cá nhân); lịch sử lãi suất theo giai đoạn; ngày đáo hạn + mô phỏng tất toán gốc; số tháng còn lại tự giảm theo thời gian; khối Ví BM / Nợ BM trong Tổng quan; Forecast Tích lũy chưa gồm Ví BM.
 - Lưu ý khi dùng: các ô tick (khoản nợ, lần trả) và bộ lọc kỳ chỉ lưu trong trình duyệt; Forecast Trả lãi only chưa tính khoản tất toán gốc khi đáo hạn.
