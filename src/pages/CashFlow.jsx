@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../lib/store.jsx'
-import { isInflow, isTransfer, TABS } from '../lib/schema.js'
+import { isInflow, isTransfer, TABS, WALLET_MOVE_CATEGORY } from '../lib/schema.js'
 import { totals } from '../lib/calc.js'
 import { usePeriod } from '../lib/period.jsx'
 import { inPeriod } from '../lib/period.js'
@@ -21,12 +21,16 @@ export default function CashFlow({ kind, onImport }) {
   const delPicked = async () => { if (confirm(`Xoá ${picked.length} giao dịch đã chọn?\n\nKhông thể hoàn tác.`) && await removeMany(kind, picked)) setSel(new Set()) }
   const inLabel = kind === 'business' ? 'Doanh thu' : 'Thu nhập'
 
-  const outRows = shown.filter((r) => !isInflow(r) && !isTransfer(r))
-  const inRows = shown.filter(isInflow)
+  const isWalletMove = (r) => !isTransfer(r) && r.category === WALLET_MOVE_CATEGORY
+  const walletRows = shown.filter(isWalletMove)
+  const outRows = shown.filter((r) => !isInflow(r) && !isTransfer(r) && !isWalletMove(r))
+  const inRows = shown.filter((r) => isInflow(r) && !isWalletMove(r))
+  const sumOf = (rs) => rs.reduce((a, r) => a + r.amount, 0)
   const moveRows = shown.filter(isTransfer)
   const groups = [
-    { key: 'out', title: '⬆ Tiền đi ra', rows: outRows, always: true, tone: 'text-red-600', sum: t.expense },
-    { key: 'in', title: `⬇ Tiền đi vào`, rows: inRows, always: true, tone: 'text-emerald-600', sum: t.income },
+    { key: 'out', title: '⬆ Tiền đi ra', rows: outRows, always: true, tone: 'text-red-600', sum: money(sumOf(outRows)) },
+    { key: 'in', title: `⬇ Tiền đi vào`, rows: inRows, always: true, tone: 'text-emerald-600', sum: money(sumOf(inRows)) },
+    { key: 'wallet', title: '⇄ Chuyển ví', rows: walletRows, always: false, tone: 'text-indigo-600', sum: `+${money(sumOf(walletRows.filter(isInflow)))} / −${money(sumOf(walletRows.filter((r) => !isInflow(r))))}` },
     { key: 'move', title: '↔ Chuyển nội bộ (không tính thu/chi)', rows: moveRows, always: false, tone: 'text-slate-500' },
   ]
   const table = (g) => {
@@ -36,7 +40,7 @@ export default function CashFlow({ kind, onImport }) {
       <div key={g.key} className="space-y-1">
         <div className="flex items-baseline justify-between px-1">
           <h3 className={`font-semibold ${g.tone}`}>{g.title} <span className="text-xs font-normal text-slate-400">({g.rows.length})</span></h3>
-          {g.sum != null && <span className={`text-sm font-medium ${g.tone}`}>{money(g.sum)}</span>}
+          {g.sum != null && <span className={`text-sm font-medium ${g.tone}`}>{g.sum}</span>}
         </div>
         <div className="card overflow-x-auto p-0">
           <table className="w-full text-sm">
