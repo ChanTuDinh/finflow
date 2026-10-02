@@ -1,5 +1,5 @@
 // Phân tích pattern thu/chi hiện tại và gợi ý cải thiện kế hoạch trả nợ.
-import { isInflow, isTransfer, DEBT_PAYMENT_CATEGORY } from './schema.js'
+import { isInflow, isTransfer, isInterestOnly, DEBT_PAYMENT_CATEGORY } from './schema.js'
 import { lastMonths, byMonth, expenseByCategory } from './calc.js'
 import { simulate } from './forecast.js'
 import { pct } from './format.js'
@@ -56,7 +56,8 @@ export function buildInsights({ rows, debts, endYm, money }) {
     const worst = active.slice().sort((a, b) => b.apr - a.apr)[0]
     out.push({ level: 'info', text: `Khoản lãi cao nhất: "${worst.name}" (${worst.apr}%/năm, dư nợ ${money(worst.balance)}) — ưu tiên trả thêm vào khoản này (avalanche).` })
 
-    const underwater = active.filter((d) => (d.balance * d.apr) / 1200 >= d.min_payment)
+    const underwater = active.filter((d) => !isInterestOnly(d) && (d.balance * d.apr) / 1200 >= d.min_payment)
+    for (const d of active.filter(isInterestOnly)) out.push({ level: 'info', text: `"${d.name}" chỉ trả lãi (${money(d.min_payment)}/tháng) nên dư nợ ${money(d.balance)} không giảm — trả thêm gốc khi có thể sẽ giảm tiền lãi hàng tháng.` })
     for (const d of underwater) out.push({ level: 'warn', text: `"${d.name}": mức trả tối thiểu ${money(d.min_payment)} không đủ trả lãi tháng (${money((d.balance * d.apr) / 1200)}) — dư nợ sẽ không giảm.` })
 
     if (surplus > 0) {

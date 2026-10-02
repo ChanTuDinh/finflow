@@ -16,15 +16,16 @@ const TABS = {
     sample: [['b001', '2026-09-08', 'Revenue', 'Dịch vụ', 25000000, 'Khách A', 'Hợp đồng tư vấn', 'me']],
   },
   Debts: {
-    header: ['id', 'name', 'lender', 'owner', 'balance', 'apr', 'min_payment', 'due_day', 'status', 'note'],
-    validation: { 4: ['Personal', 'Business'], 9: ['Active', 'Paid'] },
-    sample: [['d001', 'Thẻ tín dụng', 'Techcombank', 'Personal', 45000000, 30, 2500000, 15, 'Active', '']],
+    // min_payment = số tiền trả mỗi tháng; repay_type: 'Trả gốc và lãi' | 'Trả lãi only'; term_months: số tháng còn lại
+    header: ['id', 'name', 'lender', 'owner', 'balance', 'apr', 'min_payment', 'due_day', 'status', 'note', 'repay_type', 'term_months'],
+    validation: { 4: ['Personal', 'Business'], 9: ['Active', 'Paid'], 11: ['Trả gốc và lãi', 'Trả lãi only'] },
+    sample: [['d001', 'Thẻ tín dụng', 'Techcombank', 'Personal', 45000000, 30, 2500000, 15, 'Active', '', 'Trả gốc và lãi', 24]],
   },
   Debts_BM: {
     // Nguồn nợ thứ hai ("Nợ BM"): cùng cấu trúc với Debts, dữ liệu tách riêng
-    header: ['id', 'name', 'lender', 'owner', 'balance', 'apr', 'min_payment', 'due_day', 'status', 'note', 'record_date'],
-    validation: { 4: ['Personal', 'Business', 'BM'], 9: ['Active', 'Paid'] },
-    sample: [['m001', 'Vay BM #1', 'BM', 'Business', 90000000, 12, 3500000, 10, 'Active', '', '2026-10-01']],
+    header: ['id', 'name', 'lender', 'owner', 'balance', 'apr', 'min_payment', 'due_day', 'status', 'note', 'record_date', 'repay_type', 'term_months'],
+    validation: { 4: ['Personal', 'Business', 'BM'], 9: ['Active', 'Paid'], 12: ['Trả gốc và lãi', 'Trả lãi only'] },
+    sample: [['m001', 'Vay BM #1', 'BM', 'Business', 90000000, 12, 900000, 10, 'Active', '', '2026-10-01', 'Trả lãi only', '']],
     textCols: [11], // record_date dạng chữ yyyy-mm-dd
   },
   Savings: {

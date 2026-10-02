@@ -22,10 +22,10 @@ export function demoData(endYm) {
     b('15', 'Expense', 'Thuê ngoài', 9_000_000)
     b('28', 'Expense', 'Marketing', 4_000_000)
   }
-  const d = (name, lender, owner, balance, apr, min_payment, due_day) => D.push({ id: newId(), name, lender, owner, balance, apr, min_payment, due_day, status: 'Active', note: '' })
-  d('Thẻ tín dụng', 'Techcombank', 'Personal', 45_000_000, 30, 2_500_000, 15)
-  d('Vay mua xe', 'VPBank', 'Personal', 180_000_000, 11, 3_000_000, 25)
-  d('Vay vốn kinh doanh', 'Agribank', 'Business', 120_000_000, 9, 4_000_000, 5)
+  const d = (name, lender, owner, balance, apr, min_payment, due_day, term_months = 0) => D.push({ id: newId(), name, lender, owner, balance, apr, min_payment, due_day, status: 'Active', note: '', repay_type: 'Trả gốc và lãi', term_months })
+  d('Thẻ tín dụng', 'Techcombank', 'Personal', 45_000_000, 30, 2_500_000, 15, 24)
+  d('Vay mua xe', 'VPBank', 'Personal', 180_000_000, 11, 3_000_000, 25, 70)
+  d('Vay vốn kinh doanh', 'Agribank', 'Business', 120_000_000, 9, 4_000_000, 5, 36)
   const G = [], S = []
   const goal = (id, name, owner, target_amount, months) => G.push({ id, name, owner, target_amount, target_date: `${addMonths(endYm, months)}-28`, status: 'Active', note: '' })
   goal('g1', 'Quỹ khẩn cấp 6 tháng', 'Personal', 150_000_000, 18)
@@ -46,8 +46,8 @@ export function demoData(endYm) {
     { id: 'r4', keyword: 'tien nha', category: 'Nhà ở', direction: 'out', owner: 'Personal' },
   ]
   const BM = []
-  const bm = (name, lender, owner, balance, apr, min_payment, due_day) => BM.push({ id: newId(), name, lender, owner, balance, apr, min_payment, due_day, status: 'Active', note: '', record_date: `${endYm}-01` })
-  bm('Vay BM #1', 'BM', 'Business', 90_000_000, 12, 3_500_000, 10)
-  bm('Vay BM #2', 'BM', 'BM', 40_000_000, 8, 1_500_000, 20)
+  const bm = (name, lender, owner, balance, apr, min_payment, due_day, repay_type = 'Trả gốc và lãi', term_months = 0) => BM.push({ id: newId(), name, lender, owner, balance, apr, min_payment, due_day, status: 'Active', note: '', record_date: `${endYm}-01`, repay_type, term_months })
+  bm('Vay BM #1', 'BM', 'Business', 90_000_000, 12, 900_000, 10, 'Trả lãi only')
+  bm('Vay BM #2', 'BM', 'BM', 40_000_000, 8, 1_500_000, 20, 'Trả gốc và lãi', 30)
   return { personal: P, business: B, debts: D, savings: S, goals: G, accounts: A, rules: R, debts_bm: BM }
 }

@@ -1,5 +1,6 @@
 // Mô phỏng trả nợ theo tháng, lãi tính riêng từng khoản (APR/12, cộng dồn hàng tháng).
 import { addMonths } from './calc.js'
+import { isInterestOnly } from './schema.js'
 
 /**
  * scenario = {
@@ -30,13 +31,17 @@ export function simulate({ debts, scenario, baseline, startYm, years = 5, income
     const income = baseline.income * Math.pow(1 + monthlyGrowth, m)
     let interest = 0
     for (const d of active) {
+      d.int = 0
       if (d.bal <= 0) continue
       const i = (d.bal * d.apr) / 100 / 12
       d.bal += i
+      d.int = i
       interest += i
     }
     const live = active.filter((d) => d.bal > 0.005)
-    const minDue = live.reduce((s, d) => s + Math.min(d.min_payment, d.bal), 0)
+    // Khoản "Trả lãi only": mỗi tháng phải trả đúng phần lãi phát sinh (giảm khi đã trả bớt gốc)
+    const due = (d) => Math.min(isInterestOnly(d) ? d.int : d.min_payment, d.bal)
+    const minDue = live.reduce((s, d) => s + due(d), 0)
 
     let budget
     if (scenario.mode === 'min') budget = minDue
@@ -45,7 +50,7 @@ export function simulate({ debts, scenario, baseline, startYm, years = 5, income
 
     let paid = 0
     for (const d of live) {
-      const p = Math.min(d.min_payment, d.bal)
+      const p = due(d)
       d.bal -= p
       paid += p
     }

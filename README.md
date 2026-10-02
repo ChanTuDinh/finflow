@@ -17,8 +17,8 @@ Cách B: tạo 3 tab tên đúng `Personal_CashFlow`, `Business_CashFlow`, `Debt
 |---|---|
 | Personal_CashFlow | id, date, type (Income/Expense/Transfer), category, amount, account, note, created_by, ref |
 | Business_CashFlow | id, date, type (Revenue/Expense/Transfer), category, amount, counterparty, note, created_by, account, ref |
-| Debts | id, name, lender, owner (Personal/Business), balance, apr (%/năm), min_payment, due_day, status (Active/Paid), note |
-| Debts_BM | Giống Debts (`owner` có thêm giá trị `BM`) + cột cuối `record_date` (ngày ghi nhận, yyyy-mm-dd) — nguồn nợ thứ hai ("Nợ BM"), tách riêng, tab tuỳ chọn |
+| Debts | id, name, lender, owner (Personal/Business), balance, apr (%/năm), min_payment (số tiền trả mỗi tháng), due_day, status (Active/Paid), note, repay_type (`Trả gốc và lãi` / `Trả lãi only`), term_months (số tháng còn lại) |
+| Debts_BM | Giống Debts (`owner` có thêm giá trị `BM`) + `record_date`, `repay_type`, `term_months` (ngày ghi nhận, yyyy-mm-dd) — nguồn nợ thứ hai ("Nợ BM"), tách riêng, tab tuỳ chọn |
 | Savings | id, name, type, owner, balance, monthly_contribution, annual_return (%/năm), goal_id, status (Active/Closed), note |
 | Accounts | id, name, bank, owner, preset, status, note (tài khoản ngân hàng; `preset` do app tự lưu) |
 | Rules | id, keyword, category, direction (out/in/any), owner |
@@ -43,3 +43,9 @@ Cá nhân / Doanh nghiệp › **Nhập sao kê**.
 2. Chọn tài khoản → chọn file `.xlsx` / `.csv` tải từ app ngân hàng. Lần đầu, kiểm tra các cột app tự nhận (ngày, nội dung, chi/thu hoặc một cột số tiền có dấu, mã giao dịch); sau khi nhập app nhớ cách đọc cho tài khoản đó.
 3. Xem trước: danh mục tự gán theo **quy tắc từ khóa** (bấm “＋ quy tắc” để dạy app), giao dịch đã có bị bỏ chọn (**loại trùng**), cặp chi–thu cùng số tiền giữa 2 tài khoản của bạn trong ±2 ngày được đánh dấu **Chuyển nội bộ** (kể cả khi 2 ngân hàng nhập ở 2 lần khác nhau, hoặc cá nhân ↔ doanh nghiệp) và không tính vào thu/chi.
 4. Bấm Nhập. File sao kê được đọc hoàn toàn trong trình duyệt; chỉ các giao dịch bạn duyệt mới ghi vào Sheet. File `.xls` cũ: mở bằng Excel, lưu lại thành `.xlsx`.
+
+## Nhập khoản nợ và để tool tính lãi suất
+Khi thêm khoản nợ, chọn **Hình thức trả**, nhập dư nợ và số tiền trả mỗi tháng; để “Lãi suất: Tool tự tính”:
+- **Trả lãi only**: lãi suất = 12 × tiền lãi mỗi tháng ÷ dư nợ (không cần số tháng).
+- **Trả gốc và lãi**: nhập thêm **số tháng còn lại**; tool suy ra lãi suất từ khoản trả đều hàng tháng. (Chỉ có dư nợ và số tiền trả thì chưa đủ để tính — cần biết khoản vay còn bao lâu.)
+Lãi suất là lãi danh nghĩa theo năm (lãi tháng × 12), cùng cách tính với phần Forecast. Nếu ngân hàng cho sẵn lãi suất, chọn “Tôi tự nhập”. Với khoản chỉ trả lãi, Forecast mô phỏng mỗi tháng trả đúng tiền lãi (dư nợ không giảm cho tới khi trả thêm gốc); chưa tính việc tất toán gốc một lần khi đáo hạn.

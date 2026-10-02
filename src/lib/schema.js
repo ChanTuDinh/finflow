@@ -22,7 +22,8 @@ export const TABS = {
   },
   debts: {
     tab: 'Debts',
-    columns: ['id', 'name', 'lender', 'owner', 'balance', 'apr', 'min_payment', 'due_day', 'status', 'note'],
+    // min_payment = số tiền trả mỗi tháng; repay_type: xem REPAY; term_months: số tháng còn lại (chỉ cần khi trả gốc và lãi)
+    columns: ['id', 'name', 'lender', 'owner', 'balance', 'apr', 'min_payment', 'due_day', 'status', 'note', 'repay_type', 'term_months'],
     owners: ['Personal', 'Business'],
     statuses: ['Active', 'Paid'],
   },
@@ -43,7 +44,7 @@ TABS.goals = {
 }
 // Nguồn nợ thứ hai ("Nợ BM"): cùng cấu trúc với Debts, nằm ở tab Debts_BM, tách riêng hoàn toàn khỏi nguồn nợ chính.
 // record_date: ngày ghi nhận thông tin/số dư của khoản nợ (cột cuối để Sheet cũ vẫn tương thích)
-TABS.debts_bm = { ...TABS.debts, tab: 'Debts_BM', columns: [...TABS.debts.columns, 'record_date'], owners: [...TABS.debts.owners, 'BM'] }
+TABS.debts_bm = { ...TABS.debts, tab: 'Debts_BM', columns: [...TABS.debts.columns.slice(0, 10), 'record_date', 'repay_type', 'term_months'], owners: [...TABS.debts.owners, 'BM'] }
 
 // Bộ lọc "Phạm vi" của trang nợ: giá trị -> chủ khoản nợ (null = tất cả). Nợ BM có thêm lựa chọn BM.
 export const SCOPE_OWNER = { all: null, personal: 'Personal', business: 'Business', bm: 'BM' }
@@ -68,6 +69,10 @@ TABS.rules = {
 export const CORE_KINDS = ['personal', 'business', 'debts']
 export const EMPTY_DATA = () => ({ personal: [], business: [], debts: [], savings: [], goals: [], accounts: [], rules: [], debts_bm: [] })
 
+// Hình thức trả nợ (lưu nguyên chữ trong Sheet; ô trống = Trả gốc và lãi)
+export const REPAY = { both: 'Trả gốc và lãi', interestOnly: 'Trả lãi only' }
+export const isInterestOnly = (d) => d.repay_type === REPAY.interestOnly
+
 export const DEBT_PAYMENT_CATEGORY = 'Trả nợ'
 export const isInflow = (row) => row.type === 'Income' || row.type === 'Revenue'
 // Chuyển khoản giữa các tài khoản của chính mình: không tính vào thu/chi.
@@ -75,7 +80,7 @@ export const isTransfer = (row) => row.type === 'Transfer'
 export const TRANSFER_CATEGORY = 'Chuyển nội bộ'
 export const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 
-const NUMERIC = new Set(['amount', 'balance', 'apr', 'min_payment', 'due_day', 'monthly_contribution', 'annual_return', 'target_amount'])
+const NUMERIC = new Set(['amount', 'balance', 'apr', 'min_payment', 'due_day', 'monthly_contribution', 'annual_return', 'target_amount', 'term_months'])
 const DATE_COLS = new Set(['date', 'target_date', 'record_date'])
 
 // Sheet serial date -> yyyy-mm-dd
