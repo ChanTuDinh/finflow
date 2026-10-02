@@ -51,3 +51,17 @@ test('forecast: khoản chỉ trả lãi không giảm dư nợ, trả thêm g�
   const pays = extra.series.slice(1, 6).map((s) => s.interest)
   assert.ok(pays[4] < pays[0])
 })
+
+import { estimateTerm } from './rate.js'
+test('estimateTerm: 2 tỷ, lãi 6,5%, trả 28tr/tháng -> khoảng 91 tháng, tổng lãi ≈ 536tr', () => {
+  const r = estimateTerm({ balance: 2e9, apr: 6.5, payment: 28e6 })
+  assert.equal(r.months, 91)
+  assert.ok(Math.abs(r.totalInterest - 535.83e6) < 0.1e6, String(r.totalInterest)) // đối chiếu mô phỏng từng tháng (lần trả cuối nhỏ hơn 28tr)
+})
+test('estimateTerm khớp computeApr (vòng tròn) và báo lỗi khi tiền trả không đủ lãi', () => {
+  const { months } = estimateTerm({ balance: 500e6, apr: 9, payment: 6e6 })
+  const back = computeApr({ type: REPAY.both, balance: 500e6, payment: 6e6, term: months })
+  assert.ok(Math.abs(back.apr - 9) < 0.15, String(back.apr))
+  assert.match(estimateTerm({ balance: 2e9, apr: 6.5, payment: 10e6 }).error, /không bao giờ/)
+  assert.equal(estimateTerm({ balance: 12e6, apr: 0, payment: 1e6 }).months, 12)
+})

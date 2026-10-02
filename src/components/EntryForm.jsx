@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { TABS, REPAY } from '../lib/schema.js'
-import { computeApr } from '../lib/rate.js'
+import { computeApr, estimateTerm } from '../lib/rate.js'
 import { todayIso } from '../lib/format.js'
 import { Field, Modal, Segmented, focusNextOnEnter } from './ui.jsx'
 import { useStore } from '../lib/store.jsx'
@@ -19,7 +19,7 @@ const ALL_CATEGORIES = [...new Set([...Object.values(TABS.personal.categories), 
 
 // Form thêm/sửa cho mọi tab dữ liệu: personal | business | debts | savings | goals.
 export default function EntryForm({ kind, row, onClose }) {
-  const { upsert, status, data } = useStore()
+  const { upsert, status, data, money } = useStore()
   const cfg = TABS[kind]
   const cash = kind === 'personal' || kind === 'business'
   const isDebt = kind === 'debts' || kind === 'debts_bm'
@@ -33,6 +33,8 @@ export default function EntryForm({ kind, row, onClose }) {
   // Khoản nợ mới: để tool tự suy ra lãi suất từ dư nợ + số tiền trả mỗi tháng; sửa khoản cũ: giữ lãi suất đã nhập
   const [autoRate, setAutoRate] = useState(!row)
   const [formErr, setFormErr] = useState('')
+  // Biết lãi suất + tiền trả nhưng không biết thời hạn hợp đồng -> ước tính còn bao lâu
+  const termGuess = useMemo(() => (isDebt && f.repay_type !== REPAY.interestOnly && !autoRate && Number(f.apr) > 0 ? estimateTerm({ balance: f.balance, apr: f.apr, payment: f.min_payment }) : null), [isDebt, f.repay_type, autoRate, f.apr, f.balance, f.min_payment])
   const rate = useMemo(() => (isDebt ? computeApr({ type: f.repay_type, balance: f.balance, payment: f.min_payment, term: f.term_months }) : null), [isDebt, f.repay_type, f.balance, f.min_payment, f.term_months])
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
   const num = (k) => (e) => set(k, e.target.value === '' ? '' : Number(e.target.value))
@@ -71,6 +73,13 @@ export default function EntryForm({ kind, row, onClose }) {
                   {rate.error ? rate.error : <><b>≈ {rate.apr}%/năm</b> <span className="text-xs text-slate-500">{f.repay_type === REPAY.interestOnly ? '(= 12 × tiền lãi mỗi tháng ÷ dư nợ)' : `(suy ra từ trả đều ${Math.round(f.term_months)} tháng)`}</span></>}
                 </div>
               : number('apr', { step: '0.01' })}
+            {termGuess && (termGuess.error
+              ? <div className="rounded-lg bg-amber-50 text-amber-800 text-sm px-3 py-2">{termGuess.error}</div>
+              : <div className="rounded-lg bg-blue-50 text-blue-900 text-sm px-3 py-2">
+                  Nếu trả đều {money(f.min_payment)}/tháng với lãi {f.apr}%, khoản này còn khoảng <b>{termGuess.months} tháng ({(termGuess.months / 12).toFixed(1)} năm)</b>, tổng lãi ≈ {money(termGuess.totalInterest)}.
+                  <span className="block text-xs text-slate-500">Chỉ là ước tính — hợp đồng có thể trả gốc đều (tiền trả giảm dần) hoặc lãi thả nổi.</span>
+                  {Number(f.term_months) !== termGuess.months && <button type="button" className="mt-1 underline" onClick={() => set('term_months', termGuess.months)}>Dùng {termGuess.months} tháng làm “Số tháng còn lại”</button>}
+                </div>)}
           </div>
           <Field label="Ngày đến hạn (1-31)">{number('due_day', { max: 31, min: 1 })}</Field>
           <Field label="Trạng thái">{select('status', cfg.statuses)}</Field>

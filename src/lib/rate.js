@@ -31,3 +31,20 @@ export function computeApr({ type, balance, payment: M, term }) {
 }
 
 const round2 = (x) => Math.round(x * 100) / 100
+
+/**
+ * Ngược lại với computeApr: biết dư nợ, lãi suất năm (%) và số tiền trả đều mỗi tháng (trả gốc và lãi, niên kim)
+ * -> ước tính còn bao nhiêu tháng và tổng tiền lãi sẽ trả. Trả { months, totalInterest } hoặc { error }.
+ */
+export function estimateTerm({ balance, apr, payment: M }) {
+  const P = Number(balance), r = Number(apr), pay = Number(M)
+  if (!(P > 0) || !(pay > 0)) return { error: 'Nhập dư nợ và số tiền trả mỗi tháng' }
+  if (!(r >= 0)) return { error: 'Nhập lãi suất' }
+  const i = r / 1200
+  if (i === 0) { const n = Math.ceil(P / pay - 1e-9); return { months: n, totalInterest: 0 } }
+  const x = 1 - (P * i) / pay
+  if (x <= 0) return { error: `Mỗi tháng chỉ trả ${Math.round(pay).toLocaleString('vi-VN')} nhưng riêng tiền lãi đã ≈ ${Math.round(P * i).toLocaleString('vi-VN')} — dư nợ sẽ không bao giờ giảm hết` }
+  const n = -Math.log(x) / Math.log(1 + i)
+  const months = Math.ceil(n - 1e-9)
+  return { months, exact: n, totalInterest: Math.max(pay * n - P, 0) }
+}
