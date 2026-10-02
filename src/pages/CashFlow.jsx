@@ -9,12 +9,17 @@ import EntryForm from '../components/EntryForm.jsx'
 import FilterBar from '../components/FilterBar.jsx'
 
 export default function CashFlow({ kind, onImport }) {
-  const { data, money, remove, clearKind } = useStore()
+  const { data, money, remove, removeMany, clearKind } = useStore()
   const rows = data[kind]
   const { period } = usePeriod()
   const [editing, setEditing] = useState(null) // null | {} (mới) | row
+  const [sel, setSel] = useState(() => new Set()) // id các dòng đang tick
   const shown = rows.filter((r) => inPeriod(period, r.date)).sort((a, b) => b.date.localeCompare(a.date))
   const t = totals(shown)
+  const picked = shown.filter((r) => sel.has(r.id)) // chỉ tính dòng đang hiển thị (đổi bộ lọc kỳ không xoá nhầm dòng ẩn)
+  const allPicked = shown.length > 0 && picked.length === shown.length
+  const toggle = (id) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const delPicked = async () => { if (confirm(`Xoá ${picked.length} giao dịch đã chọn?\n\nKhông thể hoàn tác.`) && await removeMany(kind, picked)) setSel(new Set()) }
   const inLabel = kind === 'business' ? 'Doanh thu' : 'Thu nhập'
 
   return (
@@ -26,12 +31,19 @@ export default function CashFlow({ kind, onImport }) {
         <Stat label="Chi" value={money(t.expense)} />
         <Stat label="Dòng tiền ròng" value={money(t.net)} tone={t.net < 0 ? 'neg' : 'pos'} />
       </div>
+      {picked.length > 0 && (
+        <div className="flex items-center gap-3 rounded-lg bg-slate-100 px-3 py-2 text-sm">
+          <span>Đã chọn <b>{picked.length}</b> giao dịch</span>
+          <button className="rounded-lg border border-red-300 text-red-700 px-3 py-1 hover:bg-red-50" onClick={delPicked}>Xoá đã chọn</button>
+          <button className="text-slate-500 underline" onClick={() => setSel(new Set())}>Bỏ chọn</button>
+        </div>)}
       <div className="card overflow-x-auto p-0">
         <table className="w-full text-sm">
-          <thead className="text-xs text-slate-500 text-left"><tr>{['Ngày', 'Loại', 'Danh mục', 'Số tiền', kind === 'business' ? 'Đối tác' : 'Tài khoản', 'Ghi chú', 'Bởi', ''].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr></thead>
+          <thead className="text-xs text-slate-500 text-left"><tr><th className="px-3 py-2 w-8"><input type="checkbox" aria-label="Chọn tất cả" checked={allPicked} onChange={() => setSel(allPicked ? new Set() : new Set(shown.map((r) => r.id)))} /></th>{['Ngày', 'Loại', 'Danh mục', 'Số tiền', kind === 'business' ? 'Đối tác' : 'Tài khoản', 'Ghi chú', 'Bởi', ''].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr></thead>
           <tbody>
             {shown.map((r) => (
-              <tr key={r.id} className="border-t border-slate-100">
+              <tr key={r.id} className={`border-t border-slate-100 ${sel.has(r.id) ? 'bg-blue-50' : ''}`}>
+                <td className="px-3 py-1.5"><input type="checkbox" aria-label="Chọn dòng" checked={sel.has(r.id)} onChange={() => toggle(r.id)} /></td>
                 <td className="px-3 py-1.5 whitespace-nowrap">{r.date}</td>
                 <td className="px-3 py-1.5">{isTransfer(r) ? 'Chuyển nội bộ' : r.type}</td>
                 <td className="px-3 py-1.5">{r.category}</td>
@@ -45,7 +57,7 @@ export default function CashFlow({ kind, onImport }) {
                 </td>
               </tr>
             ))}
-            {!shown.length && <tr><td colSpan={8} className="px-3 py-6 text-center text-slate-400">Chưa có dữ liệu</td></tr>}
+            {!shown.length && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-400">Chưa có dữ liệu</td></tr>}
           </tbody>
         </table>
       </div>

@@ -147,8 +147,19 @@ export function StoreProvider({ children }) {
     } else setData((d) => ({ ...d, [kind]: d[kind].filter((x) => x.id !== row.id) }))
   })
 
+  // Xoá nhiều dòng một lần. Sheets: xoá từ hàng cuối lên đầu để số hàng (_row) của các dòng còn lại không bị lệch.
+  const removeMany = (kind, rows) => run(async () => {
+    if (mode === 'sheets') {
+      for (const r of [...rows].sort((a, b) => b._row - a._row)) await sheets.deleteRow(settings.sheetId, kind, r)
+      setData(await sheets.loadAll(settings.sheetId))
+    } else {
+      const ids = new Set(rows.map((r) => r.id))
+      setData((d) => ({ ...d, [kind]: d[kind].filter((x) => !ids.has(x.id)) }))
+    }
+  })
+
   return (
-    <Ctx.Provider value={{ data, mode, settings, setSettings, money, status, connect, disconnect, refresh, resetDemo, clearAllLocal, upsert, remove, clearKind, localSnapshot, restoreLocal, migrateLocalToSheet, importBatch, recordPayment, deletePayment, updatePayment }}>
+    <Ctx.Provider value={{ data, mode, settings, setSettings, money, status, connect, disconnect, refresh, resetDemo, clearAllLocal, upsert, remove, removeMany, clearKind, localSnapshot, restoreLocal, migrateLocalToSheet, importBatch, recordPayment, deletePayment, updatePayment }}>
       {children}
     </Ctx.Provider>
   )
