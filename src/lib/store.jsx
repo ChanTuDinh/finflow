@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import * as sheets from './sheets.js'
 import { demoData } from './demo.js'
 import { newId, EMPTY_DATA, CASH_KINDS } from './schema.js'
+import { planMigration } from './backup.js'
 import { makeMoney, todayIso } from './format.js'
 
 const Ctx = createContext(null)
@@ -45,8 +46,10 @@ export function StoreProvider({ children }) {
 
   const connect = () => run(async () => {
     await sheets.signIn(settings.clientId)
-    setData(await sheets.loadAll(settings.sheetId))
+    const loaded = await sheets.loadAll(settings.sheetId)
+    // Đổi chế độ TRƯỚC khi nạp dữ liệu Sheet: dữ liệu đã nhập trong trình duyệt (chế độ Demo) không bao giờ bị ghi đè
     setMode('sheets')
+    setData(loaded)
   })
   const disconnect = () => { sheets.signOut(); setMode('demo'); setData(loadDemo()) }
   const resetDemo = () => setData(demoData(todayIso().slice(0, 7)))
@@ -119,6 +122,22 @@ export function StoreProvider({ children }) {
       setData(await sheets.loadAll(settings.sheetId))
     } else setData((d) => ({ ...d, [kind]: [] }))
   })
+  // Dữ liệu đã nhập và đang lưu trong trình duyệt này (chế độ Demo)
+  const localSnapshot = () => load(`${LS}:demo`, null)
+  // Khôi phục từ file sao lưu (chỉ ở chế độ Demo/trình duyệt)
+  const restoreLocal = (restored) => setData({ ...EMPTY_DATA(), ...restored })
+  // Chuyển dữ liệu trong trình duyệt lên Google Sheet: chỉ thêm dòng chưa có (theo id), thiếu tab thì không ghi gì cả
+  const migrateLocalToSheet = (onDone) => run(async () => {
+    if (mode !== 'sheets') throw new Error('Hãy kết nối Google Sheets trước')
+    const local = localSnapshot()
+    if (!local) throw new Error('Không có dữ liệu cũ trong trình duyệt này')
+    const fresh = await sheets.loadAll(settings.sheetId)
+    const plan = planMigration(local, fresh, fresh._missing || [])
+    if (plan.blocked.length) throw new Error(`Sheet đang thiếu tab: ${plan.blocked.join(', ')}. Chạy lại setup.gs (không xoá dữ liệu cũ) rồi thử lại — chưa có gì được ghi.`)
+    for (const [kind, rows] of Object.entries(plan.toAdd)) await sheets.appendRows(settings.sheetId, kind, rows)
+    setData(await sheets.loadAll(settings.sheetId))
+    onDone?.(plan)
+  })
   const remove = (kind, row) => run(async () => {
     if (mode === 'sheets') {
       await sheets.deleteRow(settings.sheetId, kind, row)
@@ -127,7 +146,7 @@ export function StoreProvider({ children }) {
   })
 
   return (
-    <Ctx.Provider value={{ data, mode, settings, setSettings, money, status, connect, disconnect, refresh, resetDemo, upsert, remove, clearKind, importBatch, recordPayment, deletePayment, updatePayment }}>
+    <Ctx.Provider value={{ data, mode, settings, setSettings, money, status, connect, disconnect, refresh, resetDemo, upsert, remove, clearKind, localSnapshot, restoreLocal, migrateLocalToSheet, importBatch, recordPayment, deletePayment, updatePayment }}>
       {children}
     </Ctx.Provider>
   )
