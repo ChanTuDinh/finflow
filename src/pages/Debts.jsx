@@ -8,6 +8,8 @@ import { DEBT_PAYMENT_CATEGORY, TABS, isInterestOnly, SCOPE_OWNER, debtScopeOpti
 import EntryForm from '../components/EntryForm.jsx'
 
 // kind: 'debts' (nguồn nợ chính) | 'debts_bm' (nguồn nợ BM) — cùng giao diện, dữ liệu riêng.
+const RATE_COL = 'Lãi %/năm' // cột được tô nổi
+
 export default function Debts({ kind = 'debts' }) {
   const { data, money, remove } = useStore()
   const [editing, setEditing] = useState(null)
@@ -42,7 +44,7 @@ export default function Debts({ kind = 'debts' }) {
       </div>
       <div className="card overflow-x-auto p-0">
         <table className="w-full text-sm">
-          <thead className="text-xs text-slate-500 text-left"><tr>{['Khoản nợ', 'Bên cho vay', 'Thuộc về', 'Dư nợ', 'Lãi %/năm', 'Tối thiểu', 'Hình thức', 'Hạn', ...(main ? [] : ['Ngày ghi nhận']), 'Trạng thái', ''].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr></thead>
+          <thead className="text-xs text-slate-500 text-left"><tr>{['Khoản nợ', 'Bên cho vay', 'Thuộc về', 'Dư nợ', 'Lãi %/năm', 'Tối thiểu', 'Hình thức', 'Hạn', ...(main ? [] : ['Ngày ghi nhận']), 'Trạng thái', ''].map((h) => <th key={h} className={`px-3 py-2 ${h === RATE_COL ? 'bg-amber-100 text-amber-800' : ''}`}>{h}</th>)}</tr></thead>
           <tbody>
             {debts.map((d) => (
               <tr key={d.id} className={`border-t border-slate-100 ${d.status === 'Paid' ? 'opacity-50' : ''}`}>
@@ -50,7 +52,7 @@ export default function Debts({ kind = 'debts' }) {
                 <td className="px-3 py-1.5">{d.lender}</td>
                 <td className="px-3 py-1.5">{d.owner}</td>
                 <td className="px-3 py-1.5 text-right">{money(d.balance)}</td>
-                <td className="px-3 py-1.5 text-right">{d.apr}</td>
+                <td className="px-3 py-1.5 text-right font-semibold bg-amber-50 text-amber-900">{d.apr}</td>
                 <td className="px-3 py-1.5 text-right">{money(d.min_payment)}</td>
                 <td className="px-3 py-1.5 whitespace-nowrap text-xs">{isInterestOnly(d) ? 'Chỉ trả lãi' : `Gốc + lãi${d.term_months ? ` · còn ${d.term_months} th` : ''}`}</td>
                 <td className="px-3 py-1.5">ngày {d.due_day}</td>
