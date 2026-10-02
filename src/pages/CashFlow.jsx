@@ -29,8 +29,8 @@ export default function CashFlow({ kind, onImport }) {
   const moveRows = shown.filter(isTransfer)
   const groups = [
     { key: 'out', title: '⬆ Tiền đi ra', rows: outRows, always: true, tone: 'text-red-600', sum: money(sumOf(outRows)) },
-    { key: 'in', title: `⬇ Tiền đi vào`, rows: inRows, always: true, tone: 'text-emerald-600', sum: money(sumOf(inRows)) },
     { key: 'wallet', title: '⇄ Chuyển ví', rows: walletRows, always: false, tone: 'text-indigo-600', sum: `+${money(sumOf(walletRows.filter(isInflow)))} / −${money(sumOf(walletRows.filter((r) => !isInflow(r))))}` },
+    { key: 'in', title: `⬇ Tiền đi vào`, rows: inRows, always: true, tone: 'text-emerald-600', sum: money(sumOf(inRows)) },
     { key: 'move', title: '↔ Chuyển nội bộ (không tính thu/chi)', rows: moveRows, always: false, tone: 'text-slate-500' },
   ]
   const table = (g) => {
