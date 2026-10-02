@@ -1,3 +1,5 @@
+import { useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { ResponsiveContainer } from 'recharts'
 
 export const COLORS = { personal: '#2563eb', business: '#f59e0b', income: '#10b981', expense: '#ef4444', net: '#0f172a', grid: '#e2e8f0' }
@@ -18,13 +20,19 @@ export const Chart = ({ height = 280, children }) => (
 )
 
 export function Modal({ title, onClose, children }) {
-  return (
-    <div className="fixed inset-0 z-10 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl w-full max-w-md p-5" onClick={(e) => e.stopPropagation()}>
-        <div className="flex justify-between mb-3"><h3 className="font-semibold">{title}</h3><button onClick={onClose}>✕</button></div>
+  // Chỉ đóng khi bấm-và-thả đều ở nền tối: kéo bôi đen chữ rồi thả chuột ra ngoài không làm mất form đang nhập.
+  const downOnBackdrop = useRef(false)
+  // Render ra document.body: không bị margin của khối cha (space-y-*) làm lệch lớp phủ
+  return createPortal(
+    <div className="fixed inset-0 z-10 bg-black/40 flex items-center justify-center p-4"
+      onMouseDown={(e) => { downOnBackdrop.current = e.target === e.currentTarget }}
+      onClick={(e) => { if (downOnBackdrop.current && e.target === e.currentTarget) onClose() }}>
+      <div className="bg-white rounded-xl w-full max-w-md max-h-full overflow-y-auto p-5">
+        <div className="flex justify-between mb-3"><h3 className="font-semibold">{title}</h3><button type="button" onClick={onClose} aria-label="Đóng">✕</button></div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 

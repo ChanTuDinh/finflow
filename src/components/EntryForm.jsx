@@ -27,6 +27,13 @@ export default function EntryForm({ kind, row, onClose }) {
   })
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
   const num = (k) => (e) => set(k, e.target.value === '' ? '' : Number(e.target.value))
+  // Enter chỉ chuyển sang ô kế tiếp (như bảng tính); lưu bằng nút "Lưu" để không vô tình lưu dòng còn dở.
+  const onEnter = (e) => {
+    if (e.key !== 'Enter' || e.target.tagName !== 'INPUT') return
+    e.preventDefault()
+    const fields = [...e.currentTarget.querySelectorAll('input:not([type=hidden]), select, textarea, button[type=submit]')]
+    fields[fields.indexOf(e.target) + 1]?.focus()
+  }
   const submit = async (e) => { e.preventDefault(); if (await upsert(kind, f)) onClose() }
   const who = kind === 'personal' ? ['account', 'Tài khoản / ví'] : ['counterparty', 'Đối tác / khách hàng']
   const select = (k, options) => <select className="input" value={f[k]} onChange={(e) => set(k, e.target.value)}>{options.map((o) => <option key={o}>{o}</option>)}</select>
@@ -36,7 +43,7 @@ export default function EntryForm({ kind, row, onClose }) {
 
   return (
     <Modal title={`${row ? 'Sửa' : 'Thêm'} — ${TITLES[kind]}`} onClose={onClose}>
-      <form onSubmit={submit} className="grid grid-cols-2 gap-3">
+      <form onSubmit={submit} onKeyDown={onEnter} className="grid grid-cols-2 gap-3">
         {(kind === 'debts' || kind === 'debts_bm') && (<>
           <div className="col-span-2"><Field label="Tên khoản nợ">{text('name', true)}</Field></div>
           <Field label="Bên cho vay">{text('lender')}</Field>
