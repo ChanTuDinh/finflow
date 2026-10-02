@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { TABS, REPAY, CASH_KINDS } from '../lib/schema.js'
+import { TABS, REPAY, CASH_KINDS, DEBT_PAYMENT_CATEGORY } from '../lib/schema.js'
 import { computeApr, estimateTerm } from '../lib/rate.js'
 import { todayIso } from '../lib/format.js'
 import { Field, Modal, Segmented, focusNextOnEnter } from './ui.jsx'
@@ -121,7 +121,11 @@ export default function EntryForm({ kind, row, onClose }) {
         </>)}
         {cash && (<>
           <Field label="Ngày"><input type="date" required className="input" value={f.date} onChange={(e) => set('date', e.target.value)} /></Field>
-          <Field label="Loại"><select className="input" value={f.type} onChange={(e) => setF((p) => ({ ...p, type: e.target.value, category: cfg.categories[e.target.value][0] }))}>{cfg.types.map((t) => <option key={t}>{t}</option>)}</select></Field>
+          {/* "Trả nợ" là lối tắt: lưu type Expense + category Trả nợ (đúng quy ước forecast), không thêm type mới vào Sheet */}
+          <Field label="Loại"><select className="input" value={f.type === 'Expense' && f.category === DEBT_PAYMENT_CATEGORY ? DEBT_PAYMENT_CATEGORY : f.type} onChange={(e) => {
+            const v = e.target.value
+            setF((p) => (v === DEBT_PAYMENT_CATEGORY ? { ...p, type: 'Expense', category: DEBT_PAYMENT_CATEGORY } : { ...p, type: v, category: cfg.categories[v][0] }))
+          }}>{[...cfg.types.slice(0, 2), DEBT_PAYMENT_CATEGORY, ...cfg.types.slice(2)].map((t) => <option key={t}>{t}</option>)}</select></Field>
           <Field label="Danh mục">{select('category', cfg.categories[f.type])}</Field>
           <Field label="Số tiền">{number('amount', { required: true })}</Field>
           <div className="col-span-2"><Field label={who[1]}>{text(who[0])}</Field></div>
