@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import * as sheets from './sheets.js'
 import { demoData } from './demo.js'
-import { newId, EMPTY_DATA } from './schema.js'
+import { newId, EMPTY_DATA, CASH_KINDS } from './schema.js'
 import { makeMoney, todayIso } from './format.js'
 
 const Ctx = createContext(null)
@@ -14,7 +14,7 @@ const loadDemo = () => {
   const fresh = demoData(todayIso().slice(0, 7))
   const saved = load(`${LS}:demo`, null)
   if (!saved) return fresh
-  return { ...EMPTY_DATA(), ...saved, savings: saved.savings ?? fresh.savings, goals: saved.goals ?? fresh.goals, accounts: saved.accounts ?? fresh.accounts, rules: saved.rules ?? fresh.rules, debts_bm: saved.debts_bm ?? fresh.debts_bm, payments: saved.payments ?? fresh.payments }
+  return { ...EMPTY_DATA(), ...saved, savings: saved.savings ?? fresh.savings, goals: saved.goals ?? fresh.goals, accounts: saved.accounts ?? fresh.accounts, rules: saved.rules ?? fresh.rules, bm: saved.bm ?? fresh.bm, debts_bm: saved.debts_bm ?? fresh.debts_bm, payments: saved.payments ?? fresh.payments }
 }
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch { /* ignore */ } }
 
@@ -54,7 +54,7 @@ export function StoreProvider({ children }) {
   // Thêm / sửa / xoá. Sheets: ghi rồi tải lại để giữ số hàng (_row) đúng khi nhiều người cùng sửa.
   const upsert = (kind, row) => run(async () => {
     const isNew = !row.id
-    const r = { ...row, id: row.id || newId(), ...(isNew && (kind === 'personal' || kind === 'business') ? { created_by: settings.user || 'me' } : {}) }
+    const r = { ...row, id: row.id || newId(), ...(isNew && CASH_KINDS.includes(kind) ? { created_by: settings.user || 'me' } : {}) }
     if (mode === 'sheets') {
       if (isNew) await sheets.appendRow(settings.sheetId, kind, r)
       else await sheets.updateRow(settings.sheetId, kind, r)
@@ -64,16 +64,17 @@ export function StoreProvider({ children }) {
     }
   })
   // Ghi một lô sao kê đã duyệt: dòng mới (personal/business) + đổi các dòng đã có thành Transfer.
-  const importBatch = ({ personal = [], business = [], convert = [] }) => run(async () => {
+  const importBatch = ({ personal = [], business = [], bm = [], convert = [] }) => run(async () => {
     if (mode === 'sheets') {
       await sheets.appendRows(settings.sheetId, 'personal', personal)
       await sheets.appendRows(settings.sheetId, 'business', business)
+      await sheets.appendRows(settings.sheetId, 'bm', bm)
       for (const c of convert) await sheets.updateRow(settings.sheetId, c.kind, c.row)
       setData(await sheets.loadAll(settings.sheetId))
     } else {
       setData((d) => {
         const swap = (kind) => d[kind].map((x) => convert.find((c) => c.kind === kind && c.row.id === x.id)?.row ?? x)
-        return { ...d, personal: [...swap('personal'), ...personal], business: [...swap('business'), ...business] }
+        return { ...d, personal: [...swap('personal'), ...personal], business: [...swap('business'), ...business], bm: [...swap('bm'), ...bm] }
       })
     }
   })

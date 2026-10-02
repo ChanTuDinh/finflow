@@ -51,11 +51,12 @@ test('trả lãi không đổi dư nợ / tiền lãi tháng', () => {
   assert.equal(r.payment.balance_after, 500e6)
 })
 
-test('cashRowFor: Business -> sổ doanh nghiệp, còn lại -> sổ cá nhân', () => {
+test('cashRowFor: Business -> sổ doanh nghiệp, BM -> Ví BM, còn lại -> sổ cá nhân', () => {
   const { payment } = buildPayment({ debt: bm, kind: 'debts_bm', type: T.principal, amount: 1e6, date: '2026-10-05' })
   assert.equal(cashRowFor({ ...bm, owner: 'Business' }, payment).kind, 'business')
-  const c = cashRowFor(bm, payment)
-  assert.deepEqual([c.kind, c.row.type, c.row.category, c.row.amount], ['personal', 'Expense', 'Trả nợ', 1e6])
+  assert.equal(cashRowFor({ ...bm, owner: 'Personal' }, payment).kind, 'personal')
+  const c = cashRowFor(bm, payment) // bm.owner === 'BM'
+  assert.deepEqual([c.kind, c.row.type, c.row.category, c.row.amount], ['bm', 'Expense', 'Trả nợ', 1e6])
 })
 
 import { ADJUST, needsAdjust, levelPayment } from './payments.js'

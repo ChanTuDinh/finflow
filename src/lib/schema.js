@@ -42,6 +42,11 @@ TABS.goals = {
   owners: ['Personal', 'Business'],
   statuses: ['Active', 'Done'],
 }
+// Ví BM: sổ thu/chi riêng, cùng cấu trúc và danh mục với Cá nhân, lưu ở tab BM_CashFlow
+TABS.bm = { ...TABS.personal, tab: 'BM_CashFlow' }
+export const CASH_KINDS = ['personal', 'business', 'bm']
+export const WALLET_LABEL = { personal: 'Cá nhân', business: 'Doanh nghiệp', bm: 'Ví BM' }
+
 // Nguồn nợ thứ hai ("Nợ BM"): cùng cấu trúc với Debts, nằm ở tab Debts_BM, tách riêng hoàn toàn khỏi nguồn nợ chính.
 // record_date: ngày ghi nhận thông tin/số dư của khoản nợ (cột cuối để Sheet cũ vẫn tương thích)
 TABS.debts_bm = { ...TABS.debts, tab: 'Debts_BM', columns: [...TABS.debts.columns.slice(0, 10), 'record_date', 'repay_type', 'term_months'], owners: [...TABS.debts.owners, 'BM'] }
@@ -52,7 +57,8 @@ export const debtScopeOptions = (kind) => (kind === 'debts_bm'
   ? [{ value: 'all', label: 'Tất cả' }, { value: 'personal', label: 'Chỉ cá nhân' }, { value: 'business', label: 'Chỉ doanh nghiệp' }, { value: 'bm', label: 'Chỉ BM' }]
   : [{ value: 'all', label: 'Cá nhân + Doanh nghiệp' }, { value: 'personal', label: 'Chỉ cá nhân' }, { value: 'business', label: 'Chỉ doanh nghiệp' }])
 // Dòng tiền dùng làm cơ sở/thống kê theo phạm vi: cá nhân hoặc doanh nghiệp riêng, còn lại gộp cả hai
-export const cashRowsForScope = (data, scope) => (scope === 'personal' ? data.personal : scope === 'business' ? data.business : [...data.personal, ...data.business])
+// kind 'debts_bm': "Tất cả" gồm cả Ví BM (nguồn nợ BM có sổ thu/chi riêng); nợ chính vẫn chỉ cá nhân + doanh nghiệp
+export const cashRowsForScope = (data, scope, kind = 'debts') => (scope === 'personal' ? data.personal : scope === 'business' ? data.business : scope === 'bm' ? data.bm : kind === 'debts_bm' ? [...data.personal, ...data.business, ...data.bm] : [...data.personal, ...data.business])
 export const DEBT_KINDS = ['debts', 'debts_bm']
 // Lịch sử trả nợ (dùng chung cho Nợ và Nợ BM, phân biệt bằng cột source). debt_name chép lại tên để đọc Sheet cho dễ.
 TABS.payments = {
@@ -62,7 +68,7 @@ TABS.payments = {
 TABS.accounts = {
   tab: 'Accounts',
   columns: ['id', 'name', 'bank', 'owner', 'preset', 'status', 'note'], // preset: cấu hình cột sao kê (JSON) do app tự lưu
-  owners: ['Personal', 'Business'],
+  owners: ['Personal', 'Business', 'BM'],
   statuses: ['Active', 'Closed'],
 }
 TABS.rules = {
@@ -72,7 +78,7 @@ TABS.rules = {
 }
 // Các tab bắt buộc phải có trong Sheet; savings/goals là tuỳ chọn (thiếu thì coi như rỗng).
 export const CORE_KINDS = ['personal', 'business', 'debts']
-export const EMPTY_DATA = () => ({ personal: [], business: [], debts: [], savings: [], goals: [], accounts: [], rules: [], debts_bm: [], payments: [] })
+export const EMPTY_DATA = () => ({ personal: [], business: [], debts: [], savings: [], goals: [], accounts: [], rules: [], debts_bm: [], payments: [], bm: [] })
 
 // Hình thức trả nợ (lưu nguyên chữ trong Sheet; ô trống = Trả gốc và lãi)
 export const REPAY = { both: 'Trả gốc và lãi', interestOnly: 'Trả lãi only' }

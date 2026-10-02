@@ -78,3 +78,16 @@ test('detectTransfers: mỗi dòng chỉ ghép một lần (ưu tiên ngày gầ
 })
 
 test('suggestKeyword', () => assert.equal(suggestKeyword('GRAB*TRIP 1234 HCM VN'), 'grab*trip hcm'))
+
+test('tài khoản thuộc BM -> giao dịch vào Ví BM (Income/Expense như cá nhân) và được ghi vào out.bm', () => {
+  const rows = stageRows({ parsed: [p('2026-09-01', 'Khách trả', 5e6), p('2026-09-02', 'Chi phí', -2e5)], account: { name: 'MB BM', owner: 'BM' } })
+  assert.deepEqual(rows.map((r) => [r.kind, r.type]), [['bm', 'Income'], ['bm', 'Expense']])
+  const w = buildWrites(rows)
+  assert.deepEqual([w.personal.length, w.business.length, w.bm.length], [0, 0, 2])
+  assert.equal(w.bm[0].account, 'MB BM')
+})
+test('chuyển nội bộ giữa Ví BM và tài khoản cá nhân được ghép cặp', () => {
+  const a = stageRows({ parsed: [p('2026-09-05', 'Chuyển sang ví BM', -10e6)], account: acc('VCB') })
+  const b = stageRows({ parsed: [p('2026-09-05', 'Nhận từ cá nhân', 10e6)], account: { name: 'MB BM', owner: 'BM' } }).map((r) => ({ ...r, key: 'b' + r.key }))
+  assert.deepEqual(detectTransfers([...a, ...b]).rows.map((r) => r.type), ['Transfer', 'Transfer'])
+})

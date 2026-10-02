@@ -16,6 +16,7 @@ Cách B: tạo 3 tab tên đúng `Personal_CashFlow`, `Business_CashFlow`, `Debt
 | Tab | Cột (hàng 1 = header, giữ đúng thứ tự) |
 |---|---|
 | Personal_CashFlow | id, date, type (Income/Expense/Transfer), category, amount, account, note, created_by, ref |
+| BM_CashFlow | Giống hệt Personal_CashFlow — sổ thu/chi của **Ví BM**, tab tuỳ chọn |
 | Business_CashFlow | id, date, type (Revenue/Expense/Transfer), category, amount, counterparty, note, created_by, account, ref |
 | Debts | id, name, lender, owner (Personal/Business), balance, apr (%/năm), min_payment (số tiền trả mỗi tháng), due_day, status (Active/Paid), note, repay_type (`Trả gốc và lãi` / `Trả lãi only`), term_months (số tháng còn lại) |
 | Debts_BM | Giống Debts (`owner` có thêm giá trị `BM`) + `record_date`, `repay_type`, `term_months` (ngày ghi nhận, yyyy-mm-dd) — nguồn nợ thứ hai ("Nợ BM"), tách riêng, tab tuỳ chọn |

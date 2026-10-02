@@ -2,7 +2,7 @@
 import { TABS, TRANSFER_CATEGORY, isInflow, isTransfer, newId } from './schema.js'
 import { fold } from './importParse.js'
 
-const kindOf = (owner) => (owner === 'Business' ? 'business' : 'personal')
+const kindOf = (owner) => (owner === 'Business' ? 'business' : owner === 'BM' ? 'bm' : 'personal')
 const dayDiff = (a, b) => Math.abs((Date.parse(a) - Date.parse(b)) / 86400000)
 
 /** Quy tắc khớp từ khóa (bỏ dấu, không phân biệt hoa thường); từ khóa dài nhất thắng. Trả '' nếu không khớp. */
@@ -94,10 +94,11 @@ export function detectTransfers(staged, existing = [], maxDays = 2) {
 
 /** Dòng đã duyệt -> bản ghi để ghi vào Sheet (tab Personal/Business). */
 export function buildWrites(rows, createdBy = 'import') {
-  const out = { personal: [], business: [] }
+  const out = { personal: [], business: [], bm: [] }
   for (const r of rows.filter((x) => x.include)) {
     const base = { id: newId(), date: r.date, type: r.type, category: r.category, amount: r.amount, note: r.note, created_by: createdBy, ref: r.ref }
     if (r.kind === 'business') out.business.push({ ...base, counterparty: '', account: r.account })
+    else if (r.kind === 'bm') out.bm.push({ ...base, account: r.account })
     else out.personal.push({ ...base, account: r.account })
   }
   return out

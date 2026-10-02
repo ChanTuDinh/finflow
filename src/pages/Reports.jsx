@@ -11,15 +11,15 @@ export default function Reports() {
   const { data, money } = useStore()
   const { period, grain, drill } = usePeriod()
   const [scope, setScope] = useState('personal')
-  const rows = breakdown(data[scope], period, dataYears(data.personal, data.business), grain)
-  const inLabel = scope === 'personal' ? 'Thu nhập' : 'Doanh thu'
+  const rows = breakdown(data[scope], period, dataYears(data.personal, data.business, data.bm), grain)
+  const inLabel = scope === 'business' ? 'Doanh thu' : 'Thu nhập'
   const canDrill = (k) => !!fromKey(k)
   const onBar = (d) => { const k = d?.period ?? d?.payload?.period; if (k) drill(k) }
   const total = rows.reduce((t, r) => ({ income: t.income + r.income, expense: t.expense + r.expense, net: t.net + r.net }), { income: 0, expense: 0, net: 0 })
 
   return (
     <div className="space-y-2">
-      <FilterBar grain lead={<SelectField label="Phạm vi" value={scope} onChange={setScope} options={[{ value: 'personal', label: 'Cá nhân' }, { value: 'business', label: 'Doanh nghiệp' }]} />} />
+      <FilterBar grain lead={<SelectField label="Phạm vi" value={scope} onChange={setScope} options={[{ value: 'personal', label: 'Cá nhân' }, { value: 'business', label: 'Doanh nghiệp' }, { value: 'bm', label: 'Ví BM' }]} />} />
       <p className="text-xs text-slate-400">Bấm vào cột hoặc dòng để xem chi tiết kỳ đó.</p>
       <section className="card">
         <Chart>

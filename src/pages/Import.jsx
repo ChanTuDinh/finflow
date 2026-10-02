@@ -27,7 +27,7 @@ export default function Import({ onBack }) {
   const [msg, setMsg] = useState({ text: '', error: false })
   const [editing, setEditing] = useState(null)
 
-  const existing = useMemo(() => [...data.personal.map((r) => ({ ...r, _kind: 'personal' })), ...data.business.map((r) => ({ ...r, _kind: 'business' }))], [data])
+  const existing = useMemo(() => [...data.personal.map((r) => ({ ...r, _kind: 'personal' })), ...data.business.map((r) => ({ ...r, _kind: 'business' })), ...data.bm.map((r) => ({ ...r, _kind: 'bm' }))], [data])
   const savedPreset = useMemo(() => { try { return account?.preset ? JSON.parse(account.preset) : null } catch { return null } }, [account])
 
   const base = useMemo(() => {
@@ -59,7 +59,7 @@ export default function Import({ onBack }) {
   }
   const doImport = async () => {
     const w = buildWrites(included)
-    const n = w.personal.length + w.business.length
+    const n = w.personal.length + w.business.length + w.bm.length
     if (await importBatch({ ...w, convert })) {
       setMsg({ text: `Đã nhập ${n} giao dịch${stats.transfers ? `, trong đó ${stats.transfers} chuyển nội bộ` : ''}${convert.length ? `; đổi ${convert.length} giao dịch cũ thành chuyển nội bộ` : ''}.`, error: false })
       if (!savedPreset) await upsert('accounts', { ...account, preset: JSON.stringify(mapping) }) // lần sau không phải chọn cột nữa
@@ -85,11 +85,11 @@ export default function Import({ onBack }) {
       <section className="card space-y-3">
         <div className="flex flex-wrap items-end gap-3">
           <SelectField label="Tài khoản ngân hàng" value={accountId} onChange={pickAccount}
-            options={[{ value: '', label: accounts.length ? '— Chọn tài khoản —' : '(chưa có tài khoản)' }, ...accounts.map((a) => ({ value: a.id, label: `${a.name} · ${a.owner === 'Business' ? 'DN' : 'Cá nhân'}${a.preset ? ' ✓' : ''}` }))]} />
+            options={[{ value: '', label: accounts.length ? '— Chọn tài khoản —' : '(chưa có tài khoản)' }, ...accounts.map((a) => ({ value: a.id, label: `${a.name} · ${a.owner === 'Business' ? 'DN' : a.owner === 'BM' ? 'Ví BM' : 'Cá nhân'}${a.preset ? ' ✓' : ''}` }))]} />
           <button className="btn-ghost" onClick={() => setEditing({ kind: 'accounts' })}>+ Thêm tài khoản</button>
           <Field label="File sao kê"><input type="file" accept=".csv,.txt,.xlsx" disabled={!account} onChange={onFile} className="text-sm" /></Field>
         </div>
-        {!account && <p className="text-sm text-slate-500">Chọn (hoặc thêm) tài khoản trước: app nhớ cách đọc file của từng ngân hàng (✓) và tự đưa giao dịch vào đúng tab Cá nhân / Doanh nghiệp.</p>}
+        {!account && <p className="text-sm text-slate-500">Chọn (hoặc thêm) tài khoản trước: app nhớ cách đọc file của từng ngân hàng (✓) và tự đưa giao dịch vào đúng tab Cá nhân / Doanh nghiệp / Ví BM.</p>}
         {table && <p className="text-sm text-slate-500">Đã đọc <b>{fileName}</b> · {table.length} dòng thô · {mapping && extractRows(table, mapping).length} giao dịch nhận diện được</p>}
       </section>
 
@@ -159,7 +159,7 @@ export default function Import({ onBack }) {
         <div className="flex flex-wrap gap-2">
           {data.rules.map((r) => (
             <span key={r.id} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs">
-              <b>{r.keyword}</b> → {r.category}{r.direction === 'in' ? ' (thu)' : r.direction === 'out' ? ' (chi)' : ''}{r.owner ? ` · ${r.owner === 'Business' ? 'DN' : 'CN'}` : ''}
+              <b>{r.keyword}</b> → {r.category}{r.direction === 'in' ? ' (thu)' : r.direction === 'out' ? ' (chi)' : ''}{r.owner ? ` · ${r.owner === 'Business' ? 'DN' : r.owner === 'BM' ? 'BM' : 'CN'}` : ''}
               <button className="text-blue-600" onClick={() => setEditing({ kind: 'rules', row: r })}>sửa</button>
               <button className="text-red-600" onClick={() => remove('rules', r)}>✕</button>
             </span>
@@ -173,7 +173,7 @@ export default function Import({ onBack }) {
         <div className="space-y-1 text-sm">
           {data.accounts.map((a) => (
             <div key={a.id} className={`flex items-center gap-2 ${a.status === 'Closed' ? 'opacity-50' : ''}`}>
-              <span className="font-medium">{a.name}</span><span className="text-slate-400">{a.owner === 'Business' ? 'Doanh nghiệp' : 'Cá nhân'} · {a.preset ? 'đã lưu cách đọc file' : 'chưa có cách đọc file'}</span>
+              <span className="font-medium">{a.name}</span><span className="text-slate-400">{a.owner === 'Business' ? 'Doanh nghiệp' : a.owner === 'BM' ? 'Ví BM' : 'Cá nhân'} · {a.preset ? 'đã lưu cách đọc file' : 'chưa có cách đọc file'}</span>
               <span className="ml-auto whitespace-nowrap"><button className="text-blue-600 mr-2" onClick={() => setEditing({ kind: 'accounts', row: a })}>Sửa</button><button className="text-red-600" onClick={() => confirm('Xoá tài khoản này? Giao dịch đã nhập không bị xoá.') && remove('accounts', a)}>Xoá</button></span>
             </div>
           ))}

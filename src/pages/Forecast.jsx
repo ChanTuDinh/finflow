@@ -25,7 +25,7 @@ export default function Forecast({ kind = 'debts' }) {
   const counted = useCountedPayments(kind) // dư nợ đã hoàn lại các lần trả bị bỏ tick ở tab Nợ
   const inScope = useMemo(() => counted.debts.filter((d) => scope === 'all' || d.owner === SCOPE_OWNER[scope]), [counted.debts, scope])
   const debts = useMemo(() => sel.filter(inScope), [inScope, sel.excluded]) // chỉ các khoản đã tick ở tab Nợ
-  const rows = useMemo(() => cashRowsForScope(data, scope), [data, scope])
+  const rows = useMemo(() => cashRowsForScope(data, scope, kind), [data, scope, kind])
   const baseline = useMemo(() => baselineFrom(rows, endYm), [rows, endYm])
   const minTotal = debts.filter((d) => d.status !== 'Paid').reduce((s, d) => s + d.min_payment, 0)
   const [scenarios, setScenarios] = useState(null)

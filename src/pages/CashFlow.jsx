@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../lib/store.jsx'
-import { isInflow, isTransfer } from '../lib/schema.js'
+import { isInflow, isTransfer, TABS } from '../lib/schema.js'
 import { totals } from '../lib/calc.js'
 import { usePeriod } from '../lib/period.jsx'
 import { inPeriod } from '../lib/period.js'
@@ -15,10 +15,11 @@ export default function CashFlow({ kind, onImport }) {
   const [editing, setEditing] = useState(null) // null | {} (mới) | row
   const shown = rows.filter((r) => inPeriod(period, r.date)).sort((a, b) => b.date.localeCompare(a.date))
   const t = totals(shown)
-  const inLabel = kind === 'personal' ? 'Thu nhập' : 'Doanh thu'
+  const inLabel = kind === 'business' ? 'Doanh thu' : 'Thu nhập'
 
   return (
     <div className="space-y-4">
+      {data._missing?.includes(kind) && <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm p-2">Sheet chưa có tab {TABS[kind].tab}. Chạy lại <code>setup.gs</code> (không xoá dữ liệu cũ) hoặc tạo tab đúng tên để lưu dữ liệu.</div>}
       <FilterBar action={<div className="flex gap-2"><button className="btn-ghost" onClick={onImport}>Nhập sao kê</button><button className="btn" onClick={() => setEditing({})}>+ Thêm giao dịch</button></div>} />
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Stat label={inLabel} value={money(t.income)} />
@@ -27,7 +28,7 @@ export default function CashFlow({ kind, onImport }) {
       </div>
       <div className="card overflow-x-auto p-0">
         <table className="w-full text-sm">
-          <thead className="text-xs text-slate-500 text-left"><tr>{['Ngày', 'Loại', 'Danh mục', 'Số tiền', kind === 'personal' ? 'Tài khoản' : 'Đối tác', 'Ghi chú', 'Bởi', ''].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr></thead>
+          <thead className="text-xs text-slate-500 text-left"><tr>{['Ngày', 'Loại', 'Danh mục', 'Số tiền', kind === 'business' ? 'Đối tác' : 'Tài khoản', 'Ghi chú', 'Bởi', ''].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr></thead>
           <tbody>
             {shown.map((r) => (
               <tr key={r.id} className="border-t border-slate-100">

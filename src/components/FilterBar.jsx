@@ -13,7 +13,7 @@ export default function FilterBar({ lead, action, grain: showGrain = false }) {
   const { period, setPeriod, grain, setGrain } = usePeriod()
   const { data } = useStore()
   const years = useMemo(() => {
-    const ys = new Set(dataYears(data.personal, data.business))
+    const ys = new Set(dataYears(data.personal, data.business, data.bm))
     ys.add(Number(new Date().toISOString().slice(0, 4)))
     return [...ys].sort((a, b) => b - a)
   }, [data])

@@ -147,7 +147,7 @@ export function buildPayment({ debt, kind, type, amount, date, note = '', create
 
 /** Dòng chi "Trả nợ" tương ứng trong sổ dòng tiền (khoản của Business -> sổ doanh nghiệp, còn lại -> sổ cá nhân). */
 export function cashRowFor(debt, payment) {
-  const kind = debt.owner === 'Business' ? 'business' : 'personal'
+  const kind = debt.owner === 'Business' ? 'business' : debt.owner === 'BM' ? 'bm' : 'personal'
   const row = { id: newId(), date: payment.date, type: 'Expense', category: 'Trả nợ', amount: payment.amount, note: `Trả nợ: ${debt.name}`, created_by: payment.created_by, ref: '' }
   return { kind, row: kind === 'business' ? { ...row, counterparty: debt.lender || '', account: '' } : { ...row, account: '' } }
 }

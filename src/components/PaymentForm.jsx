@@ -77,7 +77,7 @@ export default function PaymentForm({ kind, debt, payment, limited = false, onCl
         <div className="col-span-2"><Field label="Ghi chú"><input className="input" value={f.note} onChange={(e) => set('note', e.target.value)} /></Field></div>
         {!editing && <label className="col-span-2 flex items-start gap-2 text-sm">
           <input type="checkbox" className="mt-1" checked={f.cash} onChange={(e) => set('cash', e.target.checked)} />
-          <span>Ghi thêm một khoản chi “Trả nợ” vào {debt.owner === 'Business' ? 'sổ Doanh nghiệp' : 'sổ Cá nhân'}
+          <span>Ghi thêm một khoản chi “Trả nợ” vào {debt.owner === 'Business' ? 'sổ Doanh nghiệp' : debt.owner === 'BM' ? 'Ví BM' : 'sổ Cá nhân'}
             <span className="block text-xs text-slate-500">Để tắt nếu bạn nhập sao kê ngân hàng — khoản chi đã có sẵn trong sao kê, bật sẽ bị tính trùng.</span></span>
         </label>}
         {err && <div className="col-span-2 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm p-2">{err}</div>}

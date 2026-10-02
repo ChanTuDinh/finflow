@@ -23,7 +23,9 @@ test('Nợ BM có chủ khoản nợ BM và bộ lọc phạm vi BM; nợ chính
   assert.ok(debtScopeOptions('debts_bm').some((o) => o.value === 'bm'))
   assert.ok(!debtScopeOptions('debts').some((o) => o.value === 'bm'))
   assert.equal(SCOPE_OWNER.bm, 'BM')
-  const d = { personal: [1], business: [2] }
-  assert.deepEqual(cashRowsForScope(d, 'bm'), [1, 2]) // BM không có dòng tiền riêng: dùng cả hai
+  const d = { personal: [1], business: [2], bm: [3] }
+  assert.deepEqual(cashRowsForScope(d, 'bm'), [3]) // Ví BM có sổ riêng
   assert.deepEqual(cashRowsForScope(d, 'business'), [2])
+  assert.deepEqual(cashRowsForScope(d, 'all'), [1, 2]) // nợ chính: chỉ cá nhân + doanh nghiệp
+  assert.deepEqual(cashRowsForScope(d, 'all', 'debts_bm'), [1, 2, 3]) // nợ BM: gồm cả Ví BM
 })

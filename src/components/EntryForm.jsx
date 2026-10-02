@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react'
-import { TABS, REPAY } from '../lib/schema.js'
+import { TABS, REPAY, CASH_KINDS } from '../lib/schema.js'
 import { computeApr, estimateTerm } from '../lib/rate.js'
 import { todayIso } from '../lib/format.js'
 import { Field, Modal, Segmented, focusNextOnEnter } from './ui.jsx'
 import { useStore } from '../lib/store.jsx'
 
-const TITLES = { personal: 'giao dịch cá nhân', business: 'giao dịch doanh nghiệp', debts: 'khoản nợ', debts_bm: 'khoản nợ BM', savings: 'khoản tích lũy', goals: 'mục tiêu', accounts: 'tài khoản ngân hàng', rules: 'quy tắc phân loại' }
+const TITLES = { personal: 'giao dịch cá nhân', business: 'giao dịch doanh nghiệp', bm: 'giao dịch Ví BM', debts: 'khoản nợ', debts_bm: 'khoản nợ BM', savings: 'khoản tích lũy', goals: 'mục tiêu', accounts: 'tài khoản ngân hàng', rules: 'quy tắc phân loại' }
 const DEBT_BLANK = { name: '', lender: '', owner: 'Personal', balance: 0, apr: 0, min_payment: 0, due_day: 1, status: 'Active', note: '', repay_type: REPAY.both, term_months: 0 }
 const EMPTY = {
   debts: DEBT_BLANK,
@@ -21,12 +21,12 @@ const ALL_CATEGORIES = [...new Set([...Object.values(TABS.personal.categories), 
 export default function EntryForm({ kind, row, onClose }) {
   const { upsert, status, data, money } = useStore()
   const cfg = TABS[kind]
-  const cash = kind === 'personal' || kind === 'business'
+  const cash = CASH_KINDS.includes(kind)
   const isDebt = kind === 'debts' || kind === 'debts_bm'
   const [f, setF] = useState(() => {
     const init = row || (kind === 'debts_bm' ? { ...DEBT_BLANK, record_date: todayIso() } : EMPTY[kind]) || {
       date: todayIso(), type: cfg.types[1], category: cfg.categories[cfg.types[1]][0], amount: 0,
-      [kind === 'personal' ? 'account' : 'counterparty']: '', note: '',
+      [kind === 'business' ? 'counterparty' : 'account']: '', note: '',
     }
     return isDebt ? { ...init, repay_type: init.repay_type || REPAY.both } : init // dòng cũ chưa có hình thức = trả gốc và lãi
   })
@@ -47,7 +47,7 @@ export default function EntryForm({ kind, row, onClose }) {
     }
     if (await upsert(kind, f)) onClose()
   }
-  const who = kind === 'personal' ? ['account', 'Tài khoản / ví'] : ['counterparty', 'Đối tác / khách hàng']
+  const who = kind === 'business' ? ['counterparty', 'Đối tác / khách hàng'] : ['account', 'Tài khoản / ví']
   const select = (k, options) => <select className="input" value={f[k]} onChange={(e) => set(k, e.target.value)}>{options.map((o) => <option key={o}>{o}</option>)}</select>
   const text = (k, required) => <input required={required} className="input" value={f[k] ?? ''} onChange={(e) => set(k, e.target.value)} />
   const number = (k, extra = {}) => <input type="number" min="0" className="input" value={f[k]} onChange={num(k)} {...extra} />
@@ -117,7 +117,7 @@ export default function EntryForm({ kind, row, onClose }) {
           <div className="col-span-2"><Field label="Từ khóa trong nội dung giao dịch (không cần dấu)">{text('keyword', true)}</Field></div>
           <Field label="Danh mục"><select className="input" value={f.category} onChange={(e) => set('category', e.target.value)}>{ALL_CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></Field>
           <Field label="Áp dụng cho"><select className="input" value={f.direction} onChange={(e) => set('direction', e.target.value)}><option value="out">Khoản chi</option><option value="in">Khoản thu</option><option value="any">Cả hai</option></select></Field>
-          <Field label="Phạm vi"><select className="input" value={f.owner} onChange={(e) => set('owner', e.target.value)}><option value="">Cả cá nhân và DN</option><option value="Personal">Chỉ cá nhân</option><option value="Business">Chỉ doanh nghiệp</option></select></Field>
+          <Field label="Phạm vi"><select className="input" value={f.owner} onChange={(e) => set('owner', e.target.value)}><option value="">Tất cả (cá nhân, DN, Ví BM)</option><option value="Personal">Chỉ cá nhân</option><option value="Business">Chỉ doanh nghiệp</option><option value="BM">Chỉ Ví BM</option></select></Field>
         </>)}
         {cash && (<>
           <Field label="Ngày"><input type="date" required className="input" value={f.date} onChange={(e) => set('date', e.target.value)} /></Field>

@@ -14,6 +14,7 @@ const PAGES = [
   ['dashboard', 'Tổng quan'],
   ['personal', 'Cá nhân'],
   ['business', 'Doanh nghiệp'],
+  ['bm', 'Ví BM'],
   ['debts', 'Nợ'],
   ['forecast', 'Forecast Nợ'],
   ['debtsBm', 'Nợ BM'],
@@ -46,7 +47,7 @@ export default function App() {
         ))}
       </nav>
       {page === 'dashboard' && <Dashboard />}
-      {(page === 'personal' || page === 'business') && <CashFlow key={page} kind={page} onImport={() => setPage('import')} />}
+      {(page === 'personal' || page === 'business' || page === 'bm') && <CashFlow key={page} kind={page} onImport={() => setPage('import')} />}
       {page === 'import' && <Import onBack={() => setPage('personal')} />}
       {page === 'debts' && <Debts />}
       {page === 'reports' && <Reports />}

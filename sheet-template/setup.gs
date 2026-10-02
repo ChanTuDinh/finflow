@@ -10,6 +10,12 @@ const TABS = {
     sample: [['p001', '2026-09-05', 'Income', 'Lương', 40000000, 'Vietcombank', 'Lương tháng 9', 'me'],
              ['p002', '2026-09-06', 'Expense', 'Nhà ở', 9000000, 'Vietcombank', 'Tiền thuê nhà', 'me']],
   },
+  BM_CashFlow: {
+    // Ví BM: cùng cấu trúc với Personal_CashFlow
+    header: ['id', 'date', 'type', 'category', 'amount', 'account', 'note', 'created_by', 'ref'],
+    validation: { 3: ['Income', 'Expense', 'Transfer'] },
+    sample: [['w001', '2026-09-03', 'Income', 'Khác', 20000000, 'MB (Ví BM)', 'Thu từ BM', 'me', '']],
+  },
   Business_CashFlow: {
     header: ['id', 'date', 'type', 'category', 'amount', 'counterparty', 'note', 'created_by', 'account', 'ref'],
     validation: { 3: ['Revenue', 'Expense', 'Transfer'] },
@@ -43,7 +49,7 @@ const TABS = {
   Accounts: {
     // preset: app tự ghi cấu hình cột sao kê (JSON) — không cần sửa tay
     header: ['id', 'name', 'bank', 'owner', 'preset', 'status', 'note'],
-    validation: { 4: ['Personal', 'Business'], 6: ['Active', 'Closed'] },
+    validation: { 4: ['Personal', 'Business', 'BM'], 6: ['Active', 'Closed'] },
     sample: [['a001', 'Vietcombank', 'Vietcombank', 'Personal', '', 'Active', '']],
   },
   Rules: {

@@ -37,7 +37,7 @@ export default function Debts({ kind = 'debts' }) {
   const total = active.reduce((s, d) => s + d.balance, 0)
   const min = active.reduce((s, d) => s + d.min_payment, 0)
   const interest = active.reduce((s, d) => s + (d.balance * d.apr) / 1200, 0)
-  const cash = cashRowsForScope(data, scope)
+  const cash = cashRowsForScope(data, scope, kind)
   // Lịch sử trả nợ của nguồn này, chỉ các khoản đã tick, trong kỳ đang chọn
   const latestPaymentId = {}
   for (const x of data.payments) if (x.source === kind) latestPaymentId[x.debt_id] = x.id
