@@ -25,6 +25,9 @@ const PAGES = [
   ['settings', 'Cài đặt'],
 ]
 
+// Các tab đang ưu tiên làm việc (Ví BM, Nợ BM, Nợ BM Forecast): tô một màu riêng cho dễ thấy giữa nhiều tab
+const FOCUS_TABS = new Set(['bm', 'debtsBm', 'forecastBm'])
+
 export default function App() {
   const [page, setPage] = useState('dashboard')
   const { mode, status, refresh } = useStore()
@@ -40,11 +43,17 @@ export default function App() {
       </header>
       {status.error && <div className="mb-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm p-2">{status.error}</div>}
       <nav className="flex flex-wrap gap-1 mb-4 border-b border-slate-200">
-        {PAGES.map(([k, label]) => (
-          <button key={k} onClick={() => setPage(k)} className={`px-3 py-2 text-sm -mb-px border-b-2 ${page === k ? 'border-slate-900 font-semibold' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>
-            {label}
-          </button>
-        ))}
+        {PAGES.map(([k, label]) => {
+          const focus = FOCUS_TABS.has(k)
+          const cls = focus
+            ? `rounded-t-md font-medium ${page === k ? 'border-violet-700 bg-violet-600 text-white' : 'border-transparent bg-violet-100 text-violet-800 hover:bg-violet-200'}`
+            : page === k ? 'border-slate-900 font-semibold' : 'border-transparent text-slate-500 hover:text-slate-800'
+          return (
+            <button key={k} onClick={() => setPage(k)} className={`px-3 py-2 text-sm -mb-px border-b-2 ${cls}`}>
+              {label}
+            </button>
+          )
+        })}
       </nav>
       {page === 'dashboard' && <Dashboard />}
       {(page === 'personal' || page === 'business' || page === 'bm') && <CashFlow key={page} kind={page} onImport={() => setPage('import')} />}
