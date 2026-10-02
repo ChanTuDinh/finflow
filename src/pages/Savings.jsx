@@ -70,30 +70,41 @@ export default function Savings() {
 
       <section className="space-y-2">
         <div className="flex items-center"><h2 className="font-semibold">Khoản tích lũy</h2><button className="btn ml-auto" onClick={() => setEditing({ kind: 'savings' })}>+ Thêm khoản tích lũy</button></div>
-        <div className="card overflow-x-auto p-0">
-          <table className="w-full text-sm">
-            <thead className="text-xs text-slate-500 text-left"><tr>{['Tên', 'Loại', 'Thuộc về', 'Số dư', 'Góp / tháng', 'Lãi %/năm', 'Mục tiêu', 'Trạng thái', 'Ghi chú', ''].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr></thead>
+        {/* Gộp cột để vừa một màn hình; điện thoại: dạng thẻ */}
+        <div className="hidden md:block card p-0 overflow-hidden">
+          <table className="w-full text-sm table-fixed">
+            <colgroup><col style={{ width: '24%' }} /><col style={{ width: '15%' }} /><col style={{ width: '14%' }} /><col style={{ width: 78 }} /><col style={{ width: '14%' }} /><col /><col style={{ width: 84 }} /></colgroup>
+            <thead className="text-xs text-slate-500 text-left"><tr><th className="px-3 py-2">Khoản tích lũy</th><th className="px-3 py-2 text-right">Số dư</th><th className="px-3 py-2 text-right">Góp / tháng</th><th className="px-2 py-2 text-center">Lãi %/năm</th><th className="px-3 py-2">Mục tiêu</th><th className="px-3 py-2">Ghi chú</th><th /></tr></thead>
             <tbody>
               {savings.map((a) => (
-                <tr key={a.id} className={`border-t border-slate-100 ${a.status === 'Closed' ? 'opacity-50' : ''}`}>
-                  <td className="px-3 py-1.5 font-medium">{a.name}</td>
-                  <td className="px-3 py-1.5">{a.type}</td>
-                  <td className="px-3 py-1.5">{OWNER[a.owner]}</td>
-                  <td className="px-3 py-1.5 text-right whitespace-nowrap">{money(a.balance)}</td>
-                  <td className="px-3 py-1.5 text-right whitespace-nowrap">{money(a.monthly_contribution)}</td>
-                  <td className="px-3 py-1.5 text-right">{a.annual_return}</td>
-                  <td className="px-3 py-1.5">{goalName(a.goal_id)}</td>
-                  <td className="px-3 py-1.5">{a.status}</td>
-                  <td className="px-3 py-1.5 text-slate-600 min-w-[160px] max-w-[280px] whitespace-pre-line break-words">{a.note}</td>
-                  <td className="px-3 py-1.5 whitespace-nowrap">
-                    <button className="text-blue-600 mr-2" onClick={() => setEditing({ kind: 'savings', row: a })}>Sửa</button>
-                    <button className="text-red-600" onClick={() => confirm('Xoá khoản tích lũy này?') && remove('savings', a)}>Xoá</button>
-                  </td>
+                <tr key={a.id} className={`border-t border-slate-100 align-top ${a.status === 'Closed' ? 'opacity-50' : ''}`}>
+                  <td className="px-3 py-2"><div className="font-medium break-words">{a.name}{a.status === 'Closed' && <span className="ml-1 text-xs font-normal rounded bg-slate-200 px-1.5">Đã đóng</span>}</div><div className="text-xs text-slate-500">{a.type} · {OWNER[a.owner]}</div></td>
+                  <td className="px-3 py-2 text-right whitespace-nowrap">{money(a.balance)}</td>
+                  <td className="px-3 py-2 text-right whitespace-nowrap">{money(a.monthly_contribution)}</td>
+                  <td className="px-2 py-2 text-center">{a.annual_return}</td>
+                  <td className="px-3 py-2 break-words">{goalName(a.goal_id)}</td>
+                  <td className="px-3 py-2 text-slate-600 whitespace-pre-line break-words">{a.note}</td>
+                  <td className="px-3 py-2 text-right text-xs leading-6"><div><button className="text-blue-600" onClick={() => setEditing({ kind: 'savings', row: a })}>Sửa</button> · <button className="text-red-600" onClick={() => confirm('Xoá khoản tích lũy này?') && remove('savings', a)}>Xoá</button></div></td>
                 </tr>
               ))}
-              {!savings.length && <tr><td colSpan={10} className="px-3 py-6 text-center text-slate-400">Chưa có khoản tích lũy</td></tr>}
+              {!savings.length && <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-400">Chưa có khoản tích lũy</td></tr>}
             </tbody>
           </table>
+        </div>
+        <div className="md:hidden space-y-2">
+          {savings.map((a) => (
+            <div key={a.id} className={`card space-y-2 ${a.status === 'Closed' ? 'opacity-50' : ''}`}>
+              <div><div className="font-medium break-words">{a.name}{a.status === 'Closed' && <span className="ml-1 text-xs font-normal rounded bg-slate-200 px-1.5">Đã đóng</span>}</div><div className="text-xs text-slate-500">{[a.type, OWNER[a.owner], goalName(a.goal_id)].filter(Boolean).join(' · ')}</div></div>
+              <div className="grid grid-cols-3 gap-2 text-sm">
+                <div><div className="text-xs text-slate-500">Số dư</div><div className="font-medium break-words">{money(a.balance)}</div></div>
+                <div><div className="text-xs text-slate-500">Góp / tháng</div><div className="font-medium break-words">{money(a.monthly_contribution)}</div></div>
+                <div><div className="text-xs text-slate-500">Lãi %/năm</div><div className="font-medium">{a.annual_return}</div></div>
+              </div>
+              {a.note && <div className="text-sm text-slate-600 whitespace-pre-line break-words">{a.note}</div>}
+              <div className="flex gap-3 text-sm"><button className="text-blue-600" onClick={() => setEditing({ kind: 'savings', row: a })}>Sửa</button><button className="text-red-600" onClick={() => confirm('Xoá khoản tích lũy này?') && remove('savings', a)}>Xoá</button></div>
+            </div>
+          ))}
+          {!savings.length && <div className="card text-center text-slate-400 text-sm">Chưa có khoản tích lũy</div>}
         </div>
       </section>
       {editing && <EntryForm kind={editing.kind} row={editing.row?.id ? editing.row : null} onClose={() => setEditing(null)} />}
