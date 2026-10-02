@@ -63,3 +63,11 @@ export function Segmented({ label, value, onChange, options }) {
 }
 
 export const FilterRow = ({ children }) => <div className="flex flex-wrap items-end gap-3 mb-4">{children}</div>
+
+// Enter trong ô nhập chỉ chuyển sang ô kế tiếp (như bảng tính); lưu bằng nút "Lưu" để không vô tình lưu dòng còn dở.
+export function focusNextOnEnter(e) {
+  if (e.key !== 'Enter' || e.target.tagName !== 'INPUT' || e.target.type === 'checkbox') return
+  e.preventDefault()
+  const fields = [...e.currentTarget.querySelectorAll('input:not([type=hidden]), select, textarea, button[type=submit]')]
+  fields[fields.indexOf(e.target) + 1]?.focus()
+}

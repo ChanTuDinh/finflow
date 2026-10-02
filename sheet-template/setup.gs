@@ -28,6 +28,13 @@ const TABS = {
     sample: [['m001', 'Vay BM #1', 'BM', 'Business', 90000000, 12, 900000, 10, 'Active', '', '2026-10-01', 'Trả lãi only', '']],
     textCols: [11], // record_date dạng chữ yyyy-mm-dd
   },
+  Debt_Payments: {
+    // Lịch sử trả nợ do app ghi (source: debts | debts_bm; type: Trả gốc | Trả lãi | Gốc + lãi)
+    header: ['id', 'date', 'source', 'debt_id', 'debt_name', 'type', 'amount', 'principal', 'interest', 'balance_after', 'note', 'created_by'],
+    validation: { 3: ['debts', 'debts_bm'], 6: ['Trả gốc', 'Trả lãi', 'Gốc + lãi'] },
+    sample: [],
+    textCols: [2], // date dạng chữ yyyy-mm-dd
+  },
   Savings: {
     header: ['id', 'name', 'type', 'owner', 'balance', 'monthly_contribution', 'annual_return', 'goal_id', 'status', 'note'],
     validation: { 3: ['Tiết kiệm', 'Chứng khoán', 'Vàng', 'Quỹ dự phòng', 'Quỹ đầu tư', 'Khác'], 4: ['Personal', 'Business'], 9: ['Active', 'Closed'] },

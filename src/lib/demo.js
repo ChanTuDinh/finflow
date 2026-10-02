@@ -49,5 +49,14 @@ export function demoData(endYm) {
   const bm = (name, lender, owner, balance, apr, min_payment, due_day, repay_type = 'Trả gốc và lãi', term_months = 0) => BM.push({ id: newId(), name, lender, owner, balance, apr, min_payment, due_day, status: 'Active', note: '', record_date: `${endYm}-01`, repay_type, term_months })
   bm('Vay BM #1', 'BM', 'Business', 90_000_000, 12, 900_000, 10, 'Trả lãi only')
   bm('Vay BM #2', 'BM', 'BM', 40_000_000, 8, 1_500_000, 20, 'Trả gốc và lãi', 30)
-  return { personal: P, business: B, debts: D, savings: S, goals: G, accounts: A, rules: R, debts_bm: BM }
+  // Lịch sử trả nợ mẫu (dư nợ sau khi trả khớp dư nợ hiện tại của từng khoản)
+  const PAY = []
+  const pay = (list, source, name, date, type, amount, principal, interest) => {
+    const debt = list.find((x) => x.name === name)
+    if (debt) PAY.push({ id: newId(), date, source, debt_id: debt.id, debt_name: name, type, amount, principal, interest, balance_after: debt.balance, note: '', created_by: 'demo' })
+  }
+  pay(BM, 'debts_bm', 'Vay BM #1', `${endYm}-05`, 'Trả gốc', 10_000_000, 10_000_000, 0)
+  pay(BM, 'debts_bm', 'Vay BM #1', `${endYm}-05`, 'Trả lãi', 900_000, 0, 900_000)
+  pay(D, 'debts', 'Vay mua xe', `${endYm}-25`, 'Gốc + lãi', 3_000_000, 1_350_000, 1_650_000)
+  return { personal: P, business: B, debts: D, savings: S, goals: G, accounts: A, rules: R, debts_bm: BM, payments: PAY }
 }

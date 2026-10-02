@@ -14,7 +14,7 @@ const loadDemo = () => {
   const fresh = demoData(todayIso().slice(0, 7))
   const saved = load(`${LS}:demo`, null)
   if (!saved) return fresh
-  return { ...EMPTY_DATA(), ...saved, savings: saved.savings ?? fresh.savings, goals: saved.goals ?? fresh.goals, accounts: saved.accounts ?? fresh.accounts, rules: saved.rules ?? fresh.rules, debts_bm: saved.debts_bm ?? fresh.debts_bm }
+  return { ...EMPTY_DATA(), ...saved, savings: saved.savings ?? fresh.savings, goals: saved.goals ?? fresh.goals, accounts: saved.accounts ?? fresh.accounts, rules: saved.rules ?? fresh.rules, debts_bm: saved.debts_bm ?? fresh.debts_bm, payments: saved.payments ?? fresh.payments }
 }
 const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)) } catch { /* ignore */ } }
 
@@ -77,6 +77,30 @@ export function StoreProvider({ children }) {
       })
     }
   })
+  // Ghi một lần trả nợ: thêm vào lịch sử + cập nhật dư nợ (+ tuỳ chọn thêm dòng chi vào sổ dòng tiền).
+  const recordPayment = ({ kind, debt, payment, cash }) => run(async () => {
+    if (mode === 'sheets') {
+      await sheets.appendRows(settings.sheetId, 'payments', [payment])
+      await sheets.updateRow(settings.sheetId, kind, debt)
+      if (cash) await sheets.appendRows(settings.sheetId, cash.kind, [cash.row])
+      setData(await sheets.loadAll(settings.sheetId))
+    } else {
+      setData((d) => ({
+        ...d, payments: [...d.payments, payment], [kind]: d[kind].map((x) => (x.id === debt.id ? debt : x)),
+        ...(cash ? { [cash.kind]: [...d[cash.kind], cash.row] } : {}),
+      }))
+    }
+  })
+  // Xoá một lần trả: bỏ khỏi lịch sử rồi hoàn lại phần gốc vào dư nợ (debt = khoản nợ đã hoàn lại; null nếu khoản nợ không còn)
+  const deletePayment = ({ kind, debt, payment }) => run(async () => {
+    if (mode === 'sheets') {
+      await sheets.deleteRow(settings.sheetId, 'payments', payment)
+      if (debt) await sheets.updateRow(settings.sheetId, kind, debt)
+      setData(await sheets.loadAll(settings.sheetId))
+    } else {
+      setData((d) => ({ ...d, payments: d.payments.filter((x) => x.id !== payment.id), ...(debt ? { [kind]: d[kind].map((x) => (x.id === debt.id ? debt : x)) } : {}) }))
+    }
+  })
   const remove = (kind, row) => run(async () => {
     if (mode === 'sheets') {
       await sheets.deleteRow(settings.sheetId, kind, row)
@@ -85,7 +109,7 @@ export function StoreProvider({ children }) {
   })
 
   return (
-    <Ctx.Provider value={{ data, mode, settings, setSettings, money, status, connect, disconnect, refresh, resetDemo, upsert, remove, importBatch }}>
+    <Ctx.Provider value={{ data, mode, settings, setSettings, money, status, connect, disconnect, refresh, resetDemo, upsert, remove, importBatch, recordPayment, deletePayment }}>
       {children}
     </Ctx.Provider>
   )

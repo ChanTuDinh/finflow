@@ -54,6 +54,11 @@ export const debtScopeOptions = (kind) => (kind === 'debts_bm'
 // Dòng tiền dùng làm cơ sở/thống kê theo phạm vi: cá nhân hoặc doanh nghiệp riêng, còn lại gộp cả hai
 export const cashRowsForScope = (data, scope) => (scope === 'personal' ? data.personal : scope === 'business' ? data.business : [...data.personal, ...data.business])
 export const DEBT_KINDS = ['debts', 'debts_bm']
+// Lịch sử trả nợ (dùng chung cho Nợ và Nợ BM, phân biệt bằng cột source). debt_name chép lại tên để đọc Sheet cho dễ.
+TABS.payments = {
+  tab: 'Debt_Payments',
+  columns: ['id', 'date', 'source', 'debt_id', 'debt_name', 'type', 'amount', 'principal', 'interest', 'balance_after', 'note', 'created_by'],
+}
 TABS.accounts = {
   tab: 'Accounts',
   columns: ['id', 'name', 'bank', 'owner', 'preset', 'status', 'note'], // preset: cấu hình cột sao kê (JSON) do app tự lưu
@@ -67,7 +72,7 @@ TABS.rules = {
 }
 // Các tab bắt buộc phải có trong Sheet; savings/goals là tuỳ chọn (thiếu thì coi như rỗng).
 export const CORE_KINDS = ['personal', 'business', 'debts']
-export const EMPTY_DATA = () => ({ personal: [], business: [], debts: [], savings: [], goals: [], accounts: [], rules: [], debts_bm: [] })
+export const EMPTY_DATA = () => ({ personal: [], business: [], debts: [], savings: [], goals: [], accounts: [], rules: [], debts_bm: [], payments: [] })
 
 // Hình thức trả nợ (lưu nguyên chữ trong Sheet; ô trống = Trả gốc và lãi)
 export const REPAY = { both: 'Trả gốc và lãi', interestOnly: 'Trả lãi only' }
@@ -80,7 +85,7 @@ export const isTransfer = (row) => row.type === 'Transfer'
 export const TRANSFER_CATEGORY = 'Chuyển nội bộ'
 export const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 
-const NUMERIC = new Set(['amount', 'balance', 'apr', 'min_payment', 'due_day', 'monthly_contribution', 'annual_return', 'target_amount', 'term_months'])
+const NUMERIC = new Set(['amount', 'balance', 'apr', 'min_payment', 'due_day', 'monthly_contribution', 'annual_return', 'target_amount', 'term_months', 'principal', 'interest', 'balance_after'])
 const DATE_COLS = new Set(['date', 'target_date', 'record_date'])
 
 // Sheet serial date -> yyyy-mm-dd

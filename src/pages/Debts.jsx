@@ -4,16 +4,19 @@ import { Stat, SelectField } from '../components/ui.jsx'
 import FilterBar from '../components/FilterBar.jsx'
 import { usePeriod } from '../lib/period.jsx'
 import { inPeriod, monthsIn, labelOf, levelName } from '../lib/period.js'
-import { DEBT_PAYMENT_CATEGORY, TABS, isInterestOnly, SCOPE_OWNER, debtScopeOptions, cashRowsForScope } from '../lib/schema.js'
+import { TABS, isInterestOnly, SCOPE_OWNER, debtScopeOptions, cashRowsForScope } from '../lib/schema.js'
 import EntryForm from '../components/EntryForm.jsx'
+import PaymentForm from '../components/PaymentForm.jsx'
+import { reversePayment } from '../lib/payments.js'
 import { useDebtSelection } from '../lib/selection.jsx'
 
 // kind: 'debts' (nguồn nợ chính) | 'debts_bm' (nguồn nợ BM) — cùng giao diện, dữ liệu riêng.
 const RATE_COL = 'Lãi %/năm' // cột được tô nổi
 
 export default function Debts({ kind = 'debts' }) {
-  const { data, money, remove } = useStore()
+  const { data, money, remove, deletePayment } = useStore()
   const [editing, setEditing] = useState(null)
+  const [paying, setPaying] = useState(null) // khoản nợ đang ghi khoản trả
   const { period } = usePeriod()
   const [scope, setScope] = useState('all')
   const owner = SCOPE_OWNER[scope]
@@ -31,7 +34,10 @@ export default function Debts({ kind = 'debts' }) {
   const min = active.reduce((s, d) => s + d.min_payment, 0)
   const interest = active.reduce((s, d) => s + (d.balance * d.apr) / 1200, 0)
   const cash = cashRowsForScope(data, scope)
-  const paidInPeriod = cash.filter((r) => r.category === DEBT_PAYMENT_CATEGORY && r.type === 'Expense' && inPeriod(period, r.date)).reduce((s, r) => s + r.amount, 0)
+  // Lịch sử trả nợ của nguồn này, chỉ các khoản đã tick, trong kỳ đang chọn
+  const chosenIds = new Set(chosen.map((d) => d.id))
+  const history = data.payments.filter((x) => x.source === kind && chosenIds.has(x.debt_id) && inPeriod(period, x.date)).sort((a, b) => b.date.localeCompare(a.date))
+  const paid = history.reduce((t, x) => ({ amount: t.amount + x.amount, principal: t.principal + x.principal, interest: t.interest + x.interest }), { amount: 0, principal: 0, interest: 0 })
   const interestInPeriod = interest * monthsIn(period, cash)
   const periodTitle = period.level === 'all' ? levelName.all : `${levelName[period.level]} ${labelOf(period)}`
 
@@ -50,9 +56,10 @@ export default function Debts({ kind = 'debts' }) {
         <Stat label="Trả tối thiểu / tháng" value={money(min)} />
         <Stat label="Lãi phát sinh / tháng" value={money(interest)} tone="neg" />
       </div>
+      {data._missing?.includes('payments') && <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm p-2">Sheet chưa có tab Debt_Payments nên chưa lưu được lịch sử trả nợ. Chạy lại <code>setup.gs</code> (không xoá dữ liệu cũ) hoặc tạo tab đúng tên.</div>}
       {data._missing?.includes(kind) && <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm p-2">Sheet chưa có tab {TABS[kind].tab}. Chạy lại <code>setup.gs</code> (không xoá dữ liệu cũ) hoặc tạo tab đúng tên để lưu dữ liệu.</div>}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {main && <Stat label={`Đã trả nợ — ${periodTitle}`} value={money(paidInPeriod)} sub="Tổng chi 'Trả nợ' (cá nhân + DN) — không lọc theo khoản nợ đã tick" />}
+        <Stat label={`Đã trả — ${periodTitle}`} value={money(paid.amount)} sub={`Gốc ${money(paid.principal)} · Lãi ${money(paid.interest)} (từ lịch sử trả nợ bên dưới)`} />
         <Stat label={`Lãi ước tính — ${periodTitle}`} value={money(interestInPeriod)} tone="neg" sub="Ước tính theo dư nợ hiện tại × số tháng" />
       </div>
       <div className="card overflow-x-auto p-0">
@@ -73,6 +80,7 @@ export default function Debts({ kind = 'debts' }) {
                 {!main && <td className="px-3 py-1.5 whitespace-nowrap">{d.record_date || '—'}</td>}
                 <td className="px-3 py-1.5">{d.status}</td>
                 <td className="px-3 py-1.5 whitespace-nowrap">
+                  {d.status !== 'Paid' && <button className="text-emerald-700 font-medium mr-2" onClick={() => setPaying(d)}>Ghi khoản trả</button>}
                   <button className="text-blue-600 mr-2" onClick={() => setEditing(d)}>Sửa</button>
                   <button className="text-red-600" onClick={() => confirm('Xoá khoản nợ này?') && remove(kind, d)}>Xoá</button>
                 </td>
@@ -82,6 +90,36 @@ export default function Debts({ kind = 'debts' }) {
           </tbody>
         </table>
       </div>
+      <section className="space-y-2">
+        <h2 className="font-semibold">Lịch sử trả nợ <span className="text-xs font-normal text-slate-400">— {periodTitle}, các khoản đã tick</span></h2>
+        <div className="card overflow-x-auto p-0">
+          <table className="w-full text-sm">
+            <thead className="text-xs text-slate-500 text-left"><tr>{['Ngày', 'Khoản nợ', 'Loại', 'Số tiền', 'Gốc', 'Lãi', 'Dư nợ sau', 'Ghi chú', ''].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr></thead>
+            <tbody>
+              {history.map((x) => (
+                <tr key={x.id} className="border-t border-slate-100">
+                  <td className="px-3 py-1.5 whitespace-nowrap">{x.date}</td>
+                  <td className="px-3 py-1.5">{x.debt_name}</td>
+                  <td className="px-3 py-1.5">{x.type}</td>
+                  <td className="px-3 py-1.5 text-right whitespace-nowrap font-medium">{money(x.amount)}</td>
+                  <td className="px-3 py-1.5 text-right whitespace-nowrap">{money(x.principal)}</td>
+                  <td className="px-3 py-1.5 text-right whitespace-nowrap">{money(x.interest)}</td>
+                  <td className="px-3 py-1.5 text-right whitespace-nowrap">{money(x.balance_after)}</td>
+                  <td className="px-3 py-1.5 text-slate-500">{x.note}</td>
+                  <td className="px-3 py-1.5 whitespace-nowrap">
+                    <button className="text-red-600" onClick={() => {
+                      const debt = data[kind].find((d) => d.id === x.debt_id)
+                      if (confirm(`Xoá lần trả ${money(x.amount)} ngày ${x.date}?${x.principal > 0 && debt ? ` Phần gốc ${money(x.principal)} sẽ được cộng lại vào dư nợ.` : ''}`)) deletePayment({ kind, debt: debt ? reversePayment(debt, x) : null, payment: x })
+                    }}>Xoá</button>
+                  </td>
+                </tr>
+              ))}
+              {!history.length && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-400">Chưa có lần trả nào trong kỳ này — bấm “Ghi khoản trả” ở khoản nợ</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      {paying && <PaymentForm kind={kind} debt={paying} onClose={() => setPaying(null)} />}
       {editing && <EntryForm kind={kind} row={editing.id ? editing : null} onClose={() => setEditing(null)} />}
     </div>
   )

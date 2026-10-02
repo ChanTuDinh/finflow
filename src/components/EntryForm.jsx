@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { TABS, REPAY } from '../lib/schema.js'
 import { computeApr } from '../lib/rate.js'
 import { todayIso } from '../lib/format.js'
-import { Field, Modal, Segmented } from './ui.jsx'
+import { Field, Modal, Segmented, focusNextOnEnter } from './ui.jsx'
 import { useStore } from '../lib/store.jsx'
 
 const TITLES = { personal: 'giao dịch cá nhân', business: 'giao dịch doanh nghiệp', debts: 'khoản nợ', debts_bm: 'khoản nợ BM', savings: 'khoản tích lũy', goals: 'mục tiêu', accounts: 'tài khoản ngân hàng', rules: 'quy tắc phân loại' }
@@ -36,13 +36,6 @@ export default function EntryForm({ kind, row, onClose }) {
   const rate = useMemo(() => (isDebt ? computeApr({ type: f.repay_type, balance: f.balance, payment: f.min_payment, term: f.term_months }) : null), [isDebt, f.repay_type, f.balance, f.min_payment, f.term_months])
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
   const num = (k) => (e) => set(k, e.target.value === '' ? '' : Number(e.target.value))
-  // Enter chỉ chuyển sang ô kế tiếp (như bảng tính); lưu bằng nút "Lưu" để không vô tình lưu dòng còn dở.
-  const onEnter = (e) => {
-    if (e.key !== 'Enter' || e.target.tagName !== 'INPUT') return
-    e.preventDefault()
-    const fields = [...e.currentTarget.querySelectorAll('input:not([type=hidden]), select, textarea, button[type=submit]')]
-    fields[fields.indexOf(e.target) + 1]?.focus()
-  }
   const submit = async (e) => {
     e.preventDefault()
     if (isDebt && autoRate) {
@@ -60,7 +53,7 @@ export default function EntryForm({ kind, row, onClose }) {
 
   return (
     <Modal title={`${row ? 'Sửa' : 'Thêm'} — ${TITLES[kind]}`} onClose={onClose}>
-      <form onSubmit={submit} onKeyDown={onEnter} className="grid grid-cols-2 gap-3">
+      <form onSubmit={submit} onKeyDown={focusNextOnEnter} className="grid grid-cols-2 gap-3">
         {isDebt && (<>
           <div className="col-span-2"><Field label="Tên khoản nợ">{text('name', true)}</Field></div>
           <Field label="Bên cho vay">{text('lender')}</Field>
