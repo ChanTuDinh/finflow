@@ -77,9 +77,15 @@ export default function Debts({ kind = 'debts' }) {
         <Stat label="Trả tối thiểu / tháng" value={money(min)} />
         <Stat label="Lãi phát sinh / tháng" value={money(interest)} tone="neg" />
       </div>
-      <section className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 space-y-3">
+      <details className="group rounded-xl border border-indigo-100 bg-indigo-50/50">
+        <summary className="flex cursor-pointer select-none list-none flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
+          <span className="text-indigo-400 transition-transform group-open:rotate-90">▸</span>
+          <span className="font-semibold text-indigo-900">Kịch bản {years} năm &amp; thống kê trả nợ</span>
+          <span className="ml-auto text-sm text-slate-600 group-open:hidden">Tổng trả <b className="text-indigo-900">{money(scenTotal.total)}</b> · lãi <b className="text-red-600">{money(scenTotal.interest)}</b> · đã trả <b>{money(paid.amount)}</b></span>
+        </summary>
+        <div className="space-y-3 px-3 pb-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="font-semibold text-indigo-900">Kịch bản trả gốc + lãi trong {years} năm <span className="text-xs font-normal text-slate-500">· trả đều hàng tháng, lãi suất giữ nguyên, các khoản đã tick</span></h2>
+          <h3 className="font-semibold text-indigo-900">Kịch bản trả gốc + lãi trong {years} năm <span className="text-xs font-normal text-slate-500">· trả đều hàng tháng, lãi suất giữ nguyên, các khoản đã tick</span></h3>
           <SelectField label="Thời hạn" value={years} onChange={setYears} options={[10, 15, 20, 25, 30].map((y) => ({ value: String(y), label: `${y} năm` }))} />
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -87,13 +93,14 @@ export default function Debts({ kind = 'debts' }) {
           <Stat label={`Tổng phải trả sau ${years} năm`} value={money(scenTotal.total)} />
           <Stat label="Trong đó tiền lãi" value={money(scenTotal.interest)} tone="neg" sub={total > 0 ? `${((scenTotal.interest / total) * 100).toFixed(0)}% so với dư nợ gốc ${money(total)}` : undefined} />
         </div>
-      </section>
-      {data._missing?.includes('payments') && <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm p-2">Sheet chưa có tab Debt_Payments nên chưa lưu được lịch sử trả nợ. Chạy lại <code>setup.gs</code> (không xoá dữ liệu cũ) hoặc tạo tab đúng tên.</div>}
-      {data._missing?.includes(kind) && <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm p-2">Sheet chưa có tab {TABS[kind].tab}. Chạy lại <code>setup.gs</code> (không xoá dữ liệu cũ) hoặc tạo tab đúng tên để lưu dữ liệu.</div>}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-indigo-100 pt-3">
         <Stat label={`Đã trả — ${periodTitle}`} value={money(paid.amount)} sub={`Gốc ${money(paid.principal)} · Lãi ${money(paid.interest)} (từ lịch sử trả nợ bên dưới)`} />
         <Stat label={`Lãi ước tính — ${periodTitle}`} value={money(interestInPeriod)} tone="neg" sub="Ước tính theo dư nợ hiện tại × số tháng" />
       </div>
+        </div>
+      </details>
+      {data._missing?.includes('payments') && <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm p-2">Sheet chưa có tab Debt_Payments nên chưa lưu được lịch sử trả nợ. Chạy lại <code>setup.gs</code> (không xoá dữ liệu cũ) hoặc tạo tab đúng tên.</div>}
+      {data._missing?.includes(kind) && <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm p-2">Sheet chưa có tab {TABS[kind].tab}. Chạy lại <code>setup.gs</code> (không xoá dữ liệu cũ) hoặc tạo tab đúng tên để lưu dữ liệu.</div>}
       {/* Gộp thông tin vào ít cột để cả bảng vừa một màn hình, không phải cuộn ngang. Điện thoại: dạng thẻ. */}
       <div className="hidden md:block card p-0 overflow-hidden">
         <table className="w-full text-sm table-fixed">
