@@ -112,6 +112,13 @@ export function StoreProvider({ children }) {
       setData((d) => ({ ...d, payments: d.payments.filter((x) => x.id !== payment.id), ...(debt ? { [kind]: d[kind].map((x) => (x.id === debt.id ? debt : x)) } : {}) }))
     }
   })
+  // Xoá toàn bộ dòng của một sổ (vd. Ví BM). Sheets: xoá dữ liệu tab nhưng giữ hàng tiêu đề.
+  const clearKind = (kind) => run(async () => {
+    if (mode === 'sheets') {
+      await sheets.clearRows(settings.sheetId, kind)
+      setData(await sheets.loadAll(settings.sheetId))
+    } else setData((d) => ({ ...d, [kind]: [] }))
+  })
   const remove = (kind, row) => run(async () => {
     if (mode === 'sheets') {
       await sheets.deleteRow(settings.sheetId, kind, row)
@@ -120,7 +127,7 @@ export function StoreProvider({ children }) {
   })
 
   return (
-    <Ctx.Provider value={{ data, mode, settings, setSettings, money, status, connect, disconnect, refresh, resetDemo, upsert, remove, importBatch, recordPayment, deletePayment, updatePayment }}>
+    <Ctx.Provider value={{ data, mode, settings, setSettings, money, status, connect, disconnect, refresh, resetDemo, upsert, remove, clearKind, importBatch, recordPayment, deletePayment, updatePayment }}>
       {children}
     </Ctx.Provider>
   )

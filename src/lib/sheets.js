@@ -120,6 +120,11 @@ async function tabGid(sheetId, kind) {
   return sheetIdCache[key]
 }
 
+// Xoá toàn bộ dữ liệu của một tab (giữ lại hàng tiêu đề)
+export async function clearRows(sheetId, kind) {
+  await call(`/${sheetId}/values/${q(`${TABS[kind].tab}!A2:Z`)}:clear`, { method: 'POST', body: '{}' })
+}
+
 export async function deleteRow(sheetId, kind, row) {
   const gid = await tabGid(sheetId, kind)
   await call(`/${sheetId}:batchUpdate`, {

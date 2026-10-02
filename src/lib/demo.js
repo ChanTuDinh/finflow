@@ -58,16 +58,8 @@ export function demoData(endYm) {
   pay(BM, 'debts_bm', 'Vay BM #1', `${endYm}-05`, 'Trả gốc', 10_000_000, 10_000_000, 0)
   pay(BM, 'debts_bm', 'Vay BM #1', `${endYm}-05`, 'Trả lãi', 900_000, 0, 900_000)
   pay(D, 'debts', 'Vay mua xe', `${endYm}-25`, 'Gốc + lãi', 3_000_000, 1_350_000, 1_650_000)
-  // Ví BM: sổ thu/chi riêng (cùng danh mục với Cá nhân)
+  // Ví BM: sổ thu/chi riêng (cùng danh mục với Cá nhân) — để trống, người dùng tự nhập
   const W = []
-  for (let i = -5; i <= 0; i++) {
-    const ym = addMonths(endYm, i)
-    const w = (day, type, category, amount, note = '') => W.push({ id: newId(), date: `${ym}-${day}`, type, category, amount, account: 'MB (Ví BM)', note, created_by: 'demo', ref: '' })
-    w('03', 'Income', 'Khác', 20_000_000 + i * 500_000, 'Thu từ BM')
-    w('10', 'Expense', 'Hoá đơn', 3_000_000)
-    w('14', 'Expense', 'Đi lại', 1_200_000)
-    w('20', 'Expense', 'Khác', 2_500_000 + (i > -2 ? 1_000_000 : 0))
-  }
   A.push({ id: 'a4', name: 'MB (Ví BM)', bank: 'MB', owner: 'BM', preset: '', status: 'Active', note: '' })
   return { personal: P, business: B, debts: D, savings: S, goals: G, accounts: A, rules: R, debts_bm: BM, payments: PAY, bm: W }
 }
