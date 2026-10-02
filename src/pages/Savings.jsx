@@ -47,7 +47,7 @@ export default function Savings() {
             return (
               <div key={g.id} className={`card space-y-2 ${g.status === 'Done' ? 'opacity-60' : ''}`}>
                 <div className="flex items-start gap-2">
-                  <div><div className="font-medium">{g.name}</div><div className="text-xs text-slate-400">{OWNER[g.owner]}{g.target_date ? ` · hạn ${g.target_date}` : ''}</div></div>
+                  <div><div className="font-medium">{g.name}</div><div className="text-xs text-slate-400">{OWNER[g.owner]}{g.target_date ? ` · hạn ${g.target_date}` : ''}</div>{g.note && <div className="text-xs text-slate-500 mt-0.5 whitespace-pre-line">{g.note}</div>}</div>
                   <div className="ml-auto whitespace-nowrap text-sm">
                     <button className="text-blue-600 mr-2" onClick={() => setEditing({ kind: 'goals', row: g })}>Sửa</button>
                     <button className="text-red-600" onClick={() => confirm('Xoá mục tiêu này? Các khoản tích lũy gắn với nó sẽ mất liên kết.') && remove('goals', g)}>Xoá</button>
@@ -72,7 +72,7 @@ export default function Savings() {
         <div className="flex items-center"><h2 className="font-semibold">Khoản tích lũy</h2><button className="btn ml-auto" onClick={() => setEditing({ kind: 'savings' })}>+ Thêm khoản tích lũy</button></div>
         <div className="card overflow-x-auto p-0">
           <table className="w-full text-sm">
-            <thead className="text-xs text-slate-500 text-left"><tr>{['Tên', 'Loại', 'Thuộc về', 'Số dư', 'Góp / tháng', 'Lãi %/năm', 'Mục tiêu', 'Trạng thái', ''].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr></thead>
+            <thead className="text-xs text-slate-500 text-left"><tr>{['Tên', 'Loại', 'Thuộc về', 'Số dư', 'Góp / tháng', 'Lãi %/năm', 'Mục tiêu', 'Trạng thái', 'Ghi chú', ''].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr></thead>
             <tbody>
               {savings.map((a) => (
                 <tr key={a.id} className={`border-t border-slate-100 ${a.status === 'Closed' ? 'opacity-50' : ''}`}>
@@ -84,13 +84,14 @@ export default function Savings() {
                   <td className="px-3 py-1.5 text-right">{a.annual_return}</td>
                   <td className="px-3 py-1.5">{goalName(a.goal_id)}</td>
                   <td className="px-3 py-1.5">{a.status}</td>
+                  <td className="px-3 py-1.5 text-slate-600 min-w-[160px] max-w-[280px] whitespace-pre-line break-words">{a.note}</td>
                   <td className="px-3 py-1.5 whitespace-nowrap">
                     <button className="text-blue-600 mr-2" onClick={() => setEditing({ kind: 'savings', row: a })}>Sửa</button>
                     <button className="text-red-600" onClick={() => confirm('Xoá khoản tích lũy này?') && remove('savings', a)}>Xoá</button>
                   </td>
                 </tr>
               ))}
-              {!savings.length && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-400">Chưa có khoản tích lũy</td></tr>}
+              {!savings.length && <tr><td colSpan={10} className="px-3 py-6 text-center text-slate-400">Chưa có khoản tích lũy</td></tr>}
             </tbody>
           </table>
         </div>
