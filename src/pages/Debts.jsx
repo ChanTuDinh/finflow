@@ -42,7 +42,7 @@ export default function Debts({ kind = 'debts' }) {
       </div>
       <div className="card overflow-x-auto p-0">
         <table className="w-full text-sm">
-          <thead className="text-xs text-slate-500 text-left"><tr>{['Khoản nợ', 'Bên cho vay', 'Thuộc về', 'Dư nợ', 'Lãi %/năm', 'Tối thiểu', 'Hạn', 'Trạng thái', ''].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr></thead>
+          <thead className="text-xs text-slate-500 text-left"><tr>{['Khoản nợ', 'Bên cho vay', 'Thuộc về', 'Dư nợ', 'Lãi %/năm', 'Tối thiểu', 'Hạn', ...(main ? [] : ['Ngày ghi nhận']), 'Trạng thái', ''].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr></thead>
           <tbody>
             {debts.map((d) => (
               <tr key={d.id} className={`border-t border-slate-100 ${d.status === 'Paid' ? 'opacity-50' : ''}`}>
@@ -53,6 +53,7 @@ export default function Debts({ kind = 'debts' }) {
                 <td className="px-3 py-1.5 text-right">{d.apr}</td>
                 <td className="px-3 py-1.5 text-right">{money(d.min_payment)}</td>
                 <td className="px-3 py-1.5">ngày {d.due_day}</td>
+                {!main && <td className="px-3 py-1.5 whitespace-nowrap">{d.record_date || '—'}</td>}
                 <td className="px-3 py-1.5">{d.status}</td>
                 <td className="px-3 py-1.5 whitespace-nowrap">
                   <button className="text-blue-600 mr-2" onClick={() => setEditing(d)}>Sửa</button>
@@ -60,7 +61,7 @@ export default function Debts({ kind = 'debts' }) {
                 </td>
               </tr>
             ))}
-            {!debts.length && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-400">Chưa có khoản nợ</td></tr>}
+            {!debts.length && <tr><td colSpan={main ? 9 : 10} className="px-3 py-6 text-center text-slate-400">Chưa có khoản nợ</td></tr>}
           </tbody>
         </table>
       </div>

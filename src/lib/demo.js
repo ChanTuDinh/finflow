@@ -46,7 +46,7 @@ export function demoData(endYm) {
     { id: 'r4', keyword: 'tien nha', category: 'Nhà ở', direction: 'out', owner: 'Personal' },
   ]
   const BM = []
-  const bm = (name, lender, owner, balance, apr, min_payment, due_day) => BM.push({ id: newId(), name, lender, owner, balance, apr, min_payment, due_day, status: 'Active', note: '' })
+  const bm = (name, lender, owner, balance, apr, min_payment, due_day) => BM.push({ id: newId(), name, lender, owner, balance, apr, min_payment, due_day, status: 'Active', note: '', record_date: `${endYm}-01` })
   bm('Vay BM #1', 'BM', 'Business', 90_000_000, 12, 3_500_000, 10)
   bm('Vay BM #2', 'BM', 'Personal', 40_000_000, 8, 1_500_000, 20)
   return { personal: P, business: B, debts: D, savings: S, goals: G, accounts: A, rules: R, debts_bm: BM }

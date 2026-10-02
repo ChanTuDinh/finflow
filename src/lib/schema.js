@@ -42,7 +42,8 @@ TABS.goals = {
   statuses: ['Active', 'Done'],
 }
 // Nguồn nợ thứ hai ("Nợ BM"): cùng cấu trúc với Debts, nằm ở tab Debts_BM, tách riêng hoàn toàn khỏi nguồn nợ chính.
-TABS.debts_bm = { ...TABS.debts, tab: 'Debts_BM' }
+// record_date: ngày ghi nhận thông tin/số dư của khoản nợ (cột cuối để Sheet cũ vẫn tương thích)
+TABS.debts_bm = { ...TABS.debts, tab: 'Debts_BM', columns: [...TABS.debts.columns, 'record_date'] }
 export const DEBT_KINDS = ['debts', 'debts_bm']
 TABS.accounts = {
   tab: 'Accounts',
@@ -67,7 +68,7 @@ export const TRANSFER_CATEGORY = 'Chuyển nội bộ'
 export const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 
 const NUMERIC = new Set(['amount', 'balance', 'apr', 'min_payment', 'due_day', 'monthly_contribution', 'annual_return', 'target_amount'])
-const DATE_COLS = new Set(['date', 'target_date'])
+const DATE_COLS = new Set(['date', 'target_date', 'record_date'])
 
 // Sheet serial date -> yyyy-mm-dd
 function serialToIso(n) {

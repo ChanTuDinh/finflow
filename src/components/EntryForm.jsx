@@ -21,7 +21,7 @@ export default function EntryForm({ kind, row, onClose }) {
   const { upsert, status, data } = useStore()
   const cfg = TABS[kind]
   const cash = kind === 'personal' || kind === 'business'
-  const [f, setF] = useState(() => row || EMPTY[kind] || {
+  const [f, setF] = useState(() => row || (kind === 'debts_bm' ? { ...DEBT_BLANK, record_date: todayIso() } : EMPTY[kind]) || {
     date: todayIso(), type: cfg.types[1], category: cfg.categories[cfg.types[1]][0], amount: 0,
     [kind === 'personal' ? 'account' : 'counterparty']: '', note: '',
   })
@@ -46,6 +46,7 @@ export default function EntryForm({ kind, row, onClose }) {
           <Field label="Trả tối thiểu / tháng">{number('min_payment')}</Field>
           <Field label="Ngày đến hạn (1-31)">{number('due_day', { max: 31, min: 1 })}</Field>
           <Field label="Trạng thái">{select('status', cfg.statuses)}</Field>
+          {kind === 'debts_bm' && <div className="col-span-2"><Field label="Ngày ghi nhận (số dư tính đến ngày)"><input type="date" className="input" value={f.record_date || ''} onChange={(e) => set('record_date', e.target.value)} /></Field></div>}
         </>)}
         {kind === 'savings' && (<>
           <div className="col-span-2"><Field label="Tên khoản tích lũy">{text('name', true)}</Field></div>

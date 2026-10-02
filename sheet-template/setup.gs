@@ -22,9 +22,10 @@ const TABS = {
   },
   Debts_BM: {
     // Nguồn nợ thứ hai ("Nợ BM"): cùng cấu trúc với Debts, dữ liệu tách riêng
-    header: ['id', 'name', 'lender', 'owner', 'balance', 'apr', 'min_payment', 'due_day', 'status', 'note'],
+    header: ['id', 'name', 'lender', 'owner', 'balance', 'apr', 'min_payment', 'due_day', 'status', 'note', 'record_date'],
     validation: { 4: ['Personal', 'Business'], 9: ['Active', 'Paid'] },
-    sample: [['m001', 'Vay BM #1', 'BM', 'Business', 90000000, 12, 3500000, 10, 'Active', '']],
+    sample: [['m001', 'Vay BM #1', 'BM', 'Business', 90000000, 12, 3500000, 10, 'Active', '', '2026-10-01']],
+    textCols: [11], // record_date dạng chữ yyyy-mm-dd
   },
   Savings: {
     header: ['id', 'name', 'type', 'owner', 'balance', 'monthly_contribution', 'annual_return', 'goal_id', 'status', 'note'],
