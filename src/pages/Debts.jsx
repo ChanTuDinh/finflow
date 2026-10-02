@@ -7,7 +7,7 @@ import { inPeriod, monthsIn, labelOf, levelName } from '../lib/period.js'
 import { TABS, isInterestOnly, SCOPE_OWNER, debtScopeOptions, cashRowsForScope } from '../lib/schema.js'
 import EntryForm from '../components/EntryForm.jsx'
 import PaymentForm from '../components/PaymentForm.jsx'
-import { reversePayment } from '../lib/payments.js'
+import { reversePayment, adjustSummary } from '../lib/payments.js'
 import { useDebtSelection } from '../lib/selection.jsx'
 
 // kind: 'debts' (nguồn nợ chính) | 'debts_bm' (nguồn nợ BM) — cùng giao diện, dữ liệu riêng.
@@ -18,6 +18,7 @@ export default function Debts({ kind = 'debts' }) {
   const { data, money, remove, deletePayment } = useStore()
   const [editing, setEditing] = useState(null)
   const [paying, setPaying] = useState(null) // khoản nợ đang ghi khoản trả
+  const [editingPayment, setEditingPayment] = useState(null) // { payment, debt, limited }
   const { period } = usePeriod()
   const [scope, setScope] = useState('all')
   const owner = SCOPE_OWNER[scope]
@@ -35,6 +36,8 @@ export default function Debts({ kind = 'debts' }) {
   const interest = active.reduce((s, d) => s + (d.balance * d.apr) / 1200, 0)
   const cash = cashRowsForScope(data, scope)
   // Lịch sử trả nợ của nguồn này, chỉ các khoản đã tick, trong kỳ đang chọn
+  const latestPaymentId = {}
+  for (const x of data.payments) if (x.source === kind) latestPaymentId[x.debt_id] = x.id
   const chosenIds = new Set(chosen.map((d) => d.id))
   const history = data.payments.filter((x) => x.source === kind && chosenIds.has(x.debt_id) && inPeriod(period, x.date)).sort((a, b) => b.date.localeCompare(a.date))
   const paid = history.reduce((t, x) => ({ amount: t.amount + x.amount, principal: t.principal + x.principal, interest: t.interest + x.interest }), { amount: 0, principal: 0, interest: 0 })
@@ -134,17 +137,25 @@ export default function Debts({ kind = 'debts' }) {
         <h2 className="font-semibold">Lịch sử trả nợ <span className="text-xs font-normal text-slate-400">— {periodTitle}, các khoản đã tick</span></h2>
         <div className="card p-0 overflow-hidden">
           <table className="w-full text-sm table-fixed">
-            <colgroup><col style={{ width: 92 }} /><col /><col style={{ width: 150 }} /><col className="hidden sm:table-column" style={{ width: 130 }} /><col style={{ width: 44 }} /></colgroup>
+            <colgroup><col style={{ width: 104 }} /><col /><col style={{ width: 160 }} /><col className="hidden sm:table-column" style={{ width: 130 }} /><col style={{ width: 56 }} /></colgroup>
             <thead className="text-xs text-slate-500 text-left"><tr><th className="px-3 py-2">Ngày</th><th className="px-3 py-2">Khoản nợ</th><th className="px-3 py-2 text-right">Số tiền</th><th className="px-3 py-2 text-right hidden sm:table-cell">Dư nợ sau</th><th /></tr></thead>
             <tbody>
               {history.map((x) => (
                 <tr key={x.id} className="border-t border-slate-100 align-top">
-                  <td className="px-3 py-2 text-xs sm:text-sm">{x.date}</td>
-                  <td className="px-3 py-2"><div className="break-words">{x.debt_name} <span className="text-xs text-slate-500">· {x.type}</span></div>{x.note && <div className="text-xs text-slate-500 whitespace-pre-line break-words">{x.note}</div>}</td>
+                  <td className="px-3 py-2 text-sm whitespace-nowrap">{x.date}</td>
+                  <td className="px-3 py-2">
+                    <div className="break-words">{x.debt_name} <span className="text-xs text-slate-500">· {x.type}</span></div>
+                    {x.note && <div className="text-sm text-slate-700 whitespace-pre-line break-words">📝 {x.note}</div>}
+                    {adjustSummary(x, money) && <div className="text-xs text-blue-700 break-words">↳ {adjustSummary(x, money)}</div>}
+                  </td>
                   <td className="px-3 py-2 text-right"><div className="font-medium whitespace-nowrap">{money(x.amount)}</div><div className="text-xs text-slate-500">gốc {money(x.principal)} · lãi {money(x.interest)}</div><div className="text-xs text-slate-400 sm:hidden">dư nợ sau {money(x.balance_after)}</div></td>
                   <td className="px-3 py-2 text-right whitespace-nowrap hidden sm:table-cell">{money(x.balance_after)}</td>
-                  <td className="px-2 py-2 text-right">
-                    <button className="text-red-600 text-xs" onClick={() => {
+                  <td className="px-2 py-2 text-right text-xs leading-6">
+                    <div><button className="text-blue-600" onClick={() => {
+                      const debt = data[kind].find((d) => d.id === x.debt_id)
+                      if (debt) setEditingPayment({ payment: x, debt, limited: latestPaymentId[x.debt_id] !== x.id })
+                    }}>Sửa</button></div>
+                    <button className="text-red-600" onClick={() => {
                       const debt = data[kind].find((d) => d.id === x.debt_id)
                       if (confirm(`Xoá lần trả ${money(x.amount)} ngày ${x.date}?${x.principal > 0 && debt ? ` Phần gốc ${money(x.principal)} sẽ được cộng lại vào dư nợ.` : ''}`)) deletePayment({ kind, debt: debt ? reversePayment(debt, x) : null, payment: x })
                     }}>Xoá</button>
@@ -157,6 +168,7 @@ export default function Debts({ kind = 'debts' }) {
         </div>
       </section>
       {paying && <PaymentForm kind={kind} debt={paying} onClose={() => setPaying(null)} />}
+      {editingPayment && <PaymentForm kind={kind} debt={editingPayment.debt} payment={editingPayment.payment} limited={editingPayment.limited} onClose={() => setEditingPayment(null)} />}
       {editing && <EntryForm kind={kind} row={editing.id ? editing : null} onClose={() => setEditing(null)} />}
     </div>
   )

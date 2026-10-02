@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '../lib/store.jsx'
 import { Field, Modal, Segmented, focusNextOnEnter } from './ui.jsx'
-import { PAY_TYPES, ADJUST, buildPayment, cashRowFor, needsAdjust, impliedApr, monthlyInterest } from '../lib/payments.js'
+import { PAY_TYPES, ADJUST, buildPayment, cashRowFor, needsAdjust, impliedApr, monthlyInterest, reversePayment, adjustSummary, adjustFormValues } from '../lib/payments.js'
 import { isInterestOnly } from '../lib/schema.js'
 import { todayIso } from '../lib/format.js'
 
@@ -11,44 +11,59 @@ const HINT = {
   [PAY_TYPES.both]: 'Tool tự tách: trả lãi một tháng trước, phần còn lại trừ vào gốc.',
 }
 
-// Ghi một lần trả cho một khoản nợ (kind: 'debts' | 'debts_bm').
-export default function PaymentForm({ kind, debt, onClose }) {
-  const { recordPayment, settings, money, status } = useStore()
-  const [f, setF] = useState({ date: todayIso(), amount: '', type: PAY_TYPES.principal, note: '', cash: false, adjust: ADJUST.shorten, interest: '', rateMode: 'keep' })
+// Ghi (hoặc sửa) một lần trả cho một khoản nợ (kind: 'debts' | 'debts_bm').
+// Sửa: payment = lần trả cần sửa; limited = chỉ sửa được ngày và ghi chú (vì sau lần này đã có lần trả khác).
+export default function PaymentForm({ kind, debt, payment, limited = false, onClose }) {
+  const { recordPayment, updatePayment, settings, money, status } = useStore()
+  const editing = !!payment
+  const full = editing && !limited
+  // Khi sửa đầy đủ: quay về khoản nợ như trước lần trả này rồi áp lại số mới
+  const base = useMemo(() => (full ? reversePayment(debt, payment) : debt), [full, debt, payment])
+  const [f, setF] = useState(() => (editing
+    ? { date: payment.date, amount: String(payment.amount), type: payment.type, note: payment.note || '', cash: false, interest: '', rateMode: 'keep', ...adjustFormValues(payment) }
+    : { date: todayIso(), amount: '', type: PAY_TYPES.principal, note: '', cash: false, adjust: ADJUST.shorten, interest: '', rateMode: 'keep' }))
   const [err, setErr] = useState('')
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
-  const built = useMemo(() => (Number(f.amount) > 0 ? buildPayment({ debt, kind, type: f.type, amount: f.amount, date: f.date, note: f.note, createdBy: settings.user || 'me', adjust: f.adjust, adjustOpts: { interest: Number(f.interest), rateMode: f.rateMode } }) : null), [debt, kind, f, settings.user])
+  const build = () => buildPayment({ debt: base, kind, type: f.type, amount: f.amount, date: f.date, note: f.note, createdBy: editing ? payment.created_by : settings.user || 'me', adjust: f.adjust, adjustOpts: { interest: Number(f.interest), rateMode: f.rateMode }, id: editing ? payment.id : undefined })
+  const built = useMemo(() => (!limited && Number(f.amount) > 0 ? build() : null), [base, kind, f, settings.user, limited]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const submit = async (e) => {
     e.preventDefault()
-    const r = buildPayment({ debt, kind, type: f.type, amount: f.amount, date: f.date, note: f.note, createdBy: settings.user || 'me', adjust: f.adjust, adjustOpts: { interest: Number(f.interest), rateMode: f.rateMode } })
+    if (limited) { // chỉ ngày + ghi chú
+      if (await updatePayment({ kind, payment: { ...payment, date: f.date, note: f.note }, debt: null })) onClose()
+      return
+    }
+    const r = build()
     if (r.error) return setErr(r.error)
-    if (await recordPayment({ kind, debt: r.debt, payment: r.payment, cash: f.cash ? cashRowFor(debt, r.payment) : null })) onClose()
+    if (editing) {
+      if (await updatePayment({ kind, payment: { ...r.payment, _row: payment._row }, debt: r.debt })) onClose()
+    } else if (await recordPayment({ kind, debt: r.debt, payment: r.payment, cash: f.cash ? cashRowFor(debt, r.payment) : null })) onClose()
   }
 
   return (
-    <Modal title={`Ghi khoản trả — ${debt.name}`} onClose={onClose}>
+    <Modal title={`${editing ? 'Sửa khoản trả' : 'Ghi khoản trả'} — ${debt.name}`} onClose={onClose}>
       <form onSubmit={submit} onKeyDown={focusNextOnEnter} className="grid grid-cols-2 gap-3">
-        <div className="col-span-2 text-sm text-slate-500">Dư nợ hiện tại: <b className="text-slate-800">{money(debt.balance)}</b>{debt.apr ? ` · lãi ${debt.apr}%/năm` : ''}</div>
+        <div className="col-span-2 text-sm text-slate-500">{full ? 'Dư nợ trước lần trả này' : 'Dư nợ hiện tại'}: <b className="text-slate-800">{money(base.balance)}</b>{base.apr ? ` · lãi ${base.apr}%/năm` : ''}</div>
+        {limited && <div className="col-span-2 rounded-lg bg-slate-100 text-slate-700 text-sm px-3 py-2">Chỉ sửa được <b>ngày</b> và <b>ghi chú</b>, vì sau lần trả này khoản nợ đã có lần trả khác (đổi số tiền sẽ làm lệch dư nợ các lần sau). Muốn đổi số tiền: xoá các lần trả sau rồi sửa lại.<div className="mt-1">{f.type}: <b>{money(payment.amount)}</b> (gốc {money(payment.principal)} · lãi {money(payment.interest)}) → dư nợ sau {money(payment.balance_after)}{adjustSummary(payment, money) ? ` · ${adjustSummary(payment, money)}` : ''}</div></div>}
         <Field label="Ngày trả"><input type="date" required className="input" value={f.date} onChange={(e) => set('date', e.target.value)} /></Field>
-        <Field label="Tổng số tiền đã trả"><input type="number" min="0" required className="input" value={f.amount} onChange={(e) => { set('amount', e.target.value); setErr('') }} /></Field>
-        <div className="col-span-2 space-y-1">
+        {!limited && <Field label="Tổng số tiền đã trả"><input type="number" min="0" required className="input" value={f.amount} onChange={(e) => { set('amount', e.target.value); setErr('') }} /></Field>}
+        {!limited && <div className="col-span-2 space-y-1">
           <Segmented label="Khoản trả này là" value={f.type} onChange={(v) => { set('type', v); setErr('') }} options={Object.values(PAY_TYPES).map((v) => ({ value: v, label: v }))} />
           <p className="text-xs text-slate-500">{HINT[f.type]}</p>
-        </div>
+        </div>}
         {built && (
           <div className={`col-span-2 rounded-lg px-3 py-2 text-sm ${built.error ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50 text-emerald-900'}`}>
             {built.error ? built.error : (<>
               Gốc <b>{money(built.payment.principal)}</b> · Lãi <b>{money(built.payment.interest)}</b><br />
-              Dư nợ: {money(debt.balance)} → <b>{money(built.debt.balance)}</b>{built.debt.status === 'Paid' && ' (đã trả hết)'}
-              {built.debt.balance > 0 && built.debt.min_payment !== debt.min_payment && <><br />{isInterestOnly(debt) ? 'Tiền lãi hàng tháng mới' : 'Tiền trả mỗi tháng'}: {money(debt.min_payment)} → <b>{money(built.debt.min_payment)}</b></>}
-              {built.debt.repay_type !== debt.repay_type && built.debt.balance > 0 && <><br />Hình thức: <b>Chỉ trả lãi</b> — gốc {money(built.debt.balance)} giữ nguyên đến khi tất toán</>}
-              {built.debt.apr !== debt.apr && <><br />Lãi suất: {debt.apr}% → <b>{built.debt.apr}%</b></>}
-              {built.debt.term_months !== debt.term_months && built.debt.balance > 0 && <><br />Thời hạn còn lại: {debt.term_months || '?'} → <b>{built.debt.term_months} tháng</b></>}
+              Dư nợ: {money(base.balance)} → <b>{money(built.debt.balance)}</b>{built.debt.status === 'Paid' && ' (đã trả hết)'}
+              {built.debt.balance > 0 && built.debt.min_payment !== base.min_payment && <><br />{isInterestOnly(base) ? 'Tiền lãi hàng tháng mới' : 'Tiền trả mỗi tháng'}: {money(base.min_payment)} → <b>{money(built.debt.min_payment)}</b></>}
+              {built.debt.repay_type !== base.repay_type && built.debt.balance > 0 && <><br />Hình thức: <b>Chỉ trả lãi</b> — gốc {money(built.debt.balance)} giữ nguyên đến khi tất toán</>}
+              {built.debt.apr !== base.apr && <><br />Lãi suất: {base.apr}% → <b>{built.debt.apr}%</b></>}
+              {built.debt.term_months !== base.term_months && built.debt.balance > 0 && <><br />Thời hạn còn lại: {base.term_months || '?'} → <b>{built.debt.term_months} tháng</b></>}
             </>)}
           </div>
         )}
-        {built && !built.error && needsAdjust(debt, built.payment.principal) && (
+        {built && !built.error && needsAdjust(base, built.payment.principal) && (
           <div className="col-span-2 space-y-1">
             <Field label="Sau khi trả bớt gốc, ngân hàng điều chỉnh thế nào?">
               <select className="input" value={f.adjust} onChange={(e) => set('adjust', e.target.value)}>
@@ -56,15 +71,15 @@ export default function PaymentForm({ kind, debt, onClose }) {
               </select>
             </Field>
             <p className="text-xs text-slate-500">Xem hợp đồng hoặc hỏi ngân hàng. Chọn “Không đổi” nếu chưa rõ — bạn vẫn sửa được ở nút Sửa.</p>
-            {f.adjust === ADJUST.interestOnly && <InterestOnlyBox f={f} set={set} debt={debt} newBalance={built.debt.balance} money={money} />}
+            {f.adjust === ADJUST.interestOnly && <InterestOnlyBox f={f} set={set} debt={base} newBalance={built.debt.balance} money={money} />}
           </div>
         )}
         <div className="col-span-2"><Field label="Ghi chú"><input className="input" value={f.note} onChange={(e) => set('note', e.target.value)} /></Field></div>
-        <label className="col-span-2 flex items-start gap-2 text-sm">
+        {!editing && <label className="col-span-2 flex items-start gap-2 text-sm">
           <input type="checkbox" className="mt-1" checked={f.cash} onChange={(e) => set('cash', e.target.checked)} />
           <span>Ghi thêm một khoản chi “Trả nợ” vào {debt.owner === 'Business' ? 'sổ Doanh nghiệp' : 'sổ Cá nhân'}
             <span className="block text-xs text-slate-500">Để tắt nếu bạn nhập sao kê ngân hàng — khoản chi đã có sẵn trong sao kê, bật sẽ bị tính trùng.</span></span>
-        </label>
+        </label>}
         {err && <div className="col-span-2 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm p-2">{err}</div>}
         <div className="col-span-2 flex justify-end gap-2">
           <button type="button" className="btn-ghost" onClick={onClose}>Huỷ</button>

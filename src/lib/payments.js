@@ -75,7 +75,37 @@ export function applyPayment(debt, principal, date, kind, adjust = ADJUST.none, 
       if (pay !== debt.min_payment) { prev = { min_payment: debt.min_payment, term_months: debt.term_months }; next.min_payment = pay }
     }
   }
+  if (prev) prev = { ...prev, adjust, after: { min_payment: next.min_payment, term_months: next.term_months, repay_type: next.repay_type || '', apr: next.apr } }
   return { next, prev }
+}
+
+/** Thông tin điều chỉnh đã lưu trong một lần trả (bản ghi cũ chưa có nhãn thì suy ra từ giá trị thay đổi). */
+export function adjustInfo(payment) {
+  let prev = null
+  try { prev = payment.adjust_prev ? JSON.parse(payment.adjust_prev) : null } catch { /* bỏ qua */ }
+  if (!prev) return null
+  const label = prev.adjust || (prev.repay_type !== undefined ? ADJUST.interestOnly : prev.after ? null : null)
+  return { prev, after: prev.after || null, label }
+}
+
+/** Một dòng mô tả để hiện trong lịch sử, vd. "Chuyển sang chỉ trả lãi: 6.500.000 ₫/tháng · lãi suất 6.5% → 6%". */
+export function adjustSummary(payment, money) {
+  const info = adjustInfo(payment)
+  if (!info) return null
+  const { prev, after, label } = info
+  if (!after) return label ? `${label}` : 'Đã điều chỉnh tiền trả/thời hạn (xem khoản nợ)'
+  if (label === ADJUST.interestOnly) return `Chuyển sang chỉ trả lãi: ${money(after.min_payment)}/tháng${after.apr !== prev.apr ? ` · lãi suất ${prev.apr}% → ${after.apr}%` : ''}`
+  if (label === ADJUST.shorten) return `Rút ngắn thời hạn: ${prev.term_months || '?'} → ${after.term_months} tháng (trả ${money(after.min_payment)}/tháng)`
+  if (label === ADJUST.reduce) return `Giảm tiền trả: ${money(prev.min_payment)} → ${money(after.min_payment)}/tháng (thời hạn ${after.term_months} tháng)`
+  return null
+}
+
+/** Giá trị điền sẵn vào form khi sửa một lần trả. */
+export function adjustFormValues(payment) {
+  const info = adjustInfo(payment)
+  if (!info || !info.label) return { adjust: ADJUST.none, interest: '', rateMode: 'keep' }
+  const { prev, after, label } = info
+  return { adjust: label, interest: label === ADJUST.interestOnly && after ? String(after.min_payment) : '', rateMode: label === ADJUST.interestOnly && after && after.apr !== prev.apr ? 'implied' : 'keep' }
 }
 
 export function reversePayment(debt, payment) {
@@ -92,14 +122,14 @@ export function reversePayment(debt, payment) {
 }
 
 /** Trả { payment, debt } (bản ghi lịch sử + khoản nợ sau khi cập nhật) hoặc { error }. */
-export function buildPayment({ debt, kind, type, amount, date, note = '', createdBy = 'me', adjust = ADJUST.none, adjustOpts = {} }) {
+export function buildPayment({ debt, kind, type, amount, date, note = '', createdBy = 'me', adjust = ADJUST.none, adjustOpts = {}, id }) {
   const split = splitPayment({ type, amount, balance: debt.balance, apr: debt.apr })
   if (split.error) return { error: split.error }
   const { next, prev } = applyPayment(debt, split.principal, date, kind, adjust, adjustOpts)
   return {
     debt: next,
     payment: {
-      id: newId(), date, source: kind, debt_id: debt.id, debt_name: debt.name, type,
+      id: id || newId(), date, source: kind, debt_id: debt.id, debt_name: debt.name, type,
       amount: r2(Number(amount)), principal: split.principal, interest: split.interest,
       balance_after: next.balance, note, created_by: createdBy, adjust_prev: prev ? JSON.stringify(prev) : '',
     },

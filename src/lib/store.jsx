@@ -91,6 +91,16 @@ export function StoreProvider({ children }) {
       }))
     }
   })
+  // Sửa một lần trả: payment đã tính lại (giữ id/_row), debt = khoản nợ sau khi áp lại (null nếu chỉ sửa ngày/ghi chú)
+  const updatePayment = ({ kind, payment, debt }) => run(async () => {
+    if (mode === 'sheets') {
+      await sheets.updateRow(settings.sheetId, 'payments', payment)
+      if (debt) await sheets.updateRow(settings.sheetId, kind, debt)
+      setData(await sheets.loadAll(settings.sheetId))
+    } else {
+      setData((d) => ({ ...d, payments: d.payments.map((x) => (x.id === payment.id ? payment : x)), ...(debt ? { [kind]: d[kind].map((x) => (x.id === debt.id ? debt : x)) } : {}) }))
+    }
+  })
   // Xoá một lần trả: bỏ khỏi lịch sử rồi hoàn lại phần gốc vào dư nợ (debt = khoản nợ đã hoàn lại; null nếu khoản nợ không còn)
   const deletePayment = ({ kind, debt, payment }) => run(async () => {
     if (mode === 'sheets') {
@@ -109,7 +119,7 @@ export function StoreProvider({ children }) {
   })
 
   return (
-    <Ctx.Provider value={{ data, mode, settings, setSettings, money, status, connect, disconnect, refresh, resetDemo, upsert, remove, importBatch, recordPayment, deletePayment }}>
+    <Ctx.Provider value={{ data, mode, settings, setSettings, money, status, connect, disconnect, refresh, resetDemo, upsert, remove, importBatch, recordPayment, deletePayment, updatePayment }}>
       {children}
     </Ctx.Provider>
   )

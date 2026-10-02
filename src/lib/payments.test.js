@@ -66,7 +66,9 @@ test('trả gốc 700tr, giữ tiền trả/tháng -> rút ngắn thời hạn c
   assert.equal(r.debt.balance, 1.3e9)
   assert.equal(r.debt.min_payment, 28e6)
   assert.equal(r.debt.term_months, 54)
-  assert.deepEqual(JSON.parse(r.payment.adjust_prev), { min_payment: 28e6, term_months: 91 })
+  const prev = JSON.parse(r.payment.adjust_prev)
+  assert.deepEqual([prev.min_payment, prev.term_months, prev.adjust], [28e6, 91, ADJUST.shorten])
+  assert.deepEqual(prev.after, { min_payment: 28e6, term_months: 54, repay_type: REPAY.both, apr: 6.5 })
 })
 
 test('trả gốc 700tr, giữ thời hạn -> tiền trả/tháng giảm còn khoảng 18,13tr', () => {
@@ -108,7 +110,9 @@ test('trả gốc 700tr rồi chuyển sang chỉ trả lãi 6,5tr: giữ lãi s
   assert.equal(r.debt.repay_type, REPAY.interestOnly)
   assert.equal(r.debt.min_payment, 6.5e6)
   assert.equal(r.debt.apr, 6.5)
-  assert.deepEqual(JSON.parse(r.payment.adjust_prev), { min_payment: 28e6, term_months: 91, repay_type: REPAY.both, apr: 6.5 })
+  const prev = JSON.parse(r.payment.adjust_prev)
+  assert.deepEqual([prev.min_payment, prev.term_months, prev.repay_type, prev.apr, prev.adjust], [28e6, 91, REPAY.both, 6.5, ADJUST.interestOnly])
+  assert.deepEqual(prev.after, { min_payment: 6.5e6, term_months: 91, repay_type: REPAY.interestOnly, apr: 6.5 })
 })
 
 test('chuyển sang chỉ trả lãi và dùng lãi suất ngầm định (6,0%)', () => {
@@ -136,4 +140,30 @@ test('chuyển sang chỉ trả lãi: Forecast không giảm dư nợ, mỗi th�
   const r = simulate({ debts: [debt], scenario: { mode: 'min' }, baseline: { income: 0, expense: 0 }, startYm: '2026-04', years: 1 })
   assert.ok(Math.abs(r.endBalance - 1.3e9) < 1)
   assert.ok(Math.abs(r.series[1].payment - 1.3e9 * 0.065 / 12) < 1) // 7,04tr: lãi thực theo lãi suất đang lưu
+})
+
+import { adjustSummary, adjustFormValues } from './payments.js'
+const m = (x) => `${Math.round(x)}đ`
+
+test('mô tả điều chỉnh để hiện trong lịch sử, và điền lại form khi sửa', () => {
+  const io = buildPayment({ debt: loan, kind: 'debts_bm', type: T.principal, amount: 700e6, date: 'd', adjust: ADJUST.interestOnly, adjustOpts: { interest: 6.5e6, rateMode: 'implied' } })
+  assert.match(adjustSummary(io.payment, m), /Chuyển sang chỉ trả lãi: 6500000đ\/tháng · lãi suất 6.5% → 6%/)
+  assert.deepEqual(adjustFormValues(io.payment), { adjust: ADJUST.interestOnly, interest: '6500000', rateMode: 'implied' })
+  const sh = buildPayment({ debt: loan, kind: 'debts_bm', type: T.principal, amount: 700e6, date: 'd', adjust: ADJUST.shorten })
+  assert.match(adjustSummary(sh.payment, m), /Rút ngắn thời hạn: 91 → 54 tháng/)
+  const rd = buildPayment({ debt: loan, kind: 'debts_bm', type: T.principal, amount: 700e6, date: 'd', adjust: ADJUST.reduce })
+  assert.match(adjustSummary(rd.payment, m), /Giảm tiền trả: 28000000đ → 18132514đ\/tháng/)
+  const none = buildPayment({ debt: loan, kind: 'debts_bm', type: T.principal, amount: 700e6, date: 'd' })
+  assert.equal(adjustSummary(none.payment, m), null)
+  assert.deepEqual(adjustFormValues(none.payment), { adjust: ADJUST.none, interest: '', rateMode: 'keep' })
+})
+
+test('sửa một lần trả = hoàn lại rồi áp lại với số mới, giữ nguyên id', () => {
+  const first = buildPayment({ debt: loan, kind: 'debts_bm', type: T.principal, amount: 700e6, date: '2026-04-01', adjust: ADJUST.none })
+  const base = reversePayment(first.debt, first.payment) // quay về khoản nợ trước lần trả
+  assert.deepEqual([base.balance, base.min_payment, base.term_months], [2e9, 28e6, 91])
+  const edited = buildPayment({ debt: base, kind: 'debts_bm', type: T.principal, amount: 800e6, date: '2026-04-01', adjust: ADJUST.interestOnly, adjustOpts: { interest: 6.5e6, rateMode: 'keep' }, id: first.payment.id })
+  assert.equal(edited.payment.id, first.payment.id)
+  assert.deepEqual([edited.debt.balance, edited.debt.repay_type, edited.debt.min_payment, edited.debt.apr], [1.2e9, REPAY.interestOnly, 6.5e6, 6.5])
+  assert.equal(impliedApr(edited.debt.balance, edited.debt.min_payment), 6.5) // 800tr gốc -> lãi 6,5tr khớp đúng 6,5%
 })
