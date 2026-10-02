@@ -5,6 +5,7 @@ import { addMonths } from '../lib/calc.js'
 import { simulate, defaultScenarios, aggregateSeries } from '../lib/forecast.js'
 import { baselineFrom, buildInsights } from '../lib/insights.js'
 import { compact, todayIso } from '../lib/format.js'
+import { useDebtSelection } from '../lib/selection.jsx'
 import { SCOPE_OWNER, debtScopeOptions, cashRowsForScope } from '../lib/schema.js'
 import { Chart, SERIES, SelectField, Segmented, FilterRow, Field } from '../components/ui.jsx'
 
@@ -20,7 +21,9 @@ export default function Forecast({ kind = 'debts' }) {
   const startYm = todayIso().slice(0, 7)
   const endYm = addMonths(startYm, -1) // tháng đã đủ dữ liệu gần nhất
 
-  const debts = useMemo(() => data[kind].filter((d) => scope === 'all' || d.owner === SCOPE_OWNER[scope]), [data, kind, scope])
+  const sel = useDebtSelection(kind)
+  const inScope = useMemo(() => data[kind].filter((d) => scope === 'all' || d.owner === SCOPE_OWNER[scope]), [data, kind, scope])
+  const debts = useMemo(() => sel.filter(inScope), [inScope, sel.excluded]) // chỉ các khoản đã tick ở tab Nợ
   const rows = useMemo(() => cashRowsForScope(data, scope), [data, scope])
   const baseline = useMemo(() => baselineFrom(rows, endYm), [rows, endYm])
   const minTotal = debts.filter((d) => d.status !== 'Paid').reduce((s, d) => s + d.min_payment, 0)
@@ -50,6 +53,10 @@ export default function Forecast({ kind = 'debts' }) {
 
   return (
     <div className="space-y-4">
+      {inScope.length > 0 && debts.length < inScope.length && (
+        <div className="rounded-lg bg-blue-50 border border-blue-200 text-blue-900 text-sm px-3 py-2">
+          Forecast chỉ tính <b>{debts.length}/{inScope.length}</b> khoản nợ đã tick ở tab {kind === 'debts' ? 'Nợ' : 'Nợ BM'}{debts.length === 0 ? ' — chưa chọn khoản nào' : ''}.
+        </div>)}
       <FilterRow>
         <SelectField label="Phạm vi" value={scope} onChange={(v) => { setScope(v); setScenarios(null) }}
           options={debtScopeOptions(kind)} />
