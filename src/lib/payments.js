@@ -7,6 +7,7 @@ export const ADJUST = {
   shorten: 'Giữ tiền trả mỗi tháng, rút ngắn thời hạn',
   reduce: 'Giữ thời hạn, giảm tiền trả mỗi tháng',
   interestOnly: 'Chuyển sang chỉ trả lãi',
+  rate: 'Điều chỉnh lãi suất / tiền lãi', // khoản đã chỉ trả lãi: sau khi trả bớt gốc, lãi suất và tiền lãi hàng tháng có thể đổi
   none: 'Không đổi',
 }
 export const PAY_TYPES = { principal: 'Trả gốc', interest: 'Trả lãi', both: 'Gốc + lãi' }
@@ -46,30 +47,35 @@ export const levelPayment = (balance, apr, n) => (apr === 0 ? r2(balance / n) : 
 
 /** Có cần chọn cách điều chỉnh không: khoản trả gốc và lãi, lần trả có phần gốc, và chưa trả hết nợ. */
 export const needsAdjust = (debt, principal) => !isInterestOnly(debt) && principal > 0 && principal < debt.balance - 0.5
+/** Khoản đã chỉ trả lãi: sau khi trả bớt gốc vẫn có thể đổi lãi suất / tiền lãi hàng tháng. */
+export const canAdjustRate = (debt, principal) => isInterestOnly(debt) && principal > 0 && principal < debt.balance - 0.5
+/** Các cách điều chỉnh hiển thị trong form cho từng loại khoản nợ. */
+export const adjustChoices = (debt) => (isInterestOnly(debt) ? [ADJUST.rate, ADJUST.none] : [ADJUST.shorten, ADJUST.reduce, ADJUST.interestOnly, ADJUST.none])
 
 /** Lãi suất ngầm định từ dư nợ và tiền lãi trả mỗi tháng (khoản chỉ trả lãi). */
 export const impliedApr = (balance, interest) => computeApr({ type: REPAY.interestOnly, balance, payment: interest }).apr ?? null
 
 /**
  * adjust: cách xử lý phần còn lại sau khi trả bớt gốc.
- * opts (chỉ cho ADJUST.interestOnly): { interest: tiền lãi trả mỗi tháng sau đó, rateMode: 'keep' | 'implied' }
+ * opts (cho ADJUST.interestOnly / ADJUST.rate): { interest: tiền lãi trả mỗi tháng sau đó, rateMode: 'keep' | 'implied' | 'custom', apr: lãi suất mới khi rateMode = 'custom' }
  */
 export function applyPayment(debt, principal, date, kind, adjust = ADJUST.none, opts = {}) {
   const next = principal > 0 ? rebalance(debt, debt.balance - principal) : { ...debt }
   if (kind === 'debts_bm') next.record_date = date
   let prev = null
-  if (needsAdjust(debt, principal) && next.balance > 0) {
+  if ((needsAdjust(debt, principal) || canAdjustRate(debt, principal)) && next.balance > 0 && (adjust !== ADJUST.rate || isInterestOnly(debt))) {
     if (adjust === ADJUST.shorten) {
       const t = estimateTerm({ balance: next.balance, apr: debt.apr, payment: debt.min_payment })
       if (!t.error && t.months !== debt.term_months) { prev = { min_payment: debt.min_payment, term_months: debt.term_months }; next.term_months = t.months }
-    } else if (adjust === ADJUST.interestOnly) {
-      // Ngân hàng chuyển sang chỉ thu lãi hàng tháng, gốc còn lại giữ nguyên tới khi tất toán
-      const interest = Number(opts.interest) > 0 ? r2(Number(opts.interest)) : monthlyInterest(next.balance, debt.apr)
+    } else if (adjust === ADJUST.interestOnly || adjust === ADJUST.rate) {
+      // Chỉ thu lãi hàng tháng (chuyển từ trả gốc và lãi, hoặc đã chỉ trả lãi nhưng đổi lãi suất / tiền lãi); gốc giữ nguyên tới khi tất toán
+      const customApr = opts.rateMode === 'custom' && Number(opts.apr) > 0 ? Number(opts.apr) : null
+      const interest = Number(opts.interest) > 0 ? r2(Number(opts.interest)) : monthlyInterest(next.balance, customApr ?? debt.apr)
       prev = { min_payment: debt.min_payment, term_months: debt.term_months, repay_type: debt.repay_type || '', apr: debt.apr }
       next.repay_type = REPAY.interestOnly
       next.min_payment = interest
-      const implied = impliedApr(next.balance, interest)
-      if (opts.rateMode === 'implied' && implied != null) next.apr = implied
+      if (customApr != null) next.apr = customApr
+      else if (opts.rateMode === 'implied') { const implied = impliedApr(next.balance, interest); if (implied != null) next.apr = implied }
     } else if (adjust === ADJUST.reduce && debt.term_months > 0) {
       const pay = levelPayment(next.balance, debt.apr, debt.term_months)
       if (pay !== debt.min_payment) { prev = { min_payment: debt.min_payment, term_months: debt.term_months }; next.min_payment = pay }
@@ -95,6 +101,7 @@ export function adjustSummary(payment, money) {
   const { prev, after, label } = info
   if (!after) return label ? `${label}` : 'Đã điều chỉnh tiền trả/thời hạn (xem khoản nợ)'
   if (label === ADJUST.interestOnly) return `Chuyển sang chỉ trả lãi: ${money(after.min_payment)}/tháng${after.apr !== prev.apr ? ` · lãi suất ${prev.apr}% → ${after.apr}%` : ''}`
+  if (label === ADJUST.rate) return `Điều chỉnh lãi suất / tiền lãi: ${after.apr !== prev.apr ? `lãi suất ${prev.apr}% → ${after.apr}% · ` : ''}trả ${money(after.min_payment)}/tháng`
   if (label === ADJUST.shorten) return `Rút ngắn thời hạn: ${prev.term_months || '?'} → ${after.term_months} tháng (trả ${money(after.min_payment)}/tháng)`
   if (label === ADJUST.reduce) return `Giảm tiền trả: ${money(prev.min_payment)} → ${money(after.min_payment)}/tháng (thời hạn ${after.term_months} tháng)`
   return null
@@ -103,9 +110,11 @@ export function adjustSummary(payment, money) {
 /** Giá trị điền sẵn vào form khi sửa một lần trả. */
 export function adjustFormValues(payment) {
   const info = adjustInfo(payment)
-  if (!info || !info.label) return { adjust: ADJUST.none, interest: '', rateMode: 'keep' }
+  if (!info || !info.label) return { adjust: ADJUST.none, interest: '', rateMode: 'keep', apr: '' }
   const { prev, after, label } = info
-  return { adjust: label, interest: label === ADJUST.interestOnly && after ? String(after.min_payment) : '', rateMode: label === ADJUST.interestOnly && after && after.apr !== prev.apr ? 'implied' : 'keep' }
+  const aprChanged = !!after && after.apr !== prev.apr
+  if (label === ADJUST.rate) return { adjust: label, interest: after ? String(after.min_payment) : '', rateMode: aprChanged ? 'custom' : 'keep', apr: aprChanged ? String(after.apr) : '' }
+  return { adjust: label, interest: label === ADJUST.interestOnly && after ? String(after.min_payment) : '', rateMode: label === ADJUST.interestOnly && aprChanged ? 'implied' : 'keep', apr: '' }
 }
 
 export function reversePayment(debt, payment) {

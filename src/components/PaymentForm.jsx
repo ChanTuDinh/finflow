@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '../lib/store.jsx'
 import { Field, Modal, Segmented, focusNextOnEnter } from './ui.jsx'
-import { PAY_TYPES, ADJUST, buildPayment, cashRowFor, needsAdjust, impliedApr, monthlyInterest, reversePayment, adjustSummary, adjustFormValues } from '../lib/payments.js'
+import { PAY_TYPES, ADJUST, buildPayment, cashRowFor, needsAdjust, canAdjustRate, adjustChoices, impliedApr, monthlyInterest, reversePayment, adjustSummary, adjustFormValues } from '../lib/payments.js'
 import { isInterestOnly } from '../lib/schema.js'
 import { todayIso } from '../lib/format.js'
 
@@ -20,11 +20,11 @@ export default function PaymentForm({ kind, debt, payment, limited = false, onCl
   // Khi sửa đầy đủ: quay về khoản nợ như trước lần trả này rồi áp lại số mới
   const base = useMemo(() => (full ? reversePayment(debt, payment) : debt), [full, debt, payment])
   const [f, setF] = useState(() => (editing
-    ? { date: payment.date, amount: String(payment.amount), type: payment.type, note: payment.note || '', cash: false, interest: '', rateMode: 'keep', ...adjustFormValues(payment) }
-    : { date: todayIso(), amount: '', type: PAY_TYPES.principal, note: '', cash: false, adjust: ADJUST.shorten, interest: '', rateMode: 'keep' }))
+    ? { date: payment.date, amount: String(payment.amount), type: payment.type, note: payment.note || '', cash: false, interest: '', rateMode: 'keep', apr: '', ...adjustFormValues(payment) }
+    : { date: todayIso(), amount: '', type: PAY_TYPES.principal, note: '', cash: false, adjust: isInterestOnly(debt) ? ADJUST.none : ADJUST.shorten, interest: '', rateMode: 'keep', apr: '' }))
   const [err, setErr] = useState('')
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }))
-  const build = () => buildPayment({ debt: base, kind, type: f.type, amount: f.amount, date: f.date, note: f.note, createdBy: editing ? payment.created_by : settings.user || 'me', adjust: f.adjust, adjustOpts: { interest: Number(f.interest), rateMode: f.rateMode }, id: editing ? payment.id : undefined })
+  const build = () => buildPayment({ debt: base, kind, type: f.type, amount: f.amount, date: f.date, note: f.note, createdBy: editing ? payment.created_by : settings.user || 'me', adjust: f.adjust, adjustOpts: { interest: Number(f.interest), rateMode: f.rateMode, apr: Number(f.apr) }, id: editing ? payment.id : undefined })
   const built = useMemo(() => (!limited && Number(f.amount) > 0 ? build() : null), [base, kind, f, settings.user, limited]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const submit = async (e) => {
@@ -63,15 +63,15 @@ export default function PaymentForm({ kind, debt, payment, limited = false, onCl
             </>)}
           </div>
         )}
-        {built && !built.error && needsAdjust(base, built.payment.principal) && (
+        {built && !built.error && (needsAdjust(base, built.payment.principal) || canAdjustRate(base, built.payment.principal)) && (
           <div className="col-span-2 space-y-1">
-            <Field label="Sau khi trả bớt gốc, ngân hàng điều chỉnh thế nào?">
+            <Field label={isInterestOnly(base) ? 'Sau khi trả bớt gốc, lãi suất / tiền lãi có đổi không?' : 'Sau khi trả bớt gốc, ngân hàng điều chỉnh thế nào?'}>
               <select className="input" value={f.adjust} onChange={(e) => set('adjust', e.target.value)}>
-                {Object.values(ADJUST).map((v) => <option key={v}>{v}</option>)}
+                {adjustChoices(base).map((v) => <option key={v}>{v}</option>)}
               </select>
             </Field>
             <p className="text-xs text-slate-500">Xem hợp đồng hoặc hỏi ngân hàng. Chọn “Không đổi” nếu chưa rõ — bạn vẫn sửa được ở nút Sửa.</p>
-            {f.adjust === ADJUST.interestOnly && <InterestOnlyBox f={f} set={set} debt={base} newBalance={built.debt.balance} money={money} />}
+            {(f.adjust === ADJUST.interestOnly || f.adjust === ADJUST.rate) && <InterestOnlyBox f={f} set={set} debt={base} newBalance={built.debt.balance} money={money} />}
           </div>
         )}
         <div className="col-span-2"><Field label="Ghi chú"><input className="input" value={f.note} onChange={(e) => set('note', e.target.value)} /></Field></div>
@@ -90,24 +90,30 @@ export default function PaymentForm({ kind, debt, payment, limited = false, onCl
   )
 }
 
-// Sau khi trả bớt gốc, ngân hàng chỉ thu lãi hàng tháng: suy ngược lãi suất từ số tiền lãi thực tế
+// Sau khi trả bớt gốc, ngân hàng chỉ thu lãi hàng tháng (hoặc khoản chỉ trả lãi đổi lãi suất): suy ngược lãi suất từ tiền lãi thực tế, hoặc nhập lãi suất mới
 function InterestOnlyBox({ f, set, debt, newBalance, money }) {
-  const monthly = Number(f.interest) > 0 ? Number(f.interest) : monthlyInterest(newBalance, debt.apr)
+  const custom = f.rateMode === 'custom' && Number(f.apr) > 0
+  const rateForGuess = custom ? Number(f.apr) : debt.apr
+  const monthly = Number(f.interest) > 0 ? Number(f.interest) : monthlyInterest(newBalance, rateForGuess)
   const implied = impliedApr(newBalance, monthly)
-  const differs = implied != null && Math.abs(implied - debt.apr) > 0.1
+  const differs = !custom && implied != null && Math.abs(implied - debt.apr) > 0.1
   const balanceIfRateRight = debt.apr > 0 ? Math.round((monthly * 1200) / debt.apr) : 0
   return (
     <div className="space-y-2 rounded-lg border border-blue-200 bg-blue-50/60 p-3">
+      <Segmented label="Lãi suất lưu cho khoản này (từ lần trả này)" value={f.rateMode} onChange={(v) => set('rateMode', v)}
+        options={[{ value: 'keep', label: `Giữ ${debt.apr}%` }, { value: 'implied', label: `Suy ra ${implied ?? '?'}% từ tiền lãi` }, { value: 'custom', label: 'Nhập lãi suất mới' }]} />
+      {f.rateMode === 'custom' && (
+        <Field label="Lãi suất mới (%/năm)"><input type="number" min="0" step="0.01" className="input" value={f.apr} onChange={(e) => set('apr', e.target.value)} /></Field>
+      )}
       <Field label="Tiền lãi phải trả mỗi tháng sau đó">
-        <input type="number" min="0" className="input" value={f.interest} placeholder={`Ước tính theo lãi ${debt.apr}%: ${Math.round(monthlyInterest(newBalance, debt.apr))}`} onChange={(e) => set('interest', e.target.value)} />
+        <input type="number" min="0" className="input" value={f.interest} placeholder={`Tự tính theo lãi ${rateForGuess}%: ${Math.round(monthlyInterest(newBalance, rateForGuess))}`} onChange={(e) => set('interest', e.target.value)} />
       </Field>
-      {differs && (
+      {differs && f.interest !== '' && (
         <div className="rounded-lg bg-amber-50 text-amber-900 text-sm px-3 py-2 space-y-1">
           <div>Lãi {money(monthly)}/tháng trên dư nợ {money(newBalance)} tương ứng <b>{implied}%/năm</b>, khác lãi suất đang lưu ({debt.apr}%).</div>
-          <div className="text-xs">Hãy đối chiếu sao kê: nếu lãi suất đúng là {debt.apr}% thì dư nợ gốc còn lại phải khoảng <b>{money(balanceIfRateRight)}</b> (tức số tiền đã trả gốc khác với bạn nhập); còn nếu dư nợ đúng thì lãi suất sau khi trả bớt là {implied}%.</div>
+          <div className="text-xs">Hãy đối chiếu sao kê: nếu lãi suất đúng là {debt.apr}% thì dư nợ gốc còn lại phải khoảng <b>{money(balanceIfRateRight)}</b>; còn nếu dư nợ đúng thì lãi suất sau khi trả bớt là {implied}%.</div>
         </div>
       )}
-      <Segmented label="Lãi suất lưu cho khoản này" value={f.rateMode} onChange={(v) => set('rateMode', v)} options={[{ value: 'keep', label: `Giữ ${debt.apr}%` }, { value: 'implied', label: `Dùng ${implied ?? '?'}% (suy ra từ tiền lãi)` }]} />
       <p className="text-xs text-slate-500">Forecast tính lãi theo lãi suất được lưu{differs && f.rateMode === 'keep' ? `: giữ ${debt.apr}% thì Forecast sẽ tính ≈ ${money(monthlyInterest(newBalance, debt.apr))}/tháng, không phải ${money(monthly)}` : ''}. Chưa tính khoản tất toán gốc khi đáo hạn.</p>
     </div>
   )
