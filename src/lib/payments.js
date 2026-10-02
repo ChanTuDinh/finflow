@@ -142,3 +142,17 @@ export function cashRowFor(debt, payment) {
   const row = { id: newId(), date: payment.date, type: 'Expense', category: 'Trả nợ', amount: payment.amount, note: `Trả nợ: ${debt.name}`, created_by: payment.created_by, ref: '' }
   return { kind, row: kind === 'business' ? { ...row, counterparty: debt.lender || '', account: '' } : { ...row, account: '' } }
 }
+
+/**
+ * Dư nợ "giả định": hoàn lại các lần trả bị bỏ tick (excludedIds) khỏi khoản nợ đang ghi nhận.
+ * Hoàn từ lần trả mới nhất về cũ nhất; mỗi lần trả được hoàn cả phần gốc lẫn điều chỉnh đi kèm.
+ * payments: theo thứ tự ghi (cũ → mới). Khoản nợ không bị ảnh hưởng thì trả về nguyên bản.
+ */
+export function effectiveDebts(debts, payments, excludedIds) {
+  if (!excludedIds.length) return debts
+  return debts.map((d) => {
+    const undone = payments.filter((x) => x.debt_id === d.id && excludedIds.includes(x.id)).reverse()
+    if (!undone.length) return d
+    return undone.reduce((cur, x) => reversePayment(cur, x), d)
+  })
+}

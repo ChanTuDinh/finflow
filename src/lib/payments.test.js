@@ -167,3 +167,32 @@ test('sửa một lần trả = hoàn lại rồi áp lại với số mới, gi
   assert.deepEqual([edited.debt.balance, edited.debt.repay_type, edited.debt.min_payment, edited.debt.apr], [1.2e9, REPAY.interestOnly, 6.5e6, 6.5])
   assert.equal(impliedApr(edited.debt.balance, edited.debt.min_payment), 6.5) // 800tr gốc -> lãi 6,5tr khớp đúng 6,5%
 })
+
+import { effectiveDebts } from './payments.js'
+test('dư nợ giả định: bỏ tick lần trả thì dư nợ như chưa trả; tick lại thì như cũ', () => {
+  const r = buildPayment({ debt: loan, kind: 'debts_bm', type: T.principal, amount: 700e6, date: '2026-04-01', adjust: ADJUST.interestOnly, adjustOpts: { interest: 6.5e6, rateMode: 'implied' } })
+  const stored = r.debt // 1,3 tỷ, chỉ trả lãi 6,5tr, lãi 6%
+  assert.equal(effectiveDebts([stored], [r.payment], [])[0], stored) // không bỏ lần nào: nguyên bản
+  const [eff] = effectiveDebts([stored], [r.payment], [r.payment.id])
+  assert.deepEqual([eff.balance, eff.repay_type, eff.apr, eff.min_payment, eff.term_months], [2e9, REPAY.both, 6.5, 28e6, 91])
+  assert.equal(stored.balance, 1.3e9) // dữ liệu gốc không bị đổi
+})
+
+test('dư nợ giả định với nhiều lần trả: bỏ một lần thì chỉ cộng lại gốc lần đó', () => {
+  const a = buildPayment({ debt: loan, kind: 'debts', type: T.principal, amount: 100e6, date: 'd1', adjust: ADJUST.none })
+  const b = buildPayment({ debt: a.debt, kind: 'debts', type: T.principal, amount: 300e6, date: 'd2', adjust: ADJUST.none })
+  const pays = [a.payment, b.payment]
+  assert.equal(b.debt.balance, 1.6e9)
+  assert.equal(effectiveDebts([b.debt], pays, [a.payment.id])[0].balance, 1.7e9) // bỏ lần 100tr
+  assert.equal(effectiveDebts([b.debt], pays, [b.payment.id])[0].balance, 1.9e9) // bỏ lần 300tr
+  assert.equal(effectiveDebts([b.debt], pays, [a.payment.id, b.payment.id])[0].balance, 2e9) // bỏ cả hai
+})
+
+test('dư nợ giả định: lần trả lãi (không có gốc) bỏ tick không đổi gì; lần trả hết nợ bỏ tick thì mở lại khoản nợ', () => {
+  const i = buildPayment({ debt: loan, kind: 'debts', type: T.interest, amount: 5e6, date: 'd' })
+  assert.equal(effectiveDebts([i.debt], [i.payment], [i.payment.id])[0].balance, 2e9)
+  const all = buildPayment({ debt: loan, kind: 'debts', type: T.principal, amount: 2e9, date: 'd' })
+  assert.equal(all.debt.status, 'Paid')
+  const [eff] = effectiveDebts([all.debt], [all.payment], [all.payment.id])
+  assert.deepEqual([eff.balance, eff.status], [2e9, 'Active'])
+})

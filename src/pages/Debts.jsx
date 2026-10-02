@@ -8,7 +8,7 @@ import { TABS, isInterestOnly, SCOPE_OWNER, debtScopeOptions, cashRowsForScope }
 import EntryForm from '../components/EntryForm.jsx'
 import PaymentForm from '../components/PaymentForm.jsx'
 import { reversePayment, adjustSummary } from '../lib/payments.js'
-import { useDebtSelection } from '../lib/selection.jsx'
+import { useDebtSelection, useCountedPayments } from '../lib/selection.jsx'
 
 // kind: 'debts' (nguồn nợ chính) | 'debts_bm' (nguồn nợ BM) — cùng giao diện, dữ liệu riêng.
 const OWNER_LABEL = { Personal: 'Cá nhân', Business: 'Doanh nghiệp', BM: 'BM' }
@@ -23,7 +23,10 @@ export default function Debts({ kind = 'debts' }) {
   const [scope, setScope] = useState('all')
   const owner = SCOPE_OWNER[scope]
   const main = kind === 'debts'
-  const debts = data[kind].filter((d) => !owner || d.owner === owner)
+  // Dư nợ hiển thị đã hoàn lại các lần trả bị bỏ tick trong Lịch sử trả nợ; thao tác Sửa/Ghi khoản trả vẫn dùng số đang ghi nhận
+  const counted = useCountedPayments(kind)
+  const recorded = (id) => data[kind].find((x) => x.id === id)
+  const debts = counted.debts.filter((d) => !owner || d.owner === owner)
   // Các số tổng hợp chỉ tính những khoản đã tick
   const sel = useDebtSelection(kind)
   const chosen = sel.filter(debts)
@@ -40,7 +43,11 @@ export default function Debts({ kind = 'debts' }) {
   for (const x of data.payments) if (x.source === kind) latestPaymentId[x.debt_id] = x.id
   const chosenIds = new Set(chosen.map((d) => d.id))
   const history = data.payments.filter((x) => x.source === kind && chosenIds.has(x.debt_id) && inPeriod(period, x.date)).sort((a, b) => b.date.localeCompare(a.date))
-  const paid = history.reduce((t, x) => ({ amount: t.amount + x.amount, principal: t.principal + x.principal, interest: t.interest + x.interest }), { amount: 0, principal: 0, interest: 0 })
+  const countedHistory = history.filter((x) => counted.isCounted(x.id))
+  const allCounted = history.length > 0 && countedHistory.length === history.length
+  const someCounted = countedHistory.length > 0 && !allCounted
+  const countedAllRef = (el) => { if (el) el.indeterminate = someCounted }
+  const paid = countedHistory.reduce((t, x) => ({ amount: t.amount + x.amount, principal: t.principal + x.principal, interest: t.interest + x.interest }), { amount: 0, principal: 0, interest: 0 })
   const interestInPeriod = interest * monthsIn(period, cash)
   const periodTitle = period.level === 'all' ? levelName.all : `${levelName[period.level]} ${labelOf(period)}`
 
@@ -49,6 +56,11 @@ export default function Debts({ kind = 'debts' }) {
       <FilterBar
         lead={<SelectField label="Phạm vi" value={scope} onChange={setScope} options={debtScopeOptions(kind)} />}
         action={<button className="btn" onClick={() => setEditing({})}>+ Thêm khoản nợ</button>} />
+      {counted.excludedIds.length > 0 && (
+        <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-sm px-3 py-2 flex items-center gap-2">
+          <span>Đang xem dư nợ <b>như thể chưa có {counted.excludedIds.length} lần trả</b> (đã bỏ tick trong Lịch sử trả nợ). Số liệu và Forecast theo dư nợ này; Sửa / Ghi khoản trả vẫn dùng số đang ghi nhận.</span>
+          <button className="ml-auto underline whitespace-nowrap" onClick={counted.clear}>Tick lại tất cả</button>
+        </div>)}
       {debts.length > 0 && chosen.length < debts.length && (
         <div className="rounded-lg bg-blue-50 border border-blue-200 text-blue-900 text-sm px-3 py-2 flex items-center gap-2">
           Đang tính <b>{chosen.length}/{debts.length}</b> khoản nợ đã tick (số liệu bên dưới và tab Forecast chỉ gồm các khoản này).
@@ -88,6 +100,7 @@ export default function Debts({ kind = 'debts' }) {
                 </td>
                 <td className="px-3 py-2 text-right">
                   <div className="whitespace-nowrap">{money(d.balance)}</div>
+                  {recorded(d.id) && recorded(d.id).balance !== d.balance && <div className="text-xs text-amber-700">đang ghi nhận {money(recorded(d.id).balance)}</div>}
                   {!main && d.record_date && <div className="text-xs text-slate-400">ghi nhận {d.record_date}</div>}
                 </td>
                 <td className="px-2 py-2 text-center font-semibold bg-amber-50 text-amber-900">{d.apr}</td>
@@ -97,8 +110,8 @@ export default function Debts({ kind = 'debts' }) {
                 </td>
                 <td className="px-3 py-2 text-slate-600 whitespace-pre-line break-words">{d.note}</td>
                 <td className="px-3 py-2 text-right text-xs leading-6">
-                  {d.status !== 'Paid' && <div><button className="text-emerald-700 font-medium text-sm" onClick={() => setPaying(d)}>Ghi khoản trả</button></div>}
-                  <div><button className="text-blue-600" onClick={() => setEditing(d)}>Sửa</button> · <button className="text-red-600" onClick={() => confirm('Xoá khoản nợ này?') && remove(kind, d)}>Xoá</button></div>
+                  {recorded(d.id)?.status !== 'Paid' && <div><button className="text-emerald-700 font-medium text-sm" onClick={() => setPaying(recorded(d.id))}>Ghi khoản trả</button></div>}
+                  <div><button className="text-blue-600" onClick={() => setEditing(recorded(d.id))}>Sửa</button> · <button className="text-red-600" onClick={() => confirm('Xoá khoản nợ này?') && remove(kind, recorded(d.id))}>Xoá</button></div>
                 </td>
               </tr>
             ))}
@@ -118,30 +131,31 @@ export default function Debts({ kind = 'debts' }) {
               </div>
             </div>
             <div className="grid grid-cols-3 gap-2 text-sm">
-              <div><div className="text-xs text-slate-500">Dư nợ</div><div className="font-medium break-words">{money(d.balance)}</div></div>
+              <div><div className="text-xs text-slate-500">Dư nợ</div><div className="font-medium break-words">{money(d.balance)}</div>{recorded(d.id) && recorded(d.id).balance !== d.balance && <div className="text-xs text-amber-700">ghi nhận {money(recorded(d.id).balance)}</div>}</div>
               <div className="rounded bg-amber-50 px-2 py-1 text-center"><div className="text-xs text-amber-800">Lãi %/năm</div><div className="font-semibold text-amber-900">{d.apr}</div></div>
               <div><div className="text-xs text-slate-500">Trả / tháng</div><div className="font-medium break-words">{money(d.min_payment)}</div></div>
             </div>
             {!main && d.record_date && <div className="text-xs text-slate-400">Ghi nhận {d.record_date}</div>}
             {d.note && <div className="text-sm text-slate-600 whitespace-pre-line break-words">{d.note}</div>}
             <div className="flex items-center gap-3 text-sm">
-              {d.status !== 'Paid' && <button className="text-emerald-700 font-medium" onClick={() => setPaying(d)}>Ghi khoản trả</button>}
-              <button className="text-blue-600" onClick={() => setEditing(d)}>Sửa</button>
-              <button className="text-red-600" onClick={() => confirm('Xoá khoản nợ này?') && remove(kind, d)}>Xoá</button>
+              {recorded(d.id)?.status !== 'Paid' && <button className="text-emerald-700 font-medium" onClick={() => setPaying(recorded(d.id))}>Ghi khoản trả</button>}
+              <button className="text-blue-600" onClick={() => setEditing(recorded(d.id))}>Sửa</button>
+              <button className="text-red-600" onClick={() => confirm('Xoá khoản nợ này?') && remove(kind, recorded(d.id))}>Xoá</button>
             </div>
           </div>
         ))}
         {!debts.length && <div className="card text-center text-slate-400 text-sm">Chưa có khoản nợ</div>}
       </div>
       <section className="space-y-2">
-        <h2 className="font-semibold">Lịch sử trả nợ <span className="text-xs font-normal text-slate-400">— {periodTitle}, các khoản đã tick</span></h2>
+        <h2 className="font-semibold">Lịch sử trả nợ <span className="text-xs font-normal text-slate-400">— {periodTitle}, các khoản đã tick · tick = lần trả được tính vào dư nợ</span></h2>
         <div className="card p-0 overflow-hidden">
           <table className="w-full text-sm table-fixed">
-            <colgroup><col style={{ width: 104 }} /><col /><col style={{ width: 160 }} /><col className="hidden sm:table-column" style={{ width: 130 }} /><col style={{ width: 56 }} /></colgroup>
-            <thead className="text-xs text-slate-500 text-left"><tr><th className="px-3 py-2">Ngày</th><th className="px-3 py-2">Khoản nợ</th><th className="px-3 py-2 text-right">Số tiền</th><th className="px-3 py-2 text-right hidden sm:table-cell">Dư nợ sau</th><th /></tr></thead>
+            <colgroup><col style={{ width: 40 }} /><col style={{ width: 104 }} /><col /><col style={{ width: 160 }} /><col className="hidden sm:table-column" style={{ width: 130 }} /><col style={{ width: 56 }} /></colgroup>
+            <thead className="text-xs text-slate-500 text-left"><tr><th className="pl-3 py-2"><input ref={countedAllRef} type="checkbox" title="Tính vào dư nợ" aria-label="Tính tất cả lần trả vào dư nợ" checked={allCounted} onChange={(e) => counted.setMany(history.map((x) => x.id), e.target.checked)} /></th><th className="px-3 py-2">Ngày</th><th className="px-3 py-2">Khoản nợ</th><th className="px-3 py-2 text-right">Số tiền</th><th className="px-3 py-2 text-right hidden sm:table-cell">Dư nợ sau</th><th /></tr></thead>
             <tbody>
               {history.map((x) => (
-                <tr key={x.id} className="border-t border-slate-100 align-top">
+                <tr key={x.id} className={`border-t border-slate-100 align-top ${counted.isCounted(x.id) ? '' : 'text-slate-400 bg-slate-50'}`}>
+                  <td className="pl-3 py-2"><input type="checkbox" title="Tick: lần trả này được tính vào dư nợ" aria-label={`Tính lần trả ${x.date} vào dư nợ`} checked={counted.isCounted(x.id)} onChange={() => counted.toggle(x.id)} /></td>
                   <td className="px-3 py-2 text-sm whitespace-nowrap">{x.date}</td>
                   <td className="px-3 py-2">
                     <div className="break-words">{x.debt_name} <span className="text-xs text-slate-500">· {x.type}</span></div>
@@ -162,7 +176,7 @@ export default function Debts({ kind = 'debts' }) {
                   </td>
                 </tr>
               ))}
-              {!history.length && <tr><td colSpan={5} className="px-3 py-6 text-center text-slate-400">Chưa có lần trả nào trong kỳ này — bấm “Ghi khoản trả” ở khoản nợ</td></tr>}
+              {!history.length && <tr><td colSpan={6} className="px-3 py-6 text-center text-slate-400">Chưa có lần trả nào trong kỳ này — bấm “Ghi khoản trả” ở khoản nợ</td></tr>}
             </tbody>
           </table>
         </div>
