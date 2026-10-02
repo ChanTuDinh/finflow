@@ -17,10 +17,54 @@ export default function CashFlow({ kind, onImport }) {
   const shown = rows.filter((r) => inPeriod(period, r.date)).sort((a, b) => b.date.localeCompare(a.date))
   const t = totals(shown)
   const picked = shown.filter((r) => sel.has(r.id)) // chỉ tính dòng đang hiển thị (đổi bộ lọc kỳ không xoá nhầm dòng ẩn)
-  const allPicked = shown.length > 0 && picked.length === shown.length
   const toggle = (id) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   const delPicked = async () => { if (confirm(`Xoá ${picked.length} giao dịch đã chọn?\n\nKhông thể hoàn tác.`) && await removeMany(kind, picked)) setSel(new Set()) }
   const inLabel = kind === 'business' ? 'Doanh thu' : 'Thu nhập'
+
+  const outRows = shown.filter((r) => !isInflow(r) && !isTransfer(r))
+  const inRows = shown.filter(isInflow)
+  const moveRows = shown.filter(isTransfer)
+  const groups = [
+    { key: 'out', title: '⬆ Tiền đi ra', rows: outRows, always: true, tone: 'text-red-600', sum: t.expense },
+    { key: 'in', title: `⬇ Tiền đi vào`, rows: inRows, always: true, tone: 'text-emerald-600', sum: t.income },
+    { key: 'move', title: '↔ Chuyển nội bộ (không tính thu/chi)', rows: moveRows, always: false, tone: 'text-slate-500' },
+  ]
+  const table = (g) => {
+    const all = g.rows.length > 0 && g.rows.every((r) => sel.has(r.id))
+    const toggleAll = () => setSel((s) => { const n = new Set(s); g.rows.forEach((r) => (all ? n.delete(r.id) : n.add(r.id))); return n })
+    return (
+      <div key={g.key} className="space-y-1">
+        <div className="flex items-baseline justify-between px-1">
+          <h3 className={`font-semibold ${g.tone}`}>{g.title} <span className="text-xs font-normal text-slate-400">({g.rows.length})</span></h3>
+          {g.sum != null && <span className={`text-sm font-medium ${g.tone}`}>{money(g.sum)}</span>}
+        </div>
+        <div className="card overflow-x-auto p-0">
+          <table className="w-full text-sm">
+            <thead className="text-xs text-slate-500 text-left"><tr><th className="px-3 py-2 w-8"><input type="checkbox" aria-label="Chọn tất cả" checked={all} onChange={toggleAll} /></th>{['Ngày', 'Loại', 'Danh mục', 'Số tiền', kind === 'business' ? 'Đối tác' : 'Tài khoản', 'Ghi chú', 'Bởi', ''].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr></thead>
+            <tbody>
+              {g.rows.map((r) => (
+                <tr key={r.id} className={`border-t border-slate-100 ${sel.has(r.id) ? 'bg-blue-50' : ''}`}>
+                  <td className="px-3 py-1.5"><input type="checkbox" aria-label="Chọn dòng" checked={sel.has(r.id)} onChange={() => toggle(r.id)} /></td>
+                  <td className="px-3 py-1.5 whitespace-nowrap">{r.date}</td>
+                  <td className="px-3 py-1.5">{isTransfer(r) ? 'Chuyển nội bộ' : r.type}</td>
+                  <td className="px-3 py-1.5">{r.category}</td>
+                  <td className={`px-3 py-1.5 text-right whitespace-nowrap ${isTransfer(r) ? 'text-slate-400' : isInflow(r) ? 'text-emerald-600' : 'text-red-600'}`}>{isTransfer(r) ? '↔' : isInflow(r) ? '+' : '−'}{money(r.amount)}</td>
+                  <td className="px-3 py-1.5">{r.account ?? r.counterparty}</td>
+                  <td className="px-3 py-1.5 text-slate-500">{r.note}</td>
+                  <td className="px-3 py-1.5 text-slate-400">{r.created_by}</td>
+                  <td className="px-3 py-1.5 whitespace-nowrap">
+                    <button className="text-blue-600 mr-2" onClick={() => setEditing(r)}>Sửa</button>
+                    <button className="text-red-600" onClick={() => confirm('Xoá giao dịch này?') && remove(kind, r)}>Xoá</button>
+                  </td>
+                </tr>
+              ))}
+              {!g.rows.length && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-400">Chưa có dữ liệu</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -37,30 +81,7 @@ export default function CashFlow({ kind, onImport }) {
           <button className="rounded-lg border border-red-300 text-red-700 px-3 py-1 hover:bg-red-50" onClick={delPicked}>Xoá đã chọn</button>
           <button className="text-slate-500 underline" onClick={() => setSel(new Set())}>Bỏ chọn</button>
         </div>)}
-      <div className="card overflow-x-auto p-0">
-        <table className="w-full text-sm">
-          <thead className="text-xs text-slate-500 text-left"><tr><th className="px-3 py-2 w-8"><input type="checkbox" aria-label="Chọn tất cả" checked={allPicked} onChange={() => setSel(allPicked ? new Set() : new Set(shown.map((r) => r.id)))} /></th>{['Ngày', 'Loại', 'Danh mục', 'Số tiền', kind === 'business' ? 'Đối tác' : 'Tài khoản', 'Ghi chú', 'Bởi', ''].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr></thead>
-          <tbody>
-            {shown.map((r) => (
-              <tr key={r.id} className={`border-t border-slate-100 ${sel.has(r.id) ? 'bg-blue-50' : ''}`}>
-                <td className="px-3 py-1.5"><input type="checkbox" aria-label="Chọn dòng" checked={sel.has(r.id)} onChange={() => toggle(r.id)} /></td>
-                <td className="px-3 py-1.5 whitespace-nowrap">{r.date}</td>
-                <td className="px-3 py-1.5">{isTransfer(r) ? 'Chuyển nội bộ' : r.type}</td>
-                <td className="px-3 py-1.5">{r.category}</td>
-                <td className={`px-3 py-1.5 text-right whitespace-nowrap ${isTransfer(r) ? 'text-slate-400' : isInflow(r) ? 'text-emerald-600' : 'text-red-600'}`}>{isTransfer(r) ? '↔' : isInflow(r) ? '+' : '−'}{money(r.amount)}</td>
-                <td className="px-3 py-1.5">{r.account ?? r.counterparty}</td>
-                <td className="px-3 py-1.5 text-slate-500">{r.note}</td>
-                <td className="px-3 py-1.5 text-slate-400">{r.created_by}</td>
-                <td className="px-3 py-1.5 whitespace-nowrap">
-                  <button className="text-blue-600 mr-2" onClick={() => setEditing(r)}>Sửa</button>
-                  <button className="text-red-600" onClick={() => confirm('Xoá giao dịch này?') && remove(kind, r)}>Xoá</button>
-                </td>
-              </tr>
-            ))}
-            {!shown.length && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-400">Chưa có dữ liệu</td></tr>}
-          </tbody>
-        </table>
-      </div>
+      {groups.map((g) => g.rows.length > 0 || g.always ? table(g) : null)}
       {kind === 'bm' && rows.length > 0 && (
         <div className="flex justify-end">
           <button className="rounded-lg border border-red-300 text-red-700 px-3 py-1.5 text-sm hover:bg-red-50"
