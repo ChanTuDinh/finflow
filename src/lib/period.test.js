@@ -97,3 +97,9 @@ test('Transfer không tính vào thu/chi', async () => {
   assert.equal(byMonth(rows)[0].expense, 30)
   assert.deepEqual(expenseByCategory(rows).map((e) => e.category), ['Khác'])
 })
+
+test('kỳ mặc định là Tất cả năm, xem theo Năm', () => {
+  assert.deepEqual(ALL, { level: 'all', key: '' })
+  assert.equal(resolveGrain(ALL, null), 'year')
+  assert.ok(inPeriod(ALL, '2019-01-01') && inPeriod(ALL, '2031-12-31'))
+})
