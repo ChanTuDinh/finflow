@@ -65,3 +65,12 @@ test('estimateTerm khớp computeApr (vòng tròn) và báo lỗi khi tiền tr�
   assert.match(estimateTerm({ balance: 2e9, apr: 6.5, payment: 10e6 }).error, /không bao giờ/)
   assert.equal(estimateTerm({ balance: 12e6, apr: 0, payment: 1e6 }).months, 12)
 })
+
+test('scenarioPayoff: niên kim 20 năm', async () => {
+  const { scenarioPayoff } = await import('./rate.js')
+  assert.deepEqual(scenarioPayoff({ balance: 240e6, apr: 0, months: 240 }), { monthly: 1e6, total: 240e6, interest: 0 })
+  const s = scenarioPayoff({ balance: 1e9, apr: 12, months: 240 }) // 1%/tháng: ≈ 11,010,861/tháng
+  assert.ok(Math.abs(s.monthly - 11010861) < 5)
+  assert.ok(Math.abs(s.total - s.monthly * 240) < 240 && s.interest > 1.6e9)
+  assert.deepEqual(scenarioPayoff({ balance: 0, apr: 10, months: 240 }), { monthly: 0, total: 0, interest: 0 })
+})

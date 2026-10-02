@@ -8,6 +8,7 @@ import { TABS, isInterestOnly, SCOPE_OWNER, debtScopeOptions, cashRowsForScope }
 import EntryForm from '../components/EntryForm.jsx'
 import PaymentForm from '../components/PaymentForm.jsx'
 import { reversePayment, adjustSummary } from '../lib/payments.js'
+import { scenarioPayoff } from '../lib/rate.js'
 import { useDebtSelection, useCountedPayments } from '../lib/selection.jsx'
 
 // kind: 'debts' (nguồn nợ chính) | 'debts_bm' (nguồn nợ BM) — cùng giao diện, dữ liệu riêng.
@@ -21,6 +22,7 @@ export default function Debts({ kind = 'debts' }) {
   const [editingPayment, setEditingPayment] = useState(null) // { payment, debt, limited }
   const { period, setPeriod } = usePeriod()
   const [scope, setScope] = useState('all')
+  const [years, setYears] = useState('20') // kịch bản trả gốc và lãi đều trong N năm
   const owner = SCOPE_OWNER[scope]
   const main = kind === 'debts'
   // Dư nợ hiển thị đã hoàn lại các lần trả bị bỏ tick trong Lịch sử trả nợ; thao tác Sửa/Ghi khoản trả vẫn dùng số đang ghi nhận
@@ -37,6 +39,9 @@ export default function Debts({ kind = 'debts' }) {
   const total = active.reduce((s, d) => s + d.balance, 0)
   const min = active.reduce((s, d) => s + d.min_payment, 0)
   const interest = active.reduce((s, d) => s + (d.balance * d.apr) / 1200, 0)
+  // Kịch bản: mỗi khoản trả gốc + lãi đều trong N năm theo dư nợ và lãi suất hiện tại
+  const scen = (d) => scenarioPayoff({ balance: d.balance, apr: d.apr, months: Number(years) * 12 })
+  const scenTotal = active.reduce((t, d) => { const x = scen(d); return { monthly: t.monthly + x.monthly, total: t.total + x.total, interest: t.interest + x.interest } }, { monthly: 0, total: 0, interest: 0 })
   const cash = cashRowsForScope(data, scope, kind)
   // Lịch sử trả nợ của nguồn này, chỉ các khoản đã tick, trong kỳ đang chọn
   const latestPaymentId = {}
@@ -72,6 +77,17 @@ export default function Debts({ kind = 'debts' }) {
         <Stat label="Trả tối thiểu / tháng" value={money(min)} />
         <Stat label="Lãi phát sinh / tháng" value={money(interest)} tone="neg" />
       </div>
+      <section className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold text-indigo-900">Kịch bản trả gốc + lãi trong {years} năm <span className="text-xs font-normal text-slate-500">· trả đều hàng tháng, lãi suất giữ nguyên, các khoản đã tick</span></h2>
+          <SelectField label="Thời hạn" value={years} onChange={setYears} options={[10, 15, 20, 25, 30].map((y) => ({ value: String(y), label: `${y} năm` }))} />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Stat label="Trả mỗi tháng" value={money(scenTotal.monthly)} />
+          <Stat label={`Tổng phải trả sau ${years} năm`} value={money(scenTotal.total)} />
+          <Stat label="Trong đó tiền lãi" value={money(scenTotal.interest)} tone="neg" sub={total > 0 ? `${((scenTotal.interest / total) * 100).toFixed(0)}% so với dư nợ gốc ${money(total)}` : undefined} />
+        </div>
+      </section>
       {data._missing?.includes('payments') && <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm p-2">Sheet chưa có tab Debt_Payments nên chưa lưu được lịch sử trả nợ. Chạy lại <code>setup.gs</code> (không xoá dữ liệu cũ) hoặc tạo tab đúng tên.</div>}
       {data._missing?.includes(kind) && <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm p-2">Sheet chưa có tab {TABS[kind].tab}. Chạy lại <code>setup.gs</code> (không xoá dữ liệu cũ) hoặc tạo tab đúng tên để lưu dữ liệu.</div>}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -81,13 +97,13 @@ export default function Debts({ kind = 'debts' }) {
       {/* Gộp thông tin vào ít cột để cả bảng vừa một màn hình, không phải cuộn ngang. Điện thoại: dạng thẻ. */}
       <div className="hidden md:block card p-0 overflow-hidden">
         <table className="w-full text-sm table-fixed">
-          <colgroup><col style={{ width: 40 }} /><col style={{ width: '25%' }} /><col style={{ width: '15%' }} /><col style={{ width: 78 }} /><col style={{ width: '14%' }} /><col /><col style={{ width: 128 }} /></colgroup>
+          <colgroup><col style={{ width: 40 }} /><col style={{ width: '21%' }} /><col style={{ width: '14%' }} /><col style={{ width: 70 }} /><col style={{ width: '13%' }} /><col style={{ width: '23%' }} /><col /><col style={{ width: 128 }} /></colgroup>
           <thead className="text-xs text-slate-500 text-left">
             <tr>
               <th className="pl-3 py-2"><input ref={tickAllRef} type="checkbox" aria-label="Chọn tất cả" checked={allTicked} onChange={(e) => sel.setMany(debts.map((d) => d.id), e.target.checked)} /></th>
               <th className="px-3 py-2">Khoản nợ</th><th className="px-3 py-2 text-right">Dư nợ</th>
               <th className="px-2 py-2 text-center bg-amber-100 text-amber-800">Lãi %/năm</th>
-              <th className="px-3 py-2 text-right">Trả / tháng</th><th className="px-3 py-2">Ghi chú</th><th />
+              <th className="px-3 py-2 text-right">Trả / tháng</th><th className="px-3 py-2 text-right bg-indigo-50 text-indigo-800">Kịch bản {years} năm</th><th className="px-3 py-2">Ghi chú</th><th />
             </tr>
           </thead>
           <tbody>
@@ -109,6 +125,10 @@ export default function Debts({ kind = 'debts' }) {
                   <div className="whitespace-nowrap">{money(d.min_payment)}</div>
                   <div className="text-xs text-slate-400">hạn ngày {d.due_day}</div>
                 </td>
+                <td className="px-3 py-2 text-right bg-indigo-50/50">
+                  <div className="whitespace-nowrap font-medium text-indigo-900">{money(scen(d).total)}</div>
+                  <div className="text-xs text-slate-500 whitespace-nowrap">{money(scen(d).monthly)}/th</div><div className="text-xs text-slate-500 whitespace-nowrap">lãi {money(scen(d).interest)}</div>
+                </td>
                 <td className="px-3 py-2 text-slate-600 whitespace-pre-line break-words">{d.note}</td>
                 <td className="px-3 py-2 text-right text-xs leading-6">
                   {recorded(d.id)?.status !== 'Paid' && <div><button className="text-emerald-700 font-medium text-sm" onClick={() => setPaying(recorded(d.id))}>Ghi khoản trả</button></div>}
@@ -116,7 +136,7 @@ export default function Debts({ kind = 'debts' }) {
                 </td>
               </tr>
             ))}
-            {!debts.length && <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-400">Chưa có khoản nợ</td></tr>}
+            {!debts.length && <tr><td colSpan={8} className="px-3 py-6 text-center text-slate-400">Chưa có khoản nợ</td></tr>}
           </tbody>
         </table>
       </div>
@@ -135,6 +155,11 @@ export default function Debts({ kind = 'debts' }) {
               <div><div className="text-xs text-slate-500">Dư nợ</div><div className="font-medium break-words">{money(d.balance)}</div>{recorded(d.id) && recorded(d.id).balance !== d.balance && <div className="text-xs text-amber-700">ghi nhận {money(recorded(d.id).balance)}</div>}</div>
               <div className="rounded bg-amber-50 px-2 py-1 text-center"><div className="text-xs text-amber-800">Lãi %/năm</div><div className="font-semibold text-amber-900">{d.apr}</div></div>
               <div><div className="text-xs text-slate-500">Trả / tháng</div><div className="font-medium break-words">{money(d.min_payment)}</div></div>
+            </div>
+            <div className="rounded bg-indigo-50 px-2 py-1 text-sm flex flex-wrap justify-between gap-x-3">
+              <span className="text-xs text-indigo-800">Kịch bản {years} năm</span>
+              <span className="font-medium text-indigo-900">Tổng {money(scen(d).total)}</span>
+              <span className="text-xs text-slate-500 w-full">{money(scen(d).monthly)}/tháng · lãi {money(scen(d).interest)}</span>
             </div>
             {!main && d.record_date && <div className="text-xs text-slate-400">Ghi nhận {d.record_date}</div>}
             {d.note && <div className="text-sm text-slate-600 whitespace-pre-line break-words">{d.note}</div>}

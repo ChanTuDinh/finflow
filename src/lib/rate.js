@@ -48,3 +48,15 @@ export function estimateTerm({ balance, apr, payment: M }) {
   const months = Math.ceil(n - 1e-9)
   return { months, exact: n, totalInterest: Math.max(pay * n - P, 0) }
 }
+
+/**
+ * Kịch bản trả gốc và lãi đều hàng tháng (niên kim) trong `months` tháng với lãi suất năm `apr` (%).
+ * Trả { monthly, total, interest } (làm tròn đồng); dư nợ <= 0 -> toàn số 0.
+ */
+export function scenarioPayoff({ balance, apr, months }) {
+  const P = Number(balance), n = Math.round(Number(months)), r = Number(apr)
+  if (!(P > 0) || !(n > 0)) return { monthly: 0, total: 0, interest: 0 }
+  const monthly = payment(P, r > 0 ? r / 1200 : 0, n)
+  const total = monthly * n
+  return { monthly: Math.round(monthly), total: Math.round(total), interest: Math.round(Math.max(total - P, 0)) }
+}
