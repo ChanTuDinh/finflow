@@ -13,6 +13,7 @@ export default function CashFlow({ kind, onImport }) {
   const rows = data[kind]
   const { period } = usePeriod()
   const [editing, setEditing] = useState(null) // null | {} (mới) | row
+  const [openMonths, setOpenMonths] = useState({}) // `${bảng}:${yyyy-mm}` -> mở/đóng; chưa chọn thì chỉ mở tháng mới nhất
   const [sel, setSel] = useState(() => new Set()) // id các dòng đang tick
   const shown = rows.filter((r) => inPeriod(period, r.date)).sort((a, b) => b.date.localeCompare(a.date))
   const t = totals(shown)
@@ -27,41 +28,62 @@ export default function CashFlow({ kind, onImport }) {
   const inRows = shown.filter((r) => isInflow(r) && !isWalletMove(r))
   const sumOf = (rs) => rs.reduce((a, r) => a + r.amount, 0)
   const moveRows = shown.filter(isTransfer)
+  const sumLabel = (key, rs) => (key === 'wallet' ? `+${money(sumOf(rs.filter(isInflow)))} / −${money(sumOf(rs.filter((x) => !isInflow(x))))}` : money(sumOf(rs)))
   const groups = [
-    { key: 'out', title: '⬆ Tiền đi ra', rows: outRows, always: true, tone: 'text-red-600', sum: money(sumOf(outRows)) },
-    { key: 'wallet', title: '⇄ Chuyển ví', rows: walletRows, always: false, tone: 'text-indigo-600', sum: `+${money(sumOf(walletRows.filter(isInflow)))} / −${money(sumOf(walletRows.filter((r) => !isInflow(r))))}` },
-    { key: 'in', title: `⬇ Tiền đi vào`, rows: inRows, always: true, tone: 'text-emerald-600', sum: money(sumOf(inRows)) },
+    { key: 'out', title: '⬆ Tiền đi ra', rows: outRows, always: true, tone: 'text-red-600', sum: sumLabel('out', outRows) },
+    { key: 'wallet', title: '⇄ Chuyển ví', rows: walletRows, always: false, tone: 'text-indigo-600', sum: sumLabel('wallet', walletRows) },
+    { key: 'in', title: `⬇ Tiền đi vào`, rows: inRows, always: true, tone: 'text-emerald-600', sum: sumLabel('in', inRows) },
     { key: 'move', title: '↔ Chuyển nội bộ (không tính thu/chi)', rows: moveRows, always: false, tone: 'text-slate-500' },
   ]
+  const monthLabel = (ym) => (ym ? `Tháng ${ym.slice(5)}/${ym.slice(0, 4)}` : 'Chưa có ngày')
   const table = (g) => {
+    const months = []
+    for (const x of g.rows) { const ym = (x.date || '').slice(0, 7); const last = months[months.length - 1]; if (last && last.ym === ym) last.rows.push(x); else months.push({ ym, rows: [x] }) } // g.rows đã sắp mới -> cũ
+    const isOpen = (ym, i) => openMonths[`${g.key}:${ym}`] ?? i === 0
+    const setOpen = (ym, v) => setOpenMonths((o) => ({ ...o, [`${g.key}:${ym}`]: v }))
+    const allOpen = months.length > 0 && months.every((m, i) => isOpen(m.ym, i))
     const all = g.rows.length > 0 && g.rows.every((r) => sel.has(r.id))
     const toggleAll = () => setSel((s) => { const n = new Set(s); g.rows.forEach((r) => (all ? n.delete(r.id) : n.add(r.id))); return n })
     return (
       <div key={g.key} className="space-y-1">
         <div className="flex items-baseline justify-between px-1">
           <h3 className={`font-semibold ${g.tone}`}>{g.title} <span className="text-xs font-normal text-slate-400">({g.rows.length})</span></h3>
-          {g.sum != null && <span className={`text-sm font-medium ${g.tone}`}>{g.sum}</span>}
+          <div className="flex items-baseline gap-3">
+            {months.length > 1 && <button className="text-xs text-blue-600" onClick={() => setOpenMonths((o) => ({ ...o, ...Object.fromEntries(months.map((m) => [`${g.key}:${m.ym}`, !allOpen])) }))}>{allOpen ? 'Thu gọn tất cả' : 'Mở tất cả tháng'}</button>}
+            {g.sum != null && <span className={`text-sm font-medium ${g.tone}`}>{g.sum}</span>}
+          </div>
         </div>
         <div className="card overflow-x-auto p-0">
           <table className="w-full text-sm">
             <thead className="text-xs text-slate-500 text-left"><tr><th className="px-3 py-2 w-8"><input type="checkbox" aria-label="Chọn tất cả" checked={all} onChange={toggleAll} /></th>{['Ngày', 'Loại', 'Danh mục', 'Số tiền', kind === 'business' ? 'Đối tác' : 'Tài khoản', 'Ghi chú', 'Bởi', ''].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr></thead>
             <tbody>
-              {g.rows.map((r) => (
-                <tr key={r.id} className={`border-t border-slate-100 ${sel.has(r.id) ? 'bg-blue-50' : ''}`}>
-                  <td className="px-3 py-1.5"><input type="checkbox" aria-label="Chọn dòng" checked={sel.has(r.id)} onChange={() => toggle(r.id)} /></td>
-                  <td className="px-3 py-1.5 whitespace-nowrap">{r.date}</td>
-                  <td className="px-3 py-1.5">{isTransfer(r) ? 'Chuyển nội bộ' : r.type}</td>
-                  <td className="px-3 py-1.5">{r.category}</td>
-                  <td className={`px-3 py-1.5 text-right whitespace-nowrap ${isTransfer(r) ? 'text-slate-400' : isInflow(r) ? 'text-emerald-600' : 'text-red-600'}`}>{isTransfer(r) ? '↔' : isInflow(r) ? '+' : '−'}{money(r.amount)}</td>
-                  <td className="px-3 py-1.5">{r.account ?? r.counterparty}</td>
-                  <td className="px-3 py-1.5 text-slate-500">{r.note}</td>
-                  <td className="px-3 py-1.5 text-slate-400">{r.created_by}</td>
-                  <td className="px-3 py-1.5 whitespace-nowrap">
-                    <button className="text-blue-600 mr-2" onClick={() => setEditing(r)}>Sửa</button>
-                    <button className="text-red-600" onClick={() => confirm('Xoá giao dịch này?') && remove(kind, r)}>Xoá</button>
-                  </td>
-                </tr>
-              ))}
+              {months.map((m, i) => {
+                const open = isOpen(m.ym, i)
+                const tick = m.rows.every((x) => sel.has(x.id))
+                return [
+                  <tr key={`h-${m.ym}`} className="border-t border-slate-100 bg-slate-50 cursor-pointer select-none hover:bg-slate-100" onClick={() => setOpen(m.ym, !open)}>
+                    <td className="px-3 py-1.5" onClick={(e) => e.stopPropagation()}><input type="checkbox" aria-label={`Chọn cả ${monthLabel(m.ym)}`} checked={tick} onChange={() => setSel((s) => { const n = new Set(s); m.rows.forEach((x) => (tick ? n.delete(x.id) : n.add(x.id))); return n })} /></td>
+                    <td colSpan={4} className="px-3 py-1.5 font-medium text-slate-700"><span className="inline-block w-4 text-slate-400">{open ? '▾' : '▸'}</span>{monthLabel(m.ym)} <span className="text-xs font-normal text-slate-400">· {m.rows.length} giao dịch</span></td>
+                    <td colSpan={4} className={`px-3 py-1.5 text-right font-medium ${g.tone}`}>{sumLabel(g.key, m.rows)}</td>
+                  </tr>,
+                open && m.rows.map((r) => (
+                  <tr key={r.id} className={`border-t border-slate-100 ${sel.has(r.id) ? 'bg-blue-50' : ''}`}>
+                    <td className="px-3 py-1.5"><input type="checkbox" aria-label="Chọn dòng" checked={sel.has(r.id)} onChange={() => toggle(r.id)} /></td>
+                    <td className="px-3 py-1.5 whitespace-nowrap">{r.date}</td>
+                    <td className="px-3 py-1.5">{isTransfer(r) ? 'Chuyển nội bộ' : r.type}</td>
+                    <td className="px-3 py-1.5">{r.category}</td>
+                    <td className={`px-3 py-1.5 text-right whitespace-nowrap ${isTransfer(r) ? 'text-slate-400' : isInflow(r) ? 'text-emerald-600' : 'text-red-600'}`}>{isTransfer(r) ? '↔' : isInflow(r) ? '+' : '−'}{money(r.amount)}</td>
+                    <td className="px-3 py-1.5">{r.account ?? r.counterparty}</td>
+                    <td className="px-3 py-1.5 text-slate-500">{r.note}</td>
+                    <td className="px-3 py-1.5 text-slate-400">{r.created_by}</td>
+                    <td className="px-3 py-1.5 whitespace-nowrap">
+                      <button className="text-blue-600 mr-2" onClick={() => setEditing(r)}>Sửa</button>
+                      <button className="text-red-600" onClick={() => confirm('Xoá giao dịch này?') && remove(kind, r)}>Xoá</button>
+                    </td>
+                  </tr>
+                ))
+                ]
+              })}
               {!g.rows.length && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-400">Chưa có dữ liệu</td></tr>}
             </tbody>
           </table>
