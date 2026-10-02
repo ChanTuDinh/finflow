@@ -9,7 +9,7 @@ import Settings from './pages/Settings.jsx'
 import Savings from './pages/Savings.jsx'
 import Import from './pages/Import.jsx'
 import ForecastSavings from './pages/ForecastSavings.jsx'
-import { makeBackup, downloadJson, backupFileName } from './lib/backup.js'
+import { makeBackup, downloadJson, backupFileName, getLastBackup, setLastBackup, backupStatus, backupLabel } from './lib/backup.js'
 
 const PAGES = [
   ['dashboard', 'Tổng quan'],
@@ -32,15 +32,22 @@ const FOCUS_TABS = new Set(['bm', 'debtsBm', 'forecastBm'])
 export default function App() {
   const [page, setPage] = useState('dashboard')
   const { mode, status, refresh, data } = useStore()
+  const [lastBk, setLastBk] = useState(getLastBackup)
+  const bk = backupStatus(lastBk)
   return (
     <div className="max-w-6xl mx-auto p-4">
       <header className="flex flex-wrap items-center gap-3 mb-4">
         <h1 className="text-xl font-bold">FinFlow</h1>
         <span className={`text-xs px-2 py-0.5 rounded-full ${mode === 'sheets' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-          {mode === 'sheets' ? 'Google Sheets' : 'Demo (dữ liệu local)'}
+          {mode === 'sheets' ? 'Google Sheets' : 'Lưu trong trình duyệt này'}
         </span>
         {mode === 'sheets' && <button className="btn-ghost" onClick={refresh} disabled={status.loading}>↻ Tải lại</button>}
-        {mode === 'demo' && <button className="btn-ghost" title="Dữ liệu chỉ lưu trong trình duyệt này — tải file sao lưu" onClick={() => downloadJson(backupFileName(), makeBackup(data))}>⬇ Sao lưu</button>}
+        {mode === 'demo' && (
+          <button className={bk.stale ? 'inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-medium border border-amber-400 bg-amber-100 text-amber-900 hover:bg-amber-200' : 'btn-ghost'}
+            title="Dữ liệu chỉ lưu trong trình duyệt này — tải file sao lưu" onClick={() => { downloadJson(backupFileName(), makeBackup(data)); setLastBk(setLastBackup()) }}>
+            ⬇ Sao lưu <span className="ml-1 text-xs font-normal opacity-80">({backupLabel(bk)})</span>
+          </button>
+        )}
         {status.loading && <span className="text-xs text-slate-500">Đang xử lý…</span>}
       </header>
       {status.error && <div className="mb-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm p-2">{status.error}</div>}

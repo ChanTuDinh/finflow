@@ -53,6 +53,8 @@ export function StoreProvider({ children }) {
   })
   const disconnect = () => { sheets.signOut(); setMode('demo'); setData(loadDemo()) }
   const resetDemo = () => setData(demoData(todayIso().slice(0, 7)))
+  // Xoá toàn bộ dữ liệu trong trình duyệt (về trạng thái trống) — chỉ dùng sau khi đã sao lưu
+  const clearAllLocal = () => setData(EMPTY_DATA())
 
   // Thêm / sửa / xoá. Sheets: ghi rồi tải lại để giữ số hàng (_row) đúng khi nhiều người cùng sửa.
   const upsert = (kind, row) => run(async () => {
@@ -146,7 +148,7 @@ export function StoreProvider({ children }) {
   })
 
   return (
-    <Ctx.Provider value={{ data, mode, settings, setSettings, money, status, connect, disconnect, refresh, resetDemo, upsert, remove, clearKind, localSnapshot, restoreLocal, migrateLocalToSheet, importBatch, recordPayment, deletePayment, updatePayment }}>
+    <Ctx.Provider value={{ data, mode, settings, setSettings, money, status, connect, disconnect, refresh, resetDemo, clearAllLocal, upsert, remove, clearKind, localSnapshot, restoreLocal, migrateLocalToSheet, importBatch, recordPayment, deletePayment, updatePayment }}>
       {children}
     </Ctx.Provider>
   )

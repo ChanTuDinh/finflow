@@ -50,3 +50,14 @@ test('chuyển lên Sheet: thiếu tab cần ghi thì chặn, báo tên tab (kh�
   // tab thiếu nhưng không có dữ liệu cần ghi thì không bị chặn
   assert.deepEqual(planMigration({ bm: [] }, {}, ['bm']).blocked, [])
 })
+
+import { backupStatus, backupLabel } from './backup.js'
+test('nhắc sao lưu: chưa từng / mới sao lưu / quá 7 ngày', () => {
+  const now = new Date('2026-10-10T12:00:00Z')
+  assert.deepEqual(backupStatus(null, now), { never: true, days: null, stale: true })
+  assert.deepEqual(backupStatus('2026-10-10T08:00:00Z', now), { never: false, days: 0, stale: false })
+  assert.deepEqual(backupStatus('2026-10-05T12:00:00Z', now), { never: false, days: 5, stale: false })
+  assert.equal(backupStatus('2026-10-03T12:00:00Z', now).stale, true)
+  assert.equal(backupLabel(backupStatus(null, now)), 'chưa sao lưu')
+  assert.equal(backupLabel(backupStatus('2026-10-07T12:00:00Z', now)), '3 ngày trước')
+})

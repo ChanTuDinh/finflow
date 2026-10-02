@@ -59,3 +59,6 @@ Lãi suất là lãi danh nghĩa theo năm (lãi tháng × 12), cùng cách tín
 - **Chế độ Demo** (mặc định, nhãn vàng ở đầu trang): dữ liệu chỉ lưu trong trình duyệt của bạn. Tắt trình duyệt vẫn còn, nhưng **mất** nếu xoá dữ liệu trình duyệt, dùng cửa sổ ẩn danh, hoặc mở bằng máy/trình duyệt khác; người dùng chung cũng không thấy.
 - **Sao lưu**: nút **⬇ Sao lưu** ở đầu trang (hoặc Cài đặt › Tải file sao lưu) tải file `finflow-backup-ngày.json`. Ở trình duyệt khác: Cài đặt › Khôi phục từ file sao lưu.
 - **Lưu bền và dùng chung**: kết nối Google Sheets (mục trên). Dữ liệu đang có trong trình duyệt **không bị ghi đè** khi kết nối; sau đó vào Cài đặt › **Đưa lên Google Sheet** để chuyển toàn bộ lên Sheet (chỉ thêm dòng chưa có nên bấm lại không trùng; Sheet cần đủ các tab — chạy `setup.gs` trước).
+
+### Chế độ mặc định hiện tại: lưu trong trình duyệt + sao lưu file
+Tuỳ chọn Google Sheets đang **ẩn** (code vẫn còn). Dữ liệu lưu trong trình duyệt; nút **⬇ Sao lưu** ở đầu trang chuyển màu vàng khi chưa sao lưu hoặc đã quá 7 ngày. Muốn bật lại Google Sheets: đặt biến môi trường `VITE_ENABLE_SHEETS=true` (trên Vercel: Settings › Environment Variables) rồi deploy lại; mục kết nối và nút chuyển dữ liệu lên Sheet sẽ xuất hiện trong Cài đặt.

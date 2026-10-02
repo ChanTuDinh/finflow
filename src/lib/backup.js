@@ -48,3 +48,16 @@ export function downloadJson(filename, obj) {
   document.body.appendChild(a); a.click(); a.remove()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
+
+// ---- Nhắc sao lưu: nhớ lần sao lưu gần nhất (lưu trong trình duyệt) ----
+const LAST_KEY = 'finflow:v1:lastBackup'
+export const getLastBackup = () => { try { return localStorage.getItem(LAST_KEY) } catch { return null } }
+export const setLastBackup = (iso = new Date().toISOString()) => { try { localStorage.setItem(LAST_KEY, iso) } catch { /* ignore */ } return iso }
+
+/** Số ngày từ lần sao lưu gần nhất và có nên nhắc không (chưa từng sao lưu hoặc quá staleDays ngày). */
+export function backupStatus(lastIso, now = new Date(), staleDays = 7) {
+  if (!lastIso) return { never: true, days: null, stale: true }
+  const days = Math.max(0, Math.floor((now - new Date(lastIso)) / 86400000))
+  return { never: false, days, stale: days >= staleDays }
+}
+export const backupLabel = (st) => (st.never ? 'chưa sao lưu' : st.days === 0 ? 'hôm nay' : `${st.days} ngày trước`)
