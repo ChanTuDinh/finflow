@@ -3,7 +3,7 @@ import { useStore } from '../lib/store.jsx'
 import { Stat, SelectField } from '../components/ui.jsx'
 import FilterBar from '../components/FilterBar.jsx'
 import { usePeriod } from '../lib/period.jsx'
-import { inPeriod, monthsIn, labelOf, levelName } from '../lib/period.js'
+import { ALL, inPeriod, monthsIn, labelOf, levelName } from '../lib/period.js'
 import { TABS, isInterestOnly, SCOPE_OWNER, debtScopeOptions, cashRowsForScope } from '../lib/schema.js'
 import EntryForm from '../components/EntryForm.jsx'
 import PaymentForm from '../components/PaymentForm.jsx'
@@ -19,7 +19,7 @@ export default function Debts({ kind = 'debts' }) {
   const [editing, setEditing] = useState(null)
   const [paying, setPaying] = useState(null) // khoản nợ đang ghi khoản trả
   const [editingPayment, setEditingPayment] = useState(null) // { payment, debt, limited }
-  const { period } = usePeriod()
+  const { period, setPeriod } = usePeriod()
   const [scope, setScope] = useState('all')
   const owner = SCOPE_OWNER[scope]
   const main = kind === 'debts'
@@ -43,6 +43,7 @@ export default function Debts({ kind = 'debts' }) {
   for (const x of data.payments) if (x.source === kind) latestPaymentId[x.debt_id] = x.id
   const chosenIds = new Set(chosen.map((d) => d.id))
   const history = data.payments.filter((x) => x.source === kind && chosenIds.has(x.debt_id) && inPeriod(period, x.date)).sort((a, b) => b.date.localeCompare(a.date))
+  const outsidePeriod = data.payments.filter((x) => x.source === kind && chosenIds.has(x.debt_id)).length - history.length
   const countedHistory = history.filter((x) => counted.isCounted(x.id))
   const allCounted = history.length > 0 && countedHistory.length === history.length
   const someCounted = countedHistory.length > 0 && !allCounted
@@ -148,6 +149,11 @@ export default function Debts({ kind = 'debts' }) {
       </div>
       <section className="space-y-2">
         <h2 className="font-semibold">Lịch sử trả nợ <span className="text-xs font-normal text-slate-400">— {periodTitle}, các khoản đã tick · tick = lần trả được tính vào dư nợ</span></h2>
+        {outsidePeriod > 0 && (
+          <div className="text-sm text-slate-600 flex flex-wrap items-center gap-2">
+            <span>Còn <b>{outsidePeriod}</b> lần trả khác nằm <b>ngoài kỳ đang chọn</b> ({periodTitle}).</span>
+            <button className="text-blue-600 underline" onClick={() => setPeriod(ALL)}>Xem tất cả năm</button>
+          </div>)}
         <div className="card p-0 overflow-hidden">
           <table className="w-full text-sm table-fixed">
             <colgroup><col style={{ width: 40 }} /><col style={{ width: 104 }} /><col /><col style={{ width: 160 }} /><col className="hidden sm:table-column" style={{ width: 130 }} /><col style={{ width: 56 }} /></colgroup>
@@ -176,7 +182,7 @@ export default function Debts({ kind = 'debts' }) {
                   </td>
                 </tr>
               ))}
-              {!history.length && <tr><td colSpan={6} className="px-3 py-6 text-center text-slate-400">Chưa có lần trả nào trong kỳ này — bấm “Ghi khoản trả” ở khoản nợ</td></tr>}
+              {!history.length && <tr><td colSpan={6} className="px-3 py-6 text-center text-slate-400">Chưa có lần trả nào trong kỳ này — bấm “Ghi khoản trả” ở khoản nợ (lần trả có ngày ở kỳ khác sẽ không hiện ở đây)</td></tr>}
             </tbody>
           </table>
         </div>
