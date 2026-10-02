@@ -94,3 +94,46 @@ test('xoá lần trả đã điều chỉnh -> hoàn lại cả dư nợ, tiền
     assert.deepEqual([back.balance, back.min_payment, back.term_months], [2e9, 28e6, 91])
   }
 })
+
+import { impliedApr } from './payments.js'
+test('suy ngược: lãi 6,5tr/tháng trên dư nợ 1,3 tỷ ứng với 6,0%/năm; trên 1,2 tỷ ứng 6,5%', () => {
+  assert.equal(impliedApr(1.3e9, 6.5e6), 6)
+  assert.equal(impliedApr(1.2e9, 6.5e6), 6.5)
+  assert.equal(impliedApr(0, 6.5e6), null)
+})
+
+test('trả gốc 700tr rồi chuyển sang chỉ trả lãi 6,5tr: giữ lãi suất 6,5%', () => {
+  const r = buildPayment({ debt: loan, kind: 'debts_bm', type: T.principal, amount: 700e6, date: '2026-04-01', adjust: ADJUST.interestOnly, adjustOpts: { interest: 6.5e6, rateMode: 'keep' } })
+  assert.equal(r.debt.balance, 1.3e9)
+  assert.equal(r.debt.repay_type, REPAY.interestOnly)
+  assert.equal(r.debt.min_payment, 6.5e6)
+  assert.equal(r.debt.apr, 6.5)
+  assert.deepEqual(JSON.parse(r.payment.adjust_prev), { min_payment: 28e6, term_months: 91, repay_type: REPAY.both, apr: 6.5 })
+})
+
+test('chuyển sang chỉ trả lãi và dùng lãi suất ngầm định (6,0%)', () => {
+  const r = buildPayment({ debt: loan, kind: 'debts_bm', type: T.principal, amount: 700e6, date: 'd', adjust: ADJUST.interestOnly, adjustOpts: { interest: 6.5e6, rateMode: 'implied' } })
+  assert.equal(r.debt.apr, 6)
+  assert.equal(r.debt.min_payment, 6.5e6)
+})
+
+test('không nhập tiền lãi -> mặc định dư nợ mới × lãi suất / 12', () => {
+  const r = buildPayment({ debt: loan, kind: 'debts_bm', type: T.principal, amount: 700e6, date: 'd', adjust: ADJUST.interestOnly })
+  assert.ok(Math.abs(r.debt.min_payment - 7_041_666.67) < 1, String(r.debt.min_payment))
+})
+
+test('xoá lần trả đã chuyển sang chỉ trả lãi -> hoàn lại hình thức, lãi suất, tiền trả/tháng, số tháng và dư nợ', () => {
+  for (const rateMode of ['keep', 'implied']) {
+    const r = buildPayment({ debt: loan, kind: 'debts_bm', type: T.principal, amount: 700e6, date: 'd', adjust: ADJUST.interestOnly, adjustOpts: { interest: 6.5e6, rateMode } })
+    const back = reversePayment(r.debt, r.payment)
+    assert.deepEqual([back.balance, back.repay_type, back.apr, back.min_payment, back.term_months], [2e9, REPAY.both, 6.5, 28e6, 91])
+  }
+})
+
+test('chuyển sang chỉ trả lãi: Forecast không giảm dư nợ, mỗi tháng trả đúng lãi', async () => {
+  const { simulate } = await import('./forecast.js')
+  const { debt } = buildPayment({ debt: loan, kind: 'debts_bm', type: T.principal, amount: 700e6, date: 'd', adjust: ADJUST.interestOnly, adjustOpts: { interest: 6.5e6, rateMode: 'keep' } })
+  const r = simulate({ debts: [debt], scenario: { mode: 'min' }, baseline: { income: 0, expense: 0 }, startYm: '2026-04', years: 1 })
+  assert.ok(Math.abs(r.endBalance - 1.3e9) < 1)
+  assert.ok(Math.abs(r.series[1].payment - 1.3e9 * 0.065 / 12) < 1) // 7,04tr: lãi thực theo lãi suất đang lưu
+})
