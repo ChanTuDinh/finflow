@@ -4,7 +4,7 @@ import { Stat, SelectField } from '../components/ui.jsx'
 import FilterBar from '../components/FilterBar.jsx'
 import { usePeriod } from '../lib/period.jsx'
 import { inPeriod, monthsIn, labelOf, levelName } from '../lib/period.js'
-import { DEBT_PAYMENT_CATEGORY, TABS } from '../lib/schema.js'
+import { DEBT_PAYMENT_CATEGORY, TABS, SCOPE_OWNER, debtScopeOptions, cashRowsForScope } from '../lib/schema.js'
 import EntryForm from '../components/EntryForm.jsx'
 
 // kind: 'debts' (nguồn nợ chính) | 'debts_bm' (nguồn nợ BM) — cùng giao diện, dữ liệu riêng.
@@ -13,14 +13,14 @@ export default function Debts({ kind = 'debts' }) {
   const [editing, setEditing] = useState(null)
   const { period } = usePeriod()
   const [scope, setScope] = useState('all')
-  const owner = scope === 'personal' ? 'Personal' : scope === 'business' ? 'Business' : null
+  const owner = SCOPE_OWNER[scope]
   const main = kind === 'debts'
   const debts = data[kind].filter((d) => !owner || d.owner === owner)
   const active = debts.filter((d) => d.status !== 'Paid')
   const total = active.reduce((s, d) => s + d.balance, 0)
   const min = active.reduce((s, d) => s + d.min_payment, 0)
   const interest = active.reduce((s, d) => s + (d.balance * d.apr) / 1200, 0)
-  const cash = scope === 'personal' ? data.personal : scope === 'business' ? data.business : [...data.personal, ...data.business]
+  const cash = cashRowsForScope(data, scope)
   const paidInPeriod = cash.filter((r) => r.category === DEBT_PAYMENT_CATEGORY && r.type === 'Expense' && inPeriod(period, r.date)).reduce((s, r) => s + r.amount, 0)
   const interestInPeriod = interest * monthsIn(period, cash)
   const periodTitle = period.level === 'all' ? levelName.all : `${levelName[period.level]} ${labelOf(period)}`
@@ -28,7 +28,7 @@ export default function Debts({ kind = 'debts' }) {
   return (
     <div className="space-y-4">
       <FilterBar
-        lead={<SelectField label="Phạm vi" value={scope} onChange={setScope} options={[{ value: 'all', label: 'Cá nhân + Doanh nghiệp' }, { value: 'personal', label: 'Chỉ cá nhân' }, { value: 'business', label: 'Chỉ doanh nghiệp' }]} />}
+        lead={<SelectField label="Phạm vi" value={scope} onChange={setScope} options={debtScopeOptions(kind)} />}
         action={<button className="btn" onClick={() => setEditing({})}>+ Thêm khoản nợ</button>} />
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Stat label="Tổng dư nợ hiện tại" value={money(total)} />

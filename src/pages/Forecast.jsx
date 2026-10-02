@@ -5,6 +5,7 @@ import { addMonths } from '../lib/calc.js'
 import { simulate, defaultScenarios, aggregateSeries } from '../lib/forecast.js'
 import { baselineFrom, buildInsights } from '../lib/insights.js'
 import { compact, todayIso } from '../lib/format.js'
+import { SCOPE_OWNER, debtScopeOptions, cashRowsForScope } from '../lib/schema.js'
 import { Chart, SERIES, SelectField, Segmented, FilterRow, Field } from '../components/ui.jsx'
 
 const ICON = { ok: '✅', warn: '⚠️', info: '💡' }
@@ -19,8 +20,8 @@ export default function Forecast({ kind = 'debts' }) {
   const startYm = todayIso().slice(0, 7)
   const endYm = addMonths(startYm, -1) // tháng đã đủ dữ liệu gần nhất
 
-  const debts = useMemo(() => data[kind].filter((d) => scope === 'all' || d.owner === (scope === 'personal' ? 'Personal' : 'Business')), [data, kind, scope])
-  const rows = useMemo(() => (scope === 'all' ? [...data.personal, ...data.business] : data[scope]), [data, scope])
+  const debts = useMemo(() => data[kind].filter((d) => scope === 'all' || d.owner === SCOPE_OWNER[scope]), [data, kind, scope])
+  const rows = useMemo(() => cashRowsForScope(data, scope), [data, scope])
   const baseline = useMemo(() => baselineFrom(rows, endYm), [rows, endYm])
   const minTotal = debts.filter((d) => d.status !== 'Paid').reduce((s, d) => s + d.min_payment, 0)
   const [scenarios, setScenarios] = useState(null)
@@ -51,7 +52,7 @@ export default function Forecast({ kind = 'debts' }) {
     <div className="space-y-4">
       <FilterRow>
         <SelectField label="Phạm vi" value={scope} onChange={(v) => { setScope(v); setScenarios(null) }}
-          options={[{ value: 'all', label: 'Cá nhân + Doanh nghiệp' }, { value: 'personal', label: 'Chỉ cá nhân' }, { value: 'business', label: 'Chỉ doanh nghiệp' }]} />
+          options={debtScopeOptions(kind)} />
         <SelectField label="Số năm" value={String(years)} onChange={(v) => setYears(Number(v))} options={[3, 4, 5].map((y) => ({ value: String(y), label: `${y} năm` }))} />
         <Segmented label="Xem theo" value={level} onChange={setLevel} options={[{ value: 'month', label: 'Tháng' }, { value: 'quarter', label: 'Quý' }, { value: 'year', label: 'Năm' }]} />
         <Field label="Tăng thu nhập / năm (%)"><input type="number" className="input !w-28" value={growth} onChange={(e) => setGrowth(Number(e.target.value))} /></Field>

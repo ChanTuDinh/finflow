@@ -43,7 +43,15 @@ TABS.goals = {
 }
 // Nguồn nợ thứ hai ("Nợ BM"): cùng cấu trúc với Debts, nằm ở tab Debts_BM, tách riêng hoàn toàn khỏi nguồn nợ chính.
 // record_date: ngày ghi nhận thông tin/số dư của khoản nợ (cột cuối để Sheet cũ vẫn tương thích)
-TABS.debts_bm = { ...TABS.debts, tab: 'Debts_BM', columns: [...TABS.debts.columns, 'record_date'] }
+TABS.debts_bm = { ...TABS.debts, tab: 'Debts_BM', columns: [...TABS.debts.columns, 'record_date'], owners: [...TABS.debts.owners, 'BM'] }
+
+// Bộ lọc "Phạm vi" của trang nợ: giá trị -> chủ khoản nợ (null = tất cả). Nợ BM có thêm lựa chọn BM.
+export const SCOPE_OWNER = { all: null, personal: 'Personal', business: 'Business', bm: 'BM' }
+export const debtScopeOptions = (kind) => (kind === 'debts_bm'
+  ? [{ value: 'all', label: 'Tất cả' }, { value: 'personal', label: 'Chỉ cá nhân' }, { value: 'business', label: 'Chỉ doanh nghiệp' }, { value: 'bm', label: 'Chỉ BM' }]
+  : [{ value: 'all', label: 'Cá nhân + Doanh nghiệp' }, { value: 'personal', label: 'Chỉ cá nhân' }, { value: 'business', label: 'Chỉ doanh nghiệp' }])
+// Dòng tiền dùng làm cơ sở/thống kê theo phạm vi: cá nhân hoặc doanh nghiệp riêng, còn lại gộp cả hai
+export const cashRowsForScope = (data, scope) => (scope === 'personal' ? data.personal : scope === 'business' ? data.business : [...data.personal, ...data.business])
 export const DEBT_KINDS = ['debts', 'debts_bm']
 TABS.accounts = {
   tab: 'Accounts',

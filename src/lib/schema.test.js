@@ -15,3 +15,15 @@ test('record_date: đọc từ serial/chuỗi, Sheet cũ thiếu cột thì đ�
   assert.equal(rowFromValues('debts_bm', [...v.slice(0, 10), '01/10/2026']).record_date, '2026-10-01')
   assert.equal(valuesFromRow('debts_bm', rowFromValues('debts_bm', v)).at(-1), '2026-10-01')
 })
+
+import { debtScopeOptions, SCOPE_OWNER, cashRowsForScope } from './schema.js'
+test('Nợ BM có chủ khoản nợ BM và bộ lọc phạm vi BM; nợ chính không có', () => {
+  assert.deepEqual(TABS.debts_bm.owners, ['Personal', 'Business', 'BM'])
+  assert.deepEqual(TABS.debts.owners, ['Personal', 'Business'])
+  assert.ok(debtScopeOptions('debts_bm').some((o) => o.value === 'bm'))
+  assert.ok(!debtScopeOptions('debts').some((o) => o.value === 'bm'))
+  assert.equal(SCOPE_OWNER.bm, 'BM')
+  const d = { personal: [1], business: [2] }
+  assert.deepEqual(cashRowsForScope(d, 'bm'), [1, 2]) // BM không có dòng tiền riêng: dùng cả hai
+  assert.deepEqual(cashRowsForScope(d, 'business'), [2])
+})
