@@ -5,14 +5,15 @@ import { ResponsiveContainer } from 'recharts'
 export const COLORS = { personal: '#2563eb', business: '#f59e0b', income: '#10b981', expense: '#ef4444', net: '#0f172a', grid: '#e2e8f0' }
 export const SERIES = ['#2563eb', '#f59e0b', '#10b981', '#8b5cf6', '#ef4444']
 
-// tinted: nền màu vừa (className đặt màu nền), chữ tối và số đỏ/xanh đậm hơn để vẫn đọc rõ trên nền màu
-export function Stat({ label, value, sub, tone, className = '', tinted = false }) {
+// tinted: 'teal' | 'violet' — nền màu vừa (className đặt màu nền), chữ tối và số đỏ/xanh đậm hơn để vẫn đọc rõ trên nền màu
+const TINT_TEXT = { teal: ['text-teal-900', 'text-teal-800'], violet: ['text-violet-900', 'text-violet-800'] } // [nhãn, ghi chú]
+export function Stat({ label, value, sub, tone, className = '', tinted = '' }) {
   const valueTone = tinted ? (tone === 'neg' ? 'text-red-700' : tone === 'pos' ? 'text-emerald-900' : 'text-slate-900') : tone === 'neg' ? 'text-red-600' : tone === 'pos' ? 'text-emerald-600' : ''
   return (
     <div className={`card ${className}`}>
-      <div className={`text-xs ${tinted ? 'text-teal-900' : 'text-slate-500'}`}>{label}</div>
+      <div className={`text-xs ${tinted ? TINT_TEXT[tinted][0] : 'text-slate-500'}`}>{label}</div>
       <div className={`text-base sm:text-lg font-semibold break-words ${valueTone}`}>{value}</div>
-      {sub && <div className={`text-xs ${tinted ? 'text-teal-800' : 'text-slate-400'}`}>{sub}</div>}
+      {sub && <div className={`text-xs ${tinted ? TINT_TEXT[tinted][1] : 'text-slate-400'}`}>{sub}</div>}
     </div>
   )
 }

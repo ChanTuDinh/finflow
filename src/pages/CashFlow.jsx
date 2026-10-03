@@ -36,7 +36,9 @@ export default function CashFlow({ kind, onImport }) {
   const picked = shown.filter((r) => sel.has(r.id)) // chỉ tính dòng đang hiển thị (đổi bộ lọc kỳ không xoá nhầm dòng ẩn)
   const toggle = (id) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   const delPicked = async () => { if (confirm(`Xoá ${picked.length} giao dịch đã chọn?\n\nKhông thể hoàn tác.`) && await removeMany(kind, picked)) setSel(new Set()) }
-  const statCls = kind === 'personal' ? '!bg-teal-300 !border-teal-500' : '' // Ví cá nhân: nền xanh ngọc nhạt cho các thẻ tổng
+  // Thẻ tổng có nền màu theo tab: Ví cá nhân xanh ngọc, Ví BM (ba mẹ) tím
+  const tint = { personal: 'teal', bm: 'violet' }[kind] || ''
+  const statCls = { teal: '!bg-teal-300 !border-teal-500', violet: '!bg-violet-300 !border-violet-500' }[tint] || ''
   const nMonths = spanMonths(shown)
   const perMonth = (v) => (nMonths ? Math.round(v / nMonths) : 0)
   const inLabel = kind === 'business' ? 'Doanh thu' : 'Thu nhập'
@@ -173,13 +175,13 @@ export default function CashFlow({ kind, onImport }) {
           : <div className="text-sm text-slate-400 px-1">Chưa có thẻ — bấm “+ Thêm thẻ” để gán huy hiệu và màu cho từng thẻ ngân hàng.</div>}
       </section>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Stat tinted={kind === 'personal'} className={statCls} label={inLabel} value={money(t.income)} />
-        <Stat tinted={kind === 'personal'} className={statCls} label="Chi" value={money(t.expense)} />
-        <Stat tinted={kind === 'personal'} className={statCls} label="Dòng tiền ròng" value={money(t.net)} tone={t.net < 0 ? 'neg' : 'pos'} />
+        <Stat tinted={tint} className={statCls} label={inLabel} value={money(t.income)} />
+        <Stat tinted={tint} className={statCls} label="Chi" value={money(t.expense)} />
+        <Stat tinted={tint} className={statCls} label="Dòng tiền ròng" value={money(t.net)} tone={t.net < 0 ? 'neg' : 'pos'} />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Stat tinted={kind === 'personal'} className={statCls} label={`${inLabel} / tháng`} value={money(perMonth(t.income))} sub={nMonths ? `Trung bình trong ${nMonths} tháng` : 'Chưa có dữ liệu'} />
-        <Stat tinted={kind === 'personal'} className={statCls} label="Chi / tháng" value={money(perMonth(t.expense))} sub={nMonths ? `Trung bình trong ${nMonths} tháng` : 'Chưa có dữ liệu'} />
+        <Stat tinted={tint} className={statCls} label={`${inLabel} / tháng`} value={money(perMonth(t.income))} sub={nMonths ? `Trung bình trong ${nMonths} tháng` : 'Chưa có dữ liệu'} />
+        <Stat tinted={tint} className={statCls} label="Chi / tháng" value={money(perMonth(t.expense))} sub={nMonths ? `Trung bình trong ${nMonths} tháng` : 'Chưa có dữ liệu'} />
       </div>
       {picked.length > 0 && (
         <div className="flex items-center gap-3 rounded-lg bg-slate-100 px-3 py-2 text-sm">
