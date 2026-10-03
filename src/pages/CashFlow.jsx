@@ -176,12 +176,12 @@ export default function CashFlow({ kind, onImport }) {
       </section>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Stat tinted={tint} className={statCls} label={inLabel} value={money(t.income)} />
-        <Stat tinted={tint} className={statCls} label="Chi" value={money(t.expense)} />
+        <Stat tinted={tint} className={statCls} label="Chi" value={money(t.expense)} tone="neg" />
         <Stat tinted={tint} className={statCls} label="Dòng tiền ròng" value={money(t.net)} tone={t.net < 0 ? 'neg' : 'pos'} />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Stat tinted={tint} className={statCls} label={`${inLabel} / tháng`} value={money(perMonth(t.income))} sub={nMonths ? `Trung bình trong ${nMonths} tháng` : 'Chưa có dữ liệu'} />
-        <Stat tinted={tint} className={statCls} label="Chi / tháng" value={money(perMonth(t.expense))} sub={nMonths ? `Trung bình trong ${nMonths} tháng` : 'Chưa có dữ liệu'} />
+        <Stat tinted={tint} className={statCls} label="Chi / tháng" tone="neg" value={money(perMonth(t.expense))} sub={nMonths ? `Trung bình trong ${nMonths} tháng` : 'Chưa có dữ liệu'} />
       </div>
       {picked.length > 0 && (
         <div className="flex items-center gap-3 rounded-lg bg-slate-100 px-3 py-2 text-sm">
