@@ -41,10 +41,12 @@ export default function CashFlow({ kind, onImport }) {
   const debtBmRows = debtOf('Trả nợ BM')
   const debtPersonalRows = debtOf('Trả nợ cá nhân')
   const debtOldRows = debtOf('Trả nợ') // dòng cũ chưa tách BM / cá nhân
+  const isInvest = (r) => isInflow(r) && r.category === 'Đầu tư'
+  const investRows = shown.filter(isInvest)
   const walletRows = shown.filter(isWalletMove)
   const fundRows = shown.filter(isFund)
   const outRows = shown.filter((r) => !isInflow(r) && !isTransfer(r) && !isWalletMove(r) && !isFund(r) && !isDebt(r))
-  const inRows = shown.filter((r) => isInflow(r) && !isWalletMove(r) && !isFund(r))
+  const inRows = shown.filter((r) => isInflow(r) && !isWalletMove(r) && !isFund(r) && !isInvest(r))
   const sumOf = (rs) => rs.reduce((a, r) => a + r.amount, 0)
   const moveRows = shown.filter(isTransfer)
   const sumLabel = (key, rs) => (key === 'wallet' ? `+${money(sumOf(rs.filter(isInflow)))} / −${money(sumOf(rs.filter((x) => !isInflow(x))))}` : money(sumOf(rs)))
@@ -55,6 +57,7 @@ export default function CashFlow({ kind, onImport }) {
     { key: 'debtOld', title: '💳 Trả nợ (chưa phân loại BM / cá nhân)', rows: debtOldRows, always: false, tone: 'text-red-600', sum: sumLabel('debtOld', debtOldRows) },
     { key: 'wallet', title: '⇄ Chuyển ví', rows: walletRows, always: false, tone: 'text-indigo-600', sum: sumLabel('wallet', walletRows) },
     { key: 'in', title: `⬇ Tiền đi vào`, rows: inRows, always: true, tone: 'text-emerald-600', sum: sumLabel('in', inRows) },
+    { key: 'invest', title: '📈 Đầu tư (tiền đi vào)', rows: investRows, always: false, tone: 'text-emerald-600', sum: sumLabel('invest', investRows) },
     { key: 'fund', title: '🏦 Quỹ BM', rows: fundRows, always: false, tone: 'text-emerald-600', sum: sumLabel('fund', fundRows) },
     { key: 'move', title: '↔ Chuyển nội bộ (không tính thu/chi)', rows: moveRows, always: false, tone: 'text-slate-500' },
   ]
