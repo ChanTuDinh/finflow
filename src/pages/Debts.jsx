@@ -72,10 +72,11 @@ export default function Debts({ kind = 'debts' }) {
           Đang tính <b>{chosen.length}/{debts.length}</b> khoản nợ đã tick (số liệu bên dưới và tab Forecast chỉ gồm các khoản này).
           <button className="ml-auto underline whitespace-nowrap" onClick={() => sel.setMany(debts.map((d) => d.id), true)}>Chọn tất cả</button>
         </div>)}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <Stat label="Tổng dư nợ hiện tại" value={money(total)} />
         <Stat label="Trả tối thiểu / tháng" value={money(min)} />
         <Stat label="Lãi phát sinh / tháng" value={money(interest)} tone="neg" />
+        <Stat label="Lãi phát sinh / năm" value={money(interest * 12)} tone="neg" sub="= lãi / tháng × 12" />
       </div>
       <details className="group rounded-xl border border-indigo-100 bg-indigo-50/50">
         <summary className="flex cursor-pointer select-none list-none flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
