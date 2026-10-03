@@ -91,6 +91,7 @@ export const isInflow = (row) => row.type === 'Income' || row.type === 'Revenue'
 // Chuyển khoản giữa các tài khoản của chính mình: không tính vào thu/chi.
 export const isTransfer = (row) => row.type === 'Transfer'
 export const WALLET_MOVE_CATEGORY = 'Chuyển ví'
+export const BM_FUND_CATEGORY = 'Quỹ BM'
 export const TRANSFER_CATEGORY = 'Chuyển nội bộ'
 export const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
 

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../lib/store.jsx'
-import { isInflow, isTransfer, TABS, WALLET_MOVE_CATEGORY } from '../lib/schema.js'
+import { isInflow, isTransfer, TABS, WALLET_MOVE_CATEGORY, BM_FUND_CATEGORY } from '../lib/schema.js'
 import { totals } from '../lib/calc.js'
 import { usePeriod } from '../lib/period.jsx'
 import { inPeriod } from '../lib/period.js'
@@ -23,14 +23,17 @@ export default function CashFlow({ kind, onImport }) {
   const inLabel = kind === 'business' ? 'Doanh thu' : 'Thu nhập'
 
   const isWalletMove = (r) => !isTransfer(r) && r.category === WALLET_MOVE_CATEGORY
+  const isFund = (r) => !isTransfer(r) && r.category === BM_FUND_CATEGORY
   const walletRows = shown.filter(isWalletMove)
-  const outRows = shown.filter((r) => !isInflow(r) && !isTransfer(r) && !isWalletMove(r))
-  const inRows = shown.filter((r) => isInflow(r) && !isWalletMove(r))
+  const fundRows = shown.filter(isFund)
+  const outRows = shown.filter((r) => !isInflow(r) && !isTransfer(r) && !isWalletMove(r) && !isFund(r))
+  const inRows = shown.filter((r) => isInflow(r) && !isWalletMove(r) && !isFund(r))
   const sumOf = (rs) => rs.reduce((a, r) => a + r.amount, 0)
   const moveRows = shown.filter(isTransfer)
   const sumLabel = (key, rs) => (key === 'wallet' ? `+${money(sumOf(rs.filter(isInflow)))} / −${money(sumOf(rs.filter((x) => !isInflow(x))))}` : money(sumOf(rs)))
   const groups = [
     { key: 'out', title: '⬆ Tiền đi ra', rows: outRows, always: true, tone: 'text-red-600', sum: sumLabel('out', outRows) },
+    { key: 'fund', title: '🏦 Quỹ BM', rows: fundRows, always: false, tone: 'text-amber-600', sum: sumLabel('fund', fundRows) },
     { key: 'wallet', title: '⇄ Chuyển ví', rows: walletRows, always: false, tone: 'text-indigo-600', sum: sumLabel('wallet', walletRows) },
     { key: 'in', title: `⬇ Tiền đi vào`, rows: inRows, always: true, tone: 'text-emerald-600', sum: sumLabel('in', inRows) },
     { key: 'move', title: '↔ Chuyển nội bộ (không tính thu/chi)', rows: moveRows, always: false, tone: 'text-slate-500' },
