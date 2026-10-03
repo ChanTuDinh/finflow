@@ -103,3 +103,11 @@ test('kỳ mặc định là Tất cả năm, xem theo Năm', () => {
   assert.equal(resolveGrain(ALL, null), 'year')
   assert.ok(inPeriod(ALL, '2019-01-01') && inPeriod(ALL, '2031-12-31'))
 })
+
+test('spanMonths: số tháng từ đầu đến cuối, tính cả tháng trống', async () => {
+  const { spanMonths } = await import('./period.js')
+  assert.equal(spanMonths([]), 0)
+  assert.equal(spanMonths([{ date: '2026-03-10' }]), 1)
+  assert.equal(spanMonths([{ date: '2026-01-31' }, { date: '2026-03-01' }, { date: '2026-09-30' }]), 9)
+  assert.equal(spanMonths([{ date: '2025-11-02' }, { date: '2026-02-01' }]), 4)
+})

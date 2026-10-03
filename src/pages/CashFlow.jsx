@@ -3,7 +3,7 @@ import { useStore } from '../lib/store.jsx'
 import { isInflow, isTransfer, TABS, WALLET_MOVE_CATEGORY, BM_FUND_CATEGORY, isDebtPayment } from '../lib/schema.js'
 import { totals } from '../lib/calc.js'
 import { usePeriod } from '../lib/period.jsx'
-import { inPeriod } from '../lib/period.js'
+import { inPeriod, spanMonths } from '../lib/period.js'
 import { Stat } from '../components/ui.jsx'
 import EntryForm from '../components/EntryForm.jsx'
 import FilterBar from '../components/FilterBar.jsx'
@@ -32,6 +32,8 @@ export default function CashFlow({ kind, onImport }) {
   const picked = shown.filter((r) => sel.has(r.id)) // chỉ tính dòng đang hiển thị (đổi bộ lọc kỳ không xoá nhầm dòng ẩn)
   const toggle = (id) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   const delPicked = async () => { if (confirm(`Xoá ${picked.length} giao dịch đã chọn?\n\nKhông thể hoàn tác.`) && await removeMany(kind, picked)) setSel(new Set()) }
+  const nMonths = spanMonths(shown)
+  const perMonth = (v) => (nMonths ? Math.round(v / nMonths) : 0)
   const inLabel = kind === 'business' ? 'Doanh thu' : 'Thu nhập'
 
   const isWalletMove = (r) => !isTransfer(r) && r.category === WALLET_MOVE_CATEGORY
@@ -148,6 +150,10 @@ export default function CashFlow({ kind, onImport }) {
         <Stat label={inLabel} value={money(t.income)} />
         <Stat label="Chi" value={money(t.expense)} />
         <Stat label="Dòng tiền ròng" value={money(t.net)} tone={t.net < 0 ? 'neg' : 'pos'} />
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <Stat label={`${inLabel} / tháng`} value={money(perMonth(t.income))} sub={nMonths ? `Trung bình trong ${nMonths} tháng` : 'Chưa có dữ liệu'} />
+        <Stat label="Chi / tháng" value={money(perMonth(t.expense))} sub={nMonths ? `Trung bình trong ${nMonths} tháng` : 'Chưa có dữ liệu'} />
       </div>
       {picked.length > 0 && (
         <div className="flex items-center gap-3 rounded-lg bg-slate-100 px-3 py-2 text-sm">

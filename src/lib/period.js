@@ -106,6 +106,12 @@ export function monthsIn(p, rows = []) {
   return new Set(rows.filter((r) => r.date).map((r) => r.date.slice(0, 7))).size
 }
 
+// Số tháng từ tháng đầu đến tháng cuối có giao dịch (tính cả tháng trống ở giữa) — mẫu số cho trung bình / tháng
+export function spanMonths(rows = []) {
+  const ms = rows.filter((r) => r.date).map((r) => Number(r.date.slice(0, 4)) * 12 + Number(r.date.slice(5, 7)) - 1)
+  return ms.length ? Math.max(...ms) - Math.min(...ms) + 1 : 0
+}
+
 export const dataYears = (...rowSets) => [...new Set(rowSets.flat().filter((r) => r.date).map((r) => Number(r.date.slice(0, 4))))].sort()
 
 // Gom rows theo kỳ con của p, lấp 0 cho kỳ trống: [{ period, income, expense, net }]
