@@ -91,18 +91,19 @@ export default function CashFlow({ kind, onImport }) {
     const allKeys = years.flatMap((Y) => [Y.y, ...Y.months.map((M) => M.ym)])
     const allOpen = years.length > 0 && years.every((Y) => yearOpen(Y.y) && Y.months.every((M) => monthOpen(M.ym)))
     const tickRows = (rs) => { const on = rs.every((x) => sel.has(x.id)); setSel((s) => { const n = new Set(s); rs.forEach((x) => (on ? n.delete(x.id) : n.add(x.id))); return n }) }
+    const secOpen = openMonths[key('__section')] ?? false // cả bảng là dropdown, mặc định đóng
     const all = g.rows.length > 0 && g.rows.every((r) => sel.has(r.id))
     const toggleAll = () => setSel((s) => { const n = new Set(s); g.rows.forEach((r) => (all ? n.delete(r.id) : n.add(r.id))); return n })
     return (
       <div key={g.key} className="space-y-1">
-        <div className="flex items-baseline justify-between px-1">
-          <h3 className={`font-semibold ${g.tone}`}>{g.title} <span className="text-xs font-normal text-slate-400">({g.rows.length})</span></h3>
+        <div className="flex cursor-pointer select-none items-baseline justify-between rounded-lg px-1 py-1 hover:bg-slate-100" onClick={() => setOpen('__section', !secOpen)}>
+          <h3 className={`font-semibold ${g.tone}`}><span className="mr-1 inline-block w-4 text-slate-400">{secOpen ? '▾' : '▸'}</span>{g.title} <span className="text-xs font-normal text-slate-400">({g.rows.length})</span></h3>
           <div className="flex items-baseline gap-3">
-            {allKeys.length > 2 && <button className="text-xs text-blue-600" onClick={() => setOpenMonths((o) => ({ ...o, ...Object.fromEntries(allKeys.map((k) => [key(k), !allOpen])) }))}>{allOpen ? 'Thu gọn tất cả' : 'Mở tất cả'}</button>}
+            {secOpen && allKeys.length > 2 && <button className="text-xs text-blue-600" onClick={(e) => e.stopPropagation() || setOpenMonths((o) => ({ ...o, ...Object.fromEntries(allKeys.map((k) => [key(k), !allOpen])) }))}>{allOpen ? 'Thu gọn tất cả' : 'Mở tất cả'}</button>}
             {g.sum != null && <span className={`text-sm font-medium ${g.tone}`}>{g.sum}</span>}
           </div>
         </div>
-        <div className="card overflow-x-auto p-0">
+        {secOpen && <div className="card overflow-x-auto p-0">
           <table className="w-full text-sm">
             <thead className="text-xs text-slate-500 text-left"><tr><th className="px-3 py-2 w-8"><input type="checkbox" aria-label="Chọn tất cả" checked={all} onChange={toggleAll} /></th>{['Ngày', 'Loại', 'Danh mục', 'Số tiền', kind === 'business' ? 'Đối tác' : 'Tài khoản', 'Ghi chú', 'Bởi', ''].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr></thead>
             <tbody>
@@ -146,7 +147,7 @@ export default function CashFlow({ kind, onImport }) {
               {!g.rows.length && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-400">Chưa có dữ liệu</td></tr>}
             </tbody>
           </table>
-        </div>
+        </div>}
       </div>
     )
   }
