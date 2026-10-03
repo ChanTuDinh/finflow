@@ -36,7 +36,7 @@ export default function CashFlow({ kind, onImport }) {
   const picked = shown.filter((r) => sel.has(r.id)) // chỉ tính dòng đang hiển thị (đổi bộ lọc kỳ không xoá nhầm dòng ẩn)
   const toggle = (id) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
   const delPicked = async () => { if (confirm(`Xoá ${picked.length} giao dịch đã chọn?\n\nKhông thể hoàn tác.`) && await removeMany(kind, picked)) setSel(new Set()) }
-  const statCls = kind === 'personal' ? '!bg-teal-50 !border-teal-200' : '' // Ví cá nhân: nền xanh ngọc nhạt cho các thẻ tổng
+  const statCls = kind === 'personal' ? '!bg-teal-100 !border-teal-300' : '' // Ví cá nhân: nền xanh ngọc nhạt cho các thẻ tổng
   const nMonths = spanMonths(shown)
   const perMonth = (v) => (nMonths ? Math.round(v / nMonths) : 0)
   const inLabel = kind === 'business' ? 'Doanh thu' : 'Thu nhập'
