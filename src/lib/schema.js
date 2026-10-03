@@ -47,7 +47,7 @@ TABS.bm = { ...TABS.personal, tab: 'BM_CashFlow' }
 // Form thêm/sửa giao dịch của Ví BM chỉ cho chọn các danh mục này (dòng cũ có danh mục khác vẫn giữ nguyên khi sửa)
 export const BM_FORM_CATEGORIES = { Income: ['Chuyển ví', 'Quỹ BM'], Expense: ['Trả nợ', 'Chuyển ví', 'Chi phí sống'], Transfer: ['Chuyển nội bộ'] }
 export const CASH_KINDS = ['personal', 'business', 'bm']
-export const WALLET_LABEL = { personal: 'Cá nhân', business: 'Doanh nghiệp', bm: 'Ví BM' }
+export const WALLET_LABEL = { personal: 'Ví cá nhân', business: 'Doanh nghiệp', bm: 'Ví BM' }
 
 // Nguồn nợ thứ hai ("Nợ BM"): cùng cấu trúc với Debts, nằm ở tab Debts_BM, tách riêng hoàn toàn khỏi nguồn nợ chính.
 // record_date: ngày ghi nhận thông tin/số dư của khoản nợ (cột cuối để Sheet cũ vẫn tương thích)

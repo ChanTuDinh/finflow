@@ -14,7 +14,7 @@ import { makeBackup, downloadJson, backupFileName, getLastBackup, setLastBackup,
 const PAGES = [
   ['dashboard', 'Tổng quan'],
   ['reports', 'Báo cáo'],
-  ['personal', 'Cá nhân'],
+  ['personal', 'Ví cá nhân'],
   ['business', 'Doanh nghiệp'],
   ['debts', 'Nợ'],
   ['forecast', 'Forecast Nợ'],
@@ -28,6 +28,8 @@ const PAGES = [
 
 // Các tab đang ưu tiên làm việc (Ví BM, Nợ BM, Nợ BM Forecast): tô một màu riêng cho dễ thấy giữa nhiều tab
 const FOCUS_TABS = new Set(['bm', 'debtsBm', 'forecastBm'])
+// Ví cá nhân: màu xanh ngọc riêng (tách khỏi nhóm BM màu tím)
+const TEAL_TABS = new Set(['personal'])
 
 export default function App() {
   const [page, setPage] = useState('dashboard')
@@ -54,7 +56,9 @@ export default function App() {
       <nav className="flex flex-wrap gap-1 mb-4 border-b border-slate-200">
         {PAGES.map(([k, label]) => {
           const focus = FOCUS_TABS.has(k)
-          const cls = focus
+          const cls = TEAL_TABS.has(k)
+            ? `rounded-t-md font-medium ${page === k ? 'border-teal-700 bg-teal-600 text-white' : 'border-transparent bg-teal-100 text-teal-800 hover:bg-teal-200'}`
+            : focus
             ? `rounded-t-md font-medium ${page === k ? 'border-violet-700 bg-violet-600 text-white' : 'border-transparent bg-violet-100 text-violet-800 hover:bg-violet-200'}`
             : page === k ? 'border-slate-900 font-semibold' : 'border-transparent text-slate-500 hover:text-slate-800'
           return (
