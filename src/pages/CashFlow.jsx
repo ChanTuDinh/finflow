@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useStore } from '../lib/store.jsx'
-import { isInflow, isTransfer, TABS, WALLET_MOVE_CATEGORY, BM_FUND_CATEGORY } from '../lib/schema.js'
+import { isInflow, isTransfer, TABS, WALLET_MOVE_CATEGORY, BM_FUND_CATEGORY, isDebtPayment } from '../lib/schema.js'
 import { totals } from '../lib/calc.js'
 import { usePeriod } from '../lib/period.jsx'
 import { inPeriod } from '../lib/period.js'
@@ -36,15 +36,18 @@ export default function CashFlow({ kind, onImport }) {
 
   const isWalletMove = (r) => !isTransfer(r) && r.category === WALLET_MOVE_CATEGORY
   const isFund = (r) => !isTransfer(r) && r.category === BM_FUND_CATEGORY
+  const isDebt = (r) => !isInflow(r) && !isTransfer(r) && isDebtPayment(r.category)
+  const debtRows = shown.filter(isDebt)
   const walletRows = shown.filter(isWalletMove)
   const fundRows = shown.filter(isFund)
-  const outRows = shown.filter((r) => !isInflow(r) && !isTransfer(r) && !isWalletMove(r) && !isFund(r))
+  const outRows = shown.filter((r) => !isInflow(r) && !isTransfer(r) && !isWalletMove(r) && !isFund(r) && !isDebt(r))
   const inRows = shown.filter((r) => isInflow(r) && !isWalletMove(r) && !isFund(r))
   const sumOf = (rs) => rs.reduce((a, r) => a + r.amount, 0)
   const moveRows = shown.filter(isTransfer)
   const sumLabel = (key, rs) => (key === 'wallet' ? `+${money(sumOf(rs.filter(isInflow)))} / −${money(sumOf(rs.filter((x) => !isInflow(x))))}` : money(sumOf(rs)))
   const groups = [
     { key: 'out', title: '⬆ Tiền đi ra', rows: outRows, always: true, tone: 'text-red-600', sum: sumLabel('out', outRows) },
+    { key: 'debt', title: '💳 Trả nợ', rows: debtRows, always: false, tone: 'text-red-600', sum: sumLabel('debt', debtRows) },
     { key: 'wallet', title: '⇄ Chuyển ví', rows: walletRows, always: false, tone: 'text-indigo-600', sum: sumLabel('wallet', walletRows) },
     { key: 'in', title: `⬇ Tiền đi vào`, rows: inRows, always: true, tone: 'text-emerald-600', sum: sumLabel('in', inRows) },
     { key: 'fund', title: '🏦 Quỹ BM', rows: fundRows, always: false, tone: 'text-emerald-600', sum: sumLabel('fund', fundRows) },
