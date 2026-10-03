@@ -50,12 +50,12 @@ export default function CashFlow({ kind, onImport }) {
       if (M && M.ym === ym) M.rows.push(x); else Y.months.push({ ym, rows: [x] })
     }
     const key = (k) => `${g.key}:${k}`
-    // chưa bấm thì chỉ mở năm mới nhất và tháng mới nhất của năm đó
-    const yearOpen = (y, yi) => openMonths[key(y)] ?? yi === 0
-    const monthOpen = (ym, yi, mi) => openMonths[key(ym)] ?? (yi === 0 && mi === 0)
+    // mặc định đóng hết cho gọn; bấm vào năm/tháng để mở
+    const yearOpen = (y) => openMonths[key(y)] ?? false
+    const monthOpen = (ym) => openMonths[key(ym)] ?? false
     const setOpen = (k, v) => setOpenMonths((o) => ({ ...o, [key(k)]: v }))
     const allKeys = years.flatMap((Y) => [Y.y, ...Y.months.map((M) => M.ym)])
-    const allOpen = years.length > 0 && years.every((Y, yi) => yearOpen(Y.y, yi) && Y.months.every((M, mi) => monthOpen(M.ym, yi, mi)))
+    const allOpen = years.length > 0 && years.every((Y) => yearOpen(Y.y) && Y.months.every((M) => monthOpen(M.ym)))
     const tickRows = (rs) => { const on = rs.every((x) => sel.has(x.id)); setSel((s) => { const n = new Set(s); rs.forEach((x) => (on ? n.delete(x.id) : n.add(x.id))); return n }) }
     const all = g.rows.length > 0 && g.rows.every((r) => sel.has(r.id))
     const toggleAll = () => setSel((s) => { const n = new Set(s); g.rows.forEach((r) => (all ? n.delete(r.id) : n.add(r.id))); return n })
@@ -72,16 +72,16 @@ export default function CashFlow({ kind, onImport }) {
           <table className="w-full text-sm">
             <thead className="text-xs text-slate-500 text-left"><tr><th className="px-3 py-2 w-8"><input type="checkbox" aria-label="Chọn tất cả" checked={all} onChange={toggleAll} /></th>{['Ngày', 'Loại', 'Danh mục', 'Số tiền', kind === 'business' ? 'Đối tác' : 'Tài khoản', 'Ghi chú', 'Bởi', ''].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr></thead>
             <tbody>
-              {years.map((Y, yi) => {
-                const yOpen = yearOpen(Y.y, yi)
+              {years.map((Y) => {
+                const yOpen = yearOpen(Y.y)
                 return [
                   <tr key={`y-${Y.y}`} className="border-t border-slate-200 bg-slate-100 cursor-pointer select-none hover:bg-slate-200" onClick={() => setOpen(Y.y, !yOpen)}>
                     <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}><input type="checkbox" aria-label={`Chọn cả năm ${Y.y}`} checked={Y.rows.every((x) => sel.has(x.id))} onChange={() => tickRows(Y.rows)} /></td>
                     <td colSpan={4} className="px-3 py-2 font-semibold text-slate-800"><span className="inline-block w-4 text-slate-500">{yOpen ? '▾' : '▸'}</span>{Y.y ? `Năm ${Y.y}` : 'Chưa có ngày'} <span className="text-xs font-normal text-slate-500">· {Y.rows.length} giao dịch</span></td>
                     <td colSpan={4} className={`px-3 py-2 text-right font-semibold ${g.tone}`}>{sumLabel(g.key, Y.rows)}</td>
                   </tr>,
-                  ...(yOpen ? Y.months.flatMap((M, mi) => {
-                    const mOpen = monthOpen(M.ym, yi, mi)
+                  ...(yOpen ? Y.months.flatMap((M) => {
+                    const mOpen = monthOpen(M.ym)
                     return [
                       <tr key={`h-${M.ym}`} className="border-t border-slate-100 bg-slate-50 cursor-pointer select-none hover:bg-slate-100" onClick={() => setOpen(M.ym, !mOpen)}>
                         <td className="px-3 py-1.5" onClick={(e) => e.stopPropagation()}><input type="checkbox" aria-label={`Chọn cả ${monthLabel(M.ym)}`} checked={M.rows.every((x) => sel.has(x.id))} onChange={() => tickRows(M.rows)} /></td>
