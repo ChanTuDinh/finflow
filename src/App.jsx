@@ -15,14 +15,14 @@ const PAGES = [
   ['dashboard', 'Tổng quan'],
   ['personal', 'Cá nhân'],
   ['business', 'Doanh nghiệp'],
-  ['bm', 'Ví BM'],
-  ['debtsBm', 'Nợ BM'],
-  ['forecastBm', 'Nợ BM Forecast'],
   ['debts', 'Nợ'],
   ['forecast', 'Forecast Nợ'],
   ['savings', 'Tích lũy'],
   ['forecastSavings', 'Forecast Tích lũy'],
   ['reports', 'Báo cáo'],
+  ['bm', 'Ví BM'],
+  ['debtsBm', 'Nợ BM'],
+  ['forecastBm', 'Nợ BM Forecast'],
   ['settings', 'Cài đặt'],
 ]
 
