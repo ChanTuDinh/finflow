@@ -15,6 +15,7 @@ export default function CashFlow({ kind, onImport }) {
   const cardOwner = { personal: 'Personal', business: 'Business', bm: 'BM' }[kind]
   const cards = data.accounts.filter((a) => a.owner === cardOwner && a.status !== 'Closed')
   const [editingCard, setEditingCard] = useState(null) // null | {} (mới) | account
+  const [cardsOpen, setCardsOpen] = useState(false) // dropdown Thẻ ngân hàng, mặc định đóng
   const rows = data[kind]
   const { period } = usePeriod()
   const csvRef = useRef(null)
@@ -157,11 +158,14 @@ export default function CashFlow({ kind, onImport }) {
       {data._missing?.includes(kind) && <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm p-2">Sheet chưa có tab {TABS[kind].tab}. Chạy lại <code>setup.gs</code> (không xoá dữ liệu cũ) hoặc tạo tab đúng tên để lưu dữ liệu.</div>}
       <FilterBar action={<div className="flex gap-2"><button className="btn-ghost" onClick={onImport}>Nhập sao kê</button><button className="btn-ghost" title={`File CSV, hàng đầu: ${CSV_HEADER.join(',')}`} onClick={() => csvRef.current?.click()}>Nhập CSV</button><input ref={csvRef} type="file" accept=".csv,text/csv" className="hidden" onChange={onCsv} /><button className="btn" onClick={() => setEditing({})}>+ Thêm giao dịch</button></div>} />
       <section className="space-y-2">
-        <div className="flex items-center justify-between px-1">
-          <h3 className="font-semibold text-slate-700">Thẻ ngân hàng <span className="text-xs font-normal text-slate-400">({cards.length})</span></h3>
-          <button className="text-sm text-blue-600" onClick={() => setEditingCard({})}>+ Thêm thẻ</button>
+        <div className="flex cursor-pointer select-none items-center justify-between gap-2 rounded-lg px-1 py-1 hover:bg-slate-100" onClick={() => setCardsOpen((v) => !v)}>
+          <h3 className="flex items-center gap-2 font-semibold text-slate-700">
+            <span className="inline-block w-4 text-slate-400">{cardsOpen ? '▾' : '▸'}</span>Thẻ ngân hàng <span className="text-xs font-normal text-slate-400">({cards.length})</span>
+            {!cardsOpen && <span className="flex gap-1">{cards.map((a) => <BankBadge key={a.id} account={a} />)}</span>}
+          </h3>
+          <button className="text-sm font-normal text-blue-600" onClick={(e) => { e.stopPropagation(); setCardsOpen(true); setEditingCard({}) }}>+ Thêm thẻ</button>
         </div>
-        {cards.length > 0
+        {cardsOpen && (cards.length > 0
           ? <div className="flex flex-wrap gap-2">
               {cards.map((a) => (
                 <div key={a.id} className="card !p-2 flex items-center gap-2">
@@ -173,7 +177,7 @@ export default function CashFlow({ kind, onImport }) {
                   <div className="ml-2 text-xs whitespace-nowrap"><button className="text-blue-600" onClick={() => setEditingCard(a)}>Sửa</button> · <button className="text-red-600" onClick={() => confirm(`Xoá thẻ "${a.name}"? (Giao dịch đã ghi không bị xoá)`) && remove('accounts', a)}>Xoá</button></div>
                 </div>))}
             </div>
-          : <div className="text-sm text-slate-400 px-1">Chưa có thẻ — bấm “+ Thêm thẻ” để gán huy hiệu và màu cho từng thẻ ngân hàng.</div>}
+          : <div className="text-sm text-slate-400 px-1">Chưa có thẻ — bấm “+ Thêm thẻ” để gán huy hiệu và màu cho từng thẻ ngân hàng.</div>)}
       </section>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Stat tinted={tint} className={statCls} label={inLabel} value={money(t.income)} />
