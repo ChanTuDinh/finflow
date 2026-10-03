@@ -65,5 +65,36 @@ Lãi suất là lãi danh nghĩa theo năm (lãi tháng × 12), cùng cách tín
 - Làm việc trên nhánh `claude/finflow-finance-manager-ra1340` (chưa merge vào `main`); Vercel cần trỏ Production Branch vào nhánh này. Phiên mới: lấy bản mới nhất của nhánh và đọc file này là đủ.
 - **Quy tắc đẩy code (chủ dự án đã cho phép sẵn):** sau mỗi lần làm xong, đẩy commit vào `claude/finflow-finance-manager-ra1340` để Vercel tự deploy — không cần hỏi lại.
 - Kiểm tra: `npm test` và `npm run build`. Logic nằm trong `src/lib/` (có test), giao diện trong `src/pages/` và `src/components/`.
-- Chưa làm: preset đọc sao kê theo từng ngân hàng (cần file mẫu đã ẩn thông tin cá nhân); lịch sử lãi suất theo giai đoạn; ngày đáo hạn + mô phỏng tất toán gốc; số tháng còn lại tự giảm theo thời gian; khối Ví BM / Nợ BM trong Tổng quan; Forecast Tích lũy chưa gồm Ví BM.
-- Lưu ý khi dùng: các ô tick (khoản nợ, lần trả) và bộ lọc kỳ chỉ lưu trong trình duyệt; Forecast Trả lãi only chưa tính khoản tất toán gốc khi đáo hạn.
+- Quy ước làm việc với chủ dự án: trả lời tiếng Việt, ngắn gọn; mỗi thay đổi giao diện: build + test + chụp thử (Playwright) rồi đẩy lên nhánh trên. Máy chạy phiên không mở được web Vercel (proxy chặn) nên không tự xem được bản deploy; sau khi đẩy, nhắc chủ dự án đợi 1-2 phút và tải lại cứng (Ctrl+Shift+R).
+
+## Cập nhật gần đây (phiên 2026-10)
+**Menu:** Tổng quan · Báo cáo · Ví cá nhân (tab màu xanh ngọc, trước là "Cá nhân") · Doanh nghiệp · Nợ · Forecast Nợ · Tích lũy · Forecast Tích lũy · Ví BM · Nợ BM · Nợ BM Forecast (3 tab BM màu tím) · Cài đặt. "Ví BM" = ví **ba mẹ**.
+
+**Sổ thu/chi (Ví cá nhân, Doanh nghiệp, Ví BM)** — `src/pages/CashFlow.jsx`:
+- Chia thành các bảng dropdown (mặc định **đóng**), mỗi bảng gom **Năm › Tháng › giao dịch**: ⬆ Tiền đi ra · 💳 Trả nợ BM · 💳 Trả nợ cá nhân · 💳 Trả nợ (dòng cũ; Ví BM/Doanh nghiệp gộp một bảng Trả nợ) · ⇄ Chuyển ví · ⬇ Tiền đi vào · 📈 Đầu tư (tiền vào) · 🏦 Quỹ BM · ↔ Chuyển nội bộ. Bảng trống (trừ Ra/Vào) bị ẩn.
+- Ô tick chọn từng dòng / cả tháng / cả năm / cả bảng, nút **Xoá đã chọn** (không hoàn tác; dòng đang đóng vẫn có thể đang được chọn — xem số N trên thanh).
+- Thẻ tổng: Thu nhập, Chi (đỏ), Dòng tiền ròng + hàng 2 **Thu nhập / tháng**, **Chi / tháng** (trung bình theo số tháng từ giao dịch đầu đến cuối, tính cả tháng trống). Ví cá nhân nền xanh ngọc, Ví BM nền tím (`tinted` trong `ui.jsx`). Thẻ Chi tổng vẫn **tính cả** Trả nợ / Chuyển ví / Quỹ BM.
+- Dropdown **Thẻ ngân hàng**: huy hiệu chữ 2-3 ký tự + màu (không dùng logo thương hiệu), dùng chung danh sách `Accounts` với trang Nhập sao kê (thêm 2 cột `badge`, `color` — Sheet cũ cần chạy lại `setup.gs`). Cột "Tài khoản" của giao dịch vẫn là chữ gõ tay.
+- Nút **Nhập CSV** (`src/lib/csvImport.js`): cột `date,type,category,amount,account,note`; loại trùng, báo lỗi theo dòng, hỏi xác nhận trước khi ghi.
+- Form thêm giao dịch: ô Loại có thêm lối tắt **Trả nợ** (lưu Expense + danh mục trả nợ). Ví cá nhân: Trả nợ chỉ có danh mục *Trả nợ BM* / *Trả nợ cá nhân*. Ví BM: danh mục Chi = Trả nợ, Chuyển ví, Chi phí sống; Thu = Chuyển ví, Quỹ BM (dòng cũ có danh mục khác vẫn giữ khi sửa). Đã **bỏ** nút "Xoá toàn bộ dữ liệu Ví BM".
+- `isDebtPayment()` (schema.js) nhận cả "Trả nợ" cũ lẫn 2 danh mục mới nên Forecast/gợi ý vẫn loại khoản trả nợ khỏi chi cơ sở.
+
+**Nợ / Nợ BM:** thẻ **Lãi phát sinh / năm** (= lãi tháng × 12); dropdown "Kịch bản N năm & thống kê trả nợ" (mặc định đóng): trả gốc + lãi đều trong 10-30 năm → trả/tháng, tổng phải trả, tổng lãi, theo từng khoản và tổng; cột "Kịch bản" trong bảng.
+
+## Việc chưa làm / cần quyết (phiên sau)
+- **Dòng "Trả nợ" cũ chưa tách BM / cá nhân** (Ví cá nhân): sửa từng dòng sang Trả nợ BM / Trả nợ cá nhân, hoặc xoá và nhập lại bằng CSV.
+- Cột "Tài khoản" trong bảng giao dịch chưa hiện huy hiệu và form chưa chọn thẻ từ danh sách thẻ (đang gõ tay).
+- Nhập sao kê vào Ví BM vẫn mặc định danh mục "Khác" cho dòng không khớp quy tắc.
+- Trạng thái mở/đóng các dropdown không lưu (tải lại là đóng hết).
+- Danh mục "Ba Hoà" trong file thu nhập 2026 đang gán **Khác** (chủ dự án chưa chọn; có thể đổi sang Side project). Các ô có chú thích ẩn trong bảng Excel gốc chưa đưa vào.
+- Thẻ tổng Chi/Thu: chưa loại Chuyển ví / Quỹ BM / Trả nợ khỏi tổng (chờ chủ dự án quyết).
+- Doanh nghiệp chưa có màu riêng (Ví cá nhân xanh ngọc, Ví BM tím).
+- Hàm `clearKind` (xoá toàn bộ một sổ) còn trong `store.jsx` nhưng không còn nút gọi.
+- Các mục "Chưa làm" cũ ở trên vẫn còn hiệu lực.
+
+## Việc cần làm để kết thúc phiên (chủ dự án)
+1. Chờ Vercel deploy xong nhánh `claude/finflow-finance-manager-ra1340`, mở https://finflow-dusky-five.vercel.app/ và tải lại cứng; kiểm tra Ví cá nhân, Ví BM, Nợ BM hiển thị đúng.
+2. Bấm **⬇ Sao lưu** lưu file `finflow-backup-ngày.json` (dữ liệu chỉ nằm trong trình duyệt, mất nếu xoá dữ liệu trình duyệt / ẩn danh / đổi máy).
+3. Nếu chưa nhập thu nhập 2026: tab Ví cá nhân → **Nhập CSV** → file `thu-nhap-2026.csv` (45 dòng, tổng 475.135.587 ₫, ngày cuối tháng; file nằm ngoài repo, không commit vì là dữ liệu cá nhân — nếu mất, dựng lại từ bảng Excel gốc theo định dạng CSV ở trên). Muốn làm lại từ đầu: tick hết các bảng → Xoá đã chọn **trước**, rồi mới nhập CSV.
+4. **Xoá nhánh thừa** `claude/stoic-wright-816kzb` trên GitHub (https://github.com/ChanTuDinh/finflow/branches → biểu tượng thùng rác). Phiên này không xoá được từ máy chạy phiên (kết nối bị ngắt khi xoá nhánh).
+5. Mọi thay đổi đã nằm trên nhánh `claude/finflow-finance-manager-ra1340`; chưa merge vào `main`, chưa tạo PR.
