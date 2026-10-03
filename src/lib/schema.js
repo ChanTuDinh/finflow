@@ -49,6 +49,15 @@ TABS.bm = { ...TABS.personal, tab: 'BM_CashFlow' }
 // Form thêm/sửa giao dịch của Ví BM chỉ cho chọn các danh mục này (dòng cũ có danh mục khác vẫn giữ nguyên khi sửa)
 export const BM_FORM_CATEGORIES = { Income: ['Chuyển ví', 'Quỹ BM'], Expense: ['Trả nợ', 'Chuyển ví', 'Chi phí sống'], Transfer: ['Chuyển nội bộ'] }
 export const CASH_KINDS = ['personal', 'business', 'bm']
+// Huy hiệu thẻ ngân hàng: chữ viết tắt + màu (không dùng logo thương hiệu)
+export const CARD_COLORS = ['#2563eb', '#0d9488', '#16a34a', '#d97706', '#dc2626', '#9333ea', '#db2777', '#475569']
+export const defaultBadge = (a) => {
+  const src = (a.bank || a.name || '').trim()
+  const words = src.split(/\s+/).filter(Boolean)
+  const letters = words.length > 1 ? words.map((w) => w[0]).join('') : src.slice(0, 3)
+  return letters.slice(0, 3).toUpperCase() || '?'
+}
+export const cardBadge = (a) => ({ text: (a.badge || '').trim() || defaultBadge(a), color: a.color || CARD_COLORS[0] })
 export const WALLET_LABEL = { personal: 'Ví cá nhân', business: 'Doanh nghiệp', bm: 'Ví BM' }
 
 // Nguồn nợ thứ hai ("Nợ BM"): cùng cấu trúc với Debts, nằm ở tab Debts_BM, tách riêng hoàn toàn khỏi nguồn nợ chính.
@@ -71,7 +80,7 @@ TABS.payments = {
 }
 TABS.accounts = {
   tab: 'Accounts',
-  columns: ['id', 'name', 'bank', 'owner', 'preset', 'status', 'note'], // preset: cấu hình cột sao kê (JSON) do app tự lưu
+  columns: ['id', 'name', 'bank', 'owner', 'preset', 'status', 'note', 'badge', 'color'], // preset: cấu hình cột sao kê (JSON) do app tự lưu; badge: huy hiệu 2-3 chữ, color: màu huy hiệu (#rrggbb)
   owners: ['Personal', 'Business', 'BM'],
   statuses: ['Active', 'Closed'],
 }

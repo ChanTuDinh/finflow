@@ -7,10 +7,14 @@ import { inPeriod, spanMonths } from '../lib/period.js'
 import { Stat } from '../components/ui.jsx'
 import EntryForm from '../components/EntryForm.jsx'
 import FilterBar from '../components/FilterBar.jsx'
+import BankBadge from '../components/BankBadge.jsx'
 import { buildCsvRows, CSV_HEADER } from '../lib/csvImport.js'
 
 export default function CashFlow({ kind, onImport }) {
   const { data, money, remove, removeMany, importBatch, settings } = useStore()
+  const cardOwner = { personal: 'Personal', business: 'Business', bm: 'BM' }[kind]
+  const cards = data.accounts.filter((a) => a.owner === cardOwner && a.status !== 'Closed')
+  const [editingCard, setEditingCard] = useState(null) // null | {} (mới) | account
   const rows = data[kind]
   const { period } = usePeriod()
   const csvRef = useRef(null)
@@ -146,6 +150,25 @@ export default function CashFlow({ kind, onImport }) {
     <div className="space-y-4">
       {data._missing?.includes(kind) && <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm p-2">Sheet chưa có tab {TABS[kind].tab}. Chạy lại <code>setup.gs</code> (không xoá dữ liệu cũ) hoặc tạo tab đúng tên để lưu dữ liệu.</div>}
       <FilterBar action={<div className="flex gap-2"><button className="btn-ghost" onClick={onImport}>Nhập sao kê</button><button className="btn-ghost" title={`File CSV, hàng đầu: ${CSV_HEADER.join(',')}`} onClick={() => csvRef.current?.click()}>Nhập CSV</button><input ref={csvRef} type="file" accept=".csv,text/csv" className="hidden" onChange={onCsv} /><button className="btn" onClick={() => setEditing({})}>+ Thêm giao dịch</button></div>} />
+      <section className="space-y-2">
+        <div className="flex items-center justify-between px-1">
+          <h3 className="font-semibold text-slate-700">Thẻ ngân hàng <span className="text-xs font-normal text-slate-400">({cards.length})</span></h3>
+          <button className="text-sm text-blue-600" onClick={() => setEditingCard({})}>+ Thêm thẻ</button>
+        </div>
+        {cards.length > 0
+          ? <div className="flex flex-wrap gap-2">
+              {cards.map((a) => (
+                <div key={a.id} className="card !p-2 flex items-center gap-2">
+                  <BankBadge account={a} size="lg" />
+                  <div className="leading-tight">
+                    <div className="text-sm font-medium">{a.name}</div>
+                    <div className="text-xs text-slate-400">{a.bank}</div>
+                  </div>
+                  <div className="ml-2 text-xs whitespace-nowrap"><button className="text-blue-600" onClick={() => setEditingCard(a)}>Sửa</button> · <button className="text-red-600" onClick={() => confirm(`Xoá thẻ "${a.name}"? (Giao dịch đã ghi không bị xoá)`) && remove('accounts', a)}>Xoá</button></div>
+                </div>))}
+            </div>
+          : <div className="text-sm text-slate-400 px-1">Chưa có thẻ — bấm “+ Thêm thẻ” để gán huy hiệu và màu cho từng thẻ ngân hàng.</div>}
+      </section>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Stat label={inLabel} value={money(t.income)} />
         <Stat label="Chi" value={money(t.expense)} />
@@ -162,6 +185,7 @@ export default function CashFlow({ kind, onImport }) {
           <button className="text-slate-500 underline" onClick={() => setSel(new Set())}>Bỏ chọn</button>
         </div>)}
       {groups.map((g) => g.rows.length > 0 || g.always ? table(g) : null)}
+      {editingCard && <EntryForm kind="accounts" row={editingCard.id ? editingCard : { name: '', bank: '', owner: cardOwner, preset: '', status: 'Active', note: '', badge: '', color: '' }} onClose={() => setEditingCard(null)} />}
       {editing && <EntryForm kind={kind} row={editing.id ? editing : null} onClose={() => setEditing(null)} />}
     </div>
   )

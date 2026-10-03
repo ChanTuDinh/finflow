@@ -22,7 +22,7 @@ Cách B: tạo 3 tab tên đúng `Personal_CashFlow`, `Business_CashFlow`, `Debt
 | Debts_BM | Giống Debts (`owner` có thêm giá trị `BM`) + `record_date`, `repay_type`, `term_months` (ngày ghi nhận, yyyy-mm-dd) — nguồn nợ thứ hai ("Nợ BM"), tách riêng, tab tuỳ chọn |
 | Debt_Payments | id, date, source (`debts`/`debts_bm`), debt_id, debt_name, type (Trả gốc / Trả lãi / Gốc + lãi), amount, principal, interest, balance_after, note, created_by, adjust_prev — lịch sử trả nợ do app ghi, tab tuỳ chọn |
 | Savings | id, name, type, owner, balance, monthly_contribution, annual_return (%/năm), goal_id, status (Active/Closed), note |
-| Accounts | id, name, bank, owner, preset, status, note (tài khoản ngân hàng; `preset` do app tự lưu) |
+| Accounts | id, name, bank, owner, preset, status, note, badge, color (tài khoản/thẻ ngân hàng; `preset` do app tự lưu; `badge` = huy hiệu 2-3 chữ, `color` = màu #rrggbb hiện ở thẻ trên tab Ví cá nhân) |
 | Rules | id, keyword, category, direction (out/in/any), owner |
 | Goals | id, name, owner, target_amount, target_date (yyyy-mm-dd), status (Active/Done), note |
 

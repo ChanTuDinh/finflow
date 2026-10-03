@@ -36,3 +36,11 @@ test('isDebtPayment: nhận Trả nợ cũ và 2 danh mục của Ví cá nhân'
   for (const c of ['Trả nợ', 'Trả nợ BM', 'Trả nợ cá nhân']) assert.equal(isDebtPayment(c), true)
   for (const c of ['Khác', 'Chuyển ví', '', undefined]) assert.equal(isDebtPayment(c), false)
 })
+
+test('cardBadge: huy hiệu tự lấy từ ngân hàng, ưu tiên giá trị người dùng nhập', async () => {
+  const { cardBadge, CARD_COLORS } = await import('./schema.js')
+  assert.deepEqual(cardBadge({ bank: 'Techcombank' }), { text: 'TEC', color: CARD_COLORS[0] })
+  assert.equal(cardBadge({ bank: 'Ngân hàng Quân đội' }).text, 'NHQ')
+  assert.deepEqual(cardBadge({ bank: 'x', badge: 'vcb', color: '#16a34a' }), { text: 'vcb', color: '#16a34a' })
+  assert.equal(cardBadge({}).text, '?')
+})

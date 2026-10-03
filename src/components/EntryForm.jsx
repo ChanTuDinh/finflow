@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { TABS, REPAY, CASH_KINDS, DEBT_PAYMENT_CATEGORY, BM_FORM_CATEGORIES, PERSONAL_DEBT_CATEGORIES, isDebtPayment } from '../lib/schema.js'
+import BankBadge from './BankBadge.jsx'
+import { CARD_COLORS, cardBadge, TABS, REPAY, CASH_KINDS, DEBT_PAYMENT_CATEGORY, BM_FORM_CATEGORIES, PERSONAL_DEBT_CATEGORIES, isDebtPayment } from '../lib/schema.js'
 import { computeApr, estimateTerm } from '../lib/rate.js'
 import { todayIso } from '../lib/format.js'
 import { Field, Modal, Segmented, focusNextOnEnter } from './ui.jsx'
@@ -12,7 +13,7 @@ const EMPTY = {
   debts_bm: DEBT_BLANK,
   savings: { name: '', type: 'Tiết kiệm', owner: 'Personal', balance: 0, monthly_contribution: 0, annual_return: 0, goal_id: '', status: 'Active', note: '' },
   goals: { name: '', owner: 'Personal', target_amount: 0, target_date: '', status: 'Active', note: '' },
-  accounts: { name: '', bank: '', owner: 'Personal', preset: '', status: 'Active', note: '' },
+  accounts: { name: '', bank: '', owner: 'Personal', preset: '', status: 'Active', note: '', badge: '', color: CARD_COLORS[0] },
   rules: { keyword: '', category: 'Khác', direction: 'out', owner: '' },
 }
 const ALL_CATEGORIES = [...new Set([...Object.values(TABS.personal.categories), ...Object.values(TABS.business.categories)].flat())].filter((c) => c !== 'Chuyển nội bộ')
@@ -59,7 +60,7 @@ export default function EntryForm({ kind, row, onClose }) {
   const goalOptions = data.goals.filter((g) => g.owner === f.owner)
 
   return (
-    <Modal title={`${row ? 'Sửa' : 'Thêm'} — ${TITLES[kind]}`} onClose={onClose}>
+    <Modal title={`${row?.id ? 'Sửa' : 'Thêm'} — ${TITLES[kind]}`} onClose={onClose}>
       <form onSubmit={submit} onKeyDown={focusNextOnEnter} className="grid grid-cols-2 gap-3">
         {isDebt && (<>
           <div className="col-span-2"><Field label="Tên khoản nợ">{text('name', true)}</Field></div>
@@ -117,6 +118,13 @@ export default function EntryForm({ kind, row, onClose }) {
           <Field label="Ngân hàng">{text('bank')}</Field>
           <Field label="Thuộc về">{select('owner', cfg.owners)}</Field>
           <Field label="Trạng thái">{select('status', cfg.statuses)}</Field>
+          <Field label="Huy hiệu (2-3 chữ, để trống = tự lấy từ ngân hàng)"><input className="input" maxLength={3} placeholder={cardBadge({ ...f, badge: '' }).text} value={f.badge ?? ''} onChange={(e) => set('badge', e.target.value.toUpperCase())} /></Field>
+          <Field label="Màu huy hiệu">
+            <div className="flex items-center gap-2 flex-wrap">
+              <BankBadge account={f} size="lg" />
+              {CARD_COLORS.map((c) => <button key={c} type="button" aria-label={`Màu ${c}`} onClick={() => set('color', c)} className={`h-6 w-6 rounded-full border-2 ${(f.color || CARD_COLORS[0]) === c ? 'border-slate-900' : 'border-transparent'}`} style={{ background: c }} />)}
+            </div>
+          </Field>
         </>)}
         {kind === 'rules' && (<>
           <div className="col-span-2"><Field label="Từ khóa trong nội dung giao dịch (không cần dấu)">{text('keyword', true)}</Field></div>

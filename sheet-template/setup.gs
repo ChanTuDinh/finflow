@@ -48,9 +48,9 @@ const TABS = {
   },
   Accounts: {
     // preset: app tự ghi cấu hình cột sao kê (JSON) — không cần sửa tay
-    header: ['id', 'name', 'bank', 'owner', 'preset', 'status', 'note'],
+    header: ['id', 'name', 'bank', 'owner', 'preset', 'status', 'note', 'badge', 'color'],
     validation: { 4: ['Personal', 'Business', 'BM'], 6: ['Active', 'Closed'] },
-    sample: [['a001', 'Vietcombank', 'Vietcombank', 'Personal', '', 'Active', '']],
+    sample: [['a001', 'Vietcombank', 'Vietcombank', 'Personal', '', 'Active', '', 'VCB', '#16a34a']],
   },
   Rules: {
     // direction: out (chi) | in (thu) | any ; owner: Personal | Business | để trống = cả hai
