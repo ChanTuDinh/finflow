@@ -44,6 +44,8 @@ TABS.goals = {
 }
 // Ví BM: sổ thu/chi riêng, cùng cấu trúc và danh mục với Cá nhân, lưu ở tab BM_CashFlow
 TABS.bm = { ...TABS.personal, tab: 'BM_CashFlow' }
+// Form thêm/sửa giao dịch của Ví BM chỉ cho chọn các danh mục này (dòng cũ có danh mục khác vẫn giữ nguyên khi sửa)
+export const BM_FORM_CATEGORIES = { Income: ['Chuyển ví'], Expense: ['Trả nợ', 'Chuyển ví', 'Chi phí sống'], Transfer: ['Chuyển nội bộ'] }
 export const CASH_KINDS = ['personal', 'business', 'bm']
 export const WALLET_LABEL = { personal: 'Cá nhân', business: 'Doanh nghiệp', bm: 'Ví BM' }
 

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { TABS, REPAY, CASH_KINDS, DEBT_PAYMENT_CATEGORY } from '../lib/schema.js'
+import { TABS, REPAY, CASH_KINDS, DEBT_PAYMENT_CATEGORY, BM_FORM_CATEGORIES } from '../lib/schema.js'
 import { computeApr, estimateTerm } from '../lib/rate.js'
 import { todayIso } from '../lib/format.js'
 import { Field, Modal, Segmented, focusNextOnEnter } from './ui.jsx'
@@ -21,11 +21,12 @@ const ALL_CATEGORIES = [...new Set([...Object.values(TABS.personal.categories), 
 export default function EntryForm({ kind, row, onClose }) {
   const { upsert, status, data, money } = useStore()
   const cfg = TABS[kind]
+  const baseCats = (t) => (kind === 'bm' ? BM_FORM_CATEGORIES : cfg.categories)[t]
   const cash = CASH_KINDS.includes(kind)
   const isDebt = kind === 'debts' || kind === 'debts_bm'
   const [f, setF] = useState(() => {
     const init = row || (kind === 'debts_bm' ? { ...DEBT_BLANK, record_date: todayIso() } : EMPTY[kind]) || {
-      date: todayIso(), type: cfg.types[1], category: cfg.categories[cfg.types[1]][0], amount: 0,
+      date: todayIso(), type: cfg.types[1], category: baseCats(cfg.types[1])[0], amount: 0,
       [kind === 'business' ? 'counterparty' : 'account']: '', note: '',
     }
     return isDebt ? { ...init, repay_type: init.repay_type || REPAY.both } : init // dòng cũ chưa có hình thức = trả gốc và lãi
@@ -124,9 +125,9 @@ export default function EntryForm({ kind, row, onClose }) {
           {/* "Trả nợ" là lối tắt: lưu type Expense + category Trả nợ (đúng quy ước forecast), không thêm type mới vào Sheet */}
           <Field label="Loại"><select className="input" value={f.type === 'Expense' && f.category === DEBT_PAYMENT_CATEGORY ? DEBT_PAYMENT_CATEGORY : f.type} onChange={(e) => {
             const v = e.target.value
-            setF((p) => (v === DEBT_PAYMENT_CATEGORY ? { ...p, type: 'Expense', category: DEBT_PAYMENT_CATEGORY } : { ...p, type: v, category: cfg.categories[v][0] }))
+            setF((p) => (v === DEBT_PAYMENT_CATEGORY ? { ...p, type: 'Expense', category: DEBT_PAYMENT_CATEGORY } : { ...p, type: v, category: baseCats(v)[0] }))
           }}>{[...cfg.types.slice(0, 2), DEBT_PAYMENT_CATEGORY, ...cfg.types.slice(2)].map((t) => <option key={t}>{t}</option>)}</select></Field>
-          <Field label="Danh mục">{select('category', cfg.categories[f.type])}</Field>
+          <Field label="Danh mục">{select('category', baseCats(f.type).includes(f.category) ? baseCats(f.type) : [...baseCats(f.type), f.category])}</Field>
           <Field label="Số tiền">{number('amount', { required: true })}</Field>
           <div className="col-span-2"><Field label={who[1]}>{text(who[0])}</Field></div>
         </>)}
