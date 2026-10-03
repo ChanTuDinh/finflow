@@ -5,12 +5,14 @@ import { ResponsiveContainer } from 'recharts'
 export const COLORS = { personal: '#2563eb', business: '#f59e0b', income: '#10b981', expense: '#ef4444', net: '#0f172a', grid: '#e2e8f0' }
 export const SERIES = ['#2563eb', '#f59e0b', '#10b981', '#8b5cf6', '#ef4444']
 
-export function Stat({ label, value, sub, tone, className = '' }) {
+// solid: nền đặc (className đặt màu nền), chữ trắng; số âm hiện đỏ nhạt để vẫn nổi trên nền đậm
+export function Stat({ label, value, sub, tone, className = '', solid = false }) {
+  const valueTone = solid ? (tone === 'neg' ? 'text-red-200' : 'text-white') : tone === 'neg' ? 'text-red-600' : tone === 'pos' ? 'text-emerald-600' : ''
   return (
     <div className={`card ${className}`}>
-      <div className="text-xs text-slate-500">{label}</div>
-      <div className={`text-base sm:text-lg font-semibold break-words ${tone === 'neg' ? 'text-red-600' : tone === 'pos' ? 'text-emerald-600' : ''}`}>{value}</div>
-      {sub && <div className="text-xs text-slate-400">{sub}</div>}
+      <div className={`text-xs ${solid ? 'text-white/80' : 'text-slate-500'}`}>{label}</div>
+      <div className={`text-base sm:text-lg font-semibold break-words ${valueTone}`}>{value}</div>
+      {sub && <div className={`text-xs ${solid ? 'text-white/70' : 'text-slate-400'}`}>{sub}</div>}
     </div>
   )
 }
