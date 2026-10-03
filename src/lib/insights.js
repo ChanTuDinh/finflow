@@ -1,5 +1,5 @@
 // Phân tích pattern thu/chi hiện tại và gợi ý cải thiện kế hoạch trả nợ.
-import { isInflow, isTransfer, isInterestOnly, DEBT_PAYMENT_CATEGORY } from './schema.js'
+import { isInflow, isTransfer, isInterestOnly, isDebtPayment } from './schema.js'
 import { lastMonths, byMonth, expenseByCategory } from './calc.js'
 import { simulate } from './forecast.js'
 import { pct } from './format.js'
@@ -8,7 +8,7 @@ export function baselineFrom(rows, endYm, n = 3) {
   const ms = new Set(lastMonths(endYm, n))
   const inWin = rows.filter((r) => ms.has(r.date.slice(0, 7)))
   const income = inWin.filter(isInflow).reduce((s, r) => s + r.amount, 0) / n
-  const expense = inWin.filter((r) => !isInflow(r) && !isTransfer(r) && r.category !== DEBT_PAYMENT_CATEGORY).reduce((s, r) => s + r.amount, 0) / n
+  const expense = inWin.filter((r) => !isInflow(r) && !isTransfer(r) && !isDebtPayment(r.category)).reduce((s, r) => s + r.amount, 0) / n
   return { income, expense }
 }
 
@@ -32,7 +32,7 @@ export function buildInsights({ rows, debts, endYm, money }) {
   // Xu hướng chi: 3 tháng gần nhất vs 3 tháng trước đó
   const recent = new Set(lastMonths(endYm, 3))
   const prev = new Set(lastMonths(endYm, 6).slice(0, 3))
-  const cat = (set) => Object.fromEntries(expenseByCategory(rows.filter((r) => set.has(r.date.slice(0, 7)) && r.category !== DEBT_PAYMENT_CATEGORY)).map((e) => [e.category, e.amount / 3]))
+  const cat = (set) => Object.fromEntries(expenseByCategory(rows.filter((r) => set.has(r.date.slice(0, 7)) && !isDebtPayment(r.category))).map((e) => [e.category, e.amount / 3]))
   const cr = cat(recent), cp = cat(prev)
   const growth = Object.keys(cr)
     .map((k) => ({ k, delta: cr[k] - (cp[k] || 0), prev: cp[k] || 0 }))
@@ -41,7 +41,7 @@ export function buildInsights({ rows, debts, endYm, money }) {
     .slice(0, 2)
   for (const g of growth) out.push({ level: 'warn', text: `Chi "${g.k}" tăng ${money(g.delta)}/tháng (+${pct(g.delta / g.prev)}) so với 3 tháng trước — cắt lại có thể dồn vào trả nợ.` })
 
-  const top = expenseByCategory(rows.filter((r) => recent.has(r.date.slice(0, 7)) && r.category !== DEBT_PAYMENT_CATEGORY))[0]
+  const top = expenseByCategory(rows.filter((r) => recent.has(r.date.slice(0, 7)) && !isDebtPayment(r.category)))[0]
   if (top) out.push({ level: 'info', text: `Danh mục chi lớn nhất 3 tháng qua: "${top.category}" (${money(top.amount / 3)}/tháng).` })
 
   // Biến động thu nhập

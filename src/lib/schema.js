@@ -1,4 +1,6 @@
 // Cấu trúc Google Sheet. Hàng 1 của mỗi tab là header (đúng thứ tự dưới đây).
+// Ví cá nhân: loại "Trả nợ" chỉ có 2 danh mục này
+export const PERSONAL_DEBT_CATEGORIES = ['Trả nợ BM', 'Trả nợ cá nhân']
 export const TABS = {
   personal: {
     tab: 'Personal_CashFlow',
@@ -6,7 +8,7 @@ export const TABS = {
     types: ['Income', 'Expense', 'Transfer'],
     categories: {
       Income: ['Lương', 'Thưởng', 'Side project', 'Đầu tư', 'Chuyển ví', 'Khác'],
-      Expense: ['Nhà ở', 'Ăn uống', 'Đi lại', 'Hoá đơn', 'Giải trí', 'Sức khoẻ', 'Học tập', 'Mua sắm', 'Trả nợ', 'Chuyển ví', 'Khác'],
+      Expense: ['Nhà ở', 'Ăn uống', 'Đi lại', 'Hoá đơn', 'Giải trí', 'Sức khoẻ', 'Học tập', 'Mua sắm', ...PERSONAL_DEBT_CATEGORIES, 'Chuyển ví', 'Khác'],
       Transfer: ['Chuyển nội bộ'],
     },
   },
@@ -87,6 +89,8 @@ export const REPAY = { both: 'Trả gốc và lãi', interestOnly: 'Trả lãi o
 export const isInterestOnly = (d) => d.repay_type === REPAY.interestOnly
 
 export const DEBT_PAYMENT_CATEGORY = 'Trả nợ'
+// Khoản trả nợ: danh mục 'Trả nợ' (cũ, Doanh nghiệp, Ví BM) hoặc 'Trả nợ BM' / 'Trả nợ cá nhân' (Ví cá nhân)
+export const isDebtPayment = (category) => category === DEBT_PAYMENT_CATEGORY || PERSONAL_DEBT_CATEGORIES.includes(category)
 export const isInflow = (row) => row.type === 'Income' || row.type === 'Revenue'
 // Chuyển khoản giữa các tài khoản của chính mình: không tính vào thu/chi.
 export const isTransfer = (row) => row.type === 'Transfer'

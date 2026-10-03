@@ -29,3 +29,10 @@ test('Nợ BM có chủ khoản nợ BM và bộ lọc phạm vi BM; nợ chính
   assert.deepEqual(cashRowsForScope(d, 'all'), [1, 2]) // nợ chính: chỉ cá nhân + doanh nghiệp
   assert.deepEqual(cashRowsForScope(d, 'all', 'debts_bm'), [1, 2, 3]) // nợ BM: gồm cả Ví BM
 })
+
+test('isDebtPayment: nhận Trả nợ cũ và 2 danh mục của Ví cá nhân', async () => {
+  const { isDebtPayment, PERSONAL_DEBT_CATEGORIES } = await import('./schema.js')
+  assert.deepEqual(PERSONAL_DEBT_CATEGORIES, ['Trả nợ BM', 'Trả nợ cá nhân'])
+  for (const c of ['Trả nợ', 'Trả nợ BM', 'Trả nợ cá nhân']) assert.equal(isDebtPayment(c), true)
+  for (const c of ['Khác', 'Chuyển ví', '', undefined]) assert.equal(isDebtPayment(c), false)
+})

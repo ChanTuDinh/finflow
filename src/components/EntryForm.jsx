@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { TABS, REPAY, CASH_KINDS, DEBT_PAYMENT_CATEGORY, BM_FORM_CATEGORIES } from '../lib/schema.js'
+import { TABS, REPAY, CASH_KINDS, DEBT_PAYMENT_CATEGORY, BM_FORM_CATEGORIES, PERSONAL_DEBT_CATEGORIES, isDebtPayment } from '../lib/schema.js'
 import { computeApr, estimateTerm } from '../lib/rate.js'
 import { todayIso } from '../lib/format.js'
 import { Field, Modal, Segmented, focusNextOnEnter } from './ui.jsx'
@@ -52,6 +52,10 @@ export default function EntryForm({ kind, row, onClose }) {
   const select = (k, options) => <select className="input" value={f[k]} onChange={(e) => set(k, e.target.value)}>{options.map((o) => <option key={o}>{o}</option>)}</select>
   const text = (k, required) => <input required={required} className="input" value={f[k] ?? ''} onChange={(e) => set(k, e.target.value)} />
   const number = (k, extra = {}) => <input type="number" min="0" className="input" value={f[k]} onChange={num(k)} {...extra} />
+  // Loại "Trả nợ" = Expense + danh mục trả nợ; ở Ví cá nhân chỉ cho chọn Trả nợ BM / Trả nợ cá nhân
+  const debtMode = f.type === 'Expense' && isDebtPayment(f.category)
+  const catBase = kind === 'personal' && debtMode ? PERSONAL_DEBT_CATEGORIES : cash ? baseCats(f.type) : []
+  const catOptions = cash && f.category && !catBase.includes(f.category) ? [...catBase, f.category] : catBase // dòng cũ có danh mục khác vẫn giữ khi sửa
   const goalOptions = data.goals.filter((g) => g.owner === f.owner)
 
   return (
@@ -123,11 +127,11 @@ export default function EntryForm({ kind, row, onClose }) {
         {cash && (<>
           <Field label="Ngày"><input type="date" required className="input" value={f.date} onChange={(e) => set('date', e.target.value)} /></Field>
           {/* "Trả nợ" là lối tắt: lưu type Expense + category Trả nợ (đúng quy ước forecast), không thêm type mới vào Sheet */}
-          <Field label="Loại"><select className="input" value={f.type === 'Expense' && f.category === DEBT_PAYMENT_CATEGORY ? DEBT_PAYMENT_CATEGORY : f.type} onChange={(e) => {
+          <Field label="Loại"><select className="input" value={debtMode ? DEBT_PAYMENT_CATEGORY : f.type} onChange={(e) => {
             const v = e.target.value
-            setF((p) => (v === DEBT_PAYMENT_CATEGORY ? { ...p, type: 'Expense', category: DEBT_PAYMENT_CATEGORY } : { ...p, type: v, category: baseCats(v)[0] }))
+            setF((p) => (v === DEBT_PAYMENT_CATEGORY ? { ...p, type: 'Expense', category: kind === 'personal' ? PERSONAL_DEBT_CATEGORIES[0] : DEBT_PAYMENT_CATEGORY } : { ...p, type: v, category: baseCats(v)[0] }))
           }}>{[...cfg.types.slice(0, 2), DEBT_PAYMENT_CATEGORY, ...cfg.types.slice(2)].map((t) => <option key={t}>{t}</option>)}</select></Field>
-          <Field label="Danh mục">{select('category', baseCats(f.type).includes(f.category) ? baseCats(f.type) : [...baseCats(f.type), f.category])}</Field>
+          <Field label="Danh mục">{select('category', catOptions)}</Field>
           <Field label="Số tiền">{number('amount', { required: true })}</Field>
           <div className="col-span-2"><Field label={who[1]}>{text(who[0])}</Field></div>
         </>)}
