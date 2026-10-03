@@ -9,7 +9,7 @@ import EntryForm from '../components/EntryForm.jsx'
 import FilterBar from '../components/FilterBar.jsx'
 
 export default function CashFlow({ kind, onImport }) {
-  const { data, money, remove, removeMany, clearKind } = useStore()
+  const { data, money, remove, removeMany } = useStore()
   const rows = data[kind]
   const { period } = usePeriod()
   const [editing, setEditing] = useState(null) // null | {} (mới) | row
@@ -133,13 +133,6 @@ export default function CashFlow({ kind, onImport }) {
           <button className="text-slate-500 underline" onClick={() => setSel(new Set())}>Bỏ chọn</button>
         </div>)}
       {groups.map((g) => g.rows.length > 0 || g.always ? table(g) : null)}
-      {kind === 'bm' && rows.length > 0 && (
-        <div className="flex justify-end">
-          <button className="rounded-lg border border-red-300 text-red-700 px-3 py-1.5 text-sm hover:bg-red-50"
-            onClick={() => confirm(`Xoá TOÀN BỘ ${rows.length} giao dịch của Ví BM (mọi năm)?\n\nKhông thể hoàn tác. Dữ liệu các tab khác không bị ảnh hưởng.`) && clearKind('bm')}>
-            Xoá toàn bộ dữ liệu Ví BM ({rows.length})
-          </button>
-        </div>)}
       {editing && <EntryForm kind={kind} row={editing.id ? editing : null} onClose={() => setEditing(null)} />}
     </div>
   )
