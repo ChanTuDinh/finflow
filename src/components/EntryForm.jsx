@@ -9,6 +9,7 @@ import { useStore } from '../lib/store.jsx'
 
 const TITLES = { personal: 'giao dịch cá nhân', business: 'giao dịch doanh nghiệp', bm: 'giao dịch Ví BM', debts: 'khoản nợ', debts_bm: 'khoản nợ BM', savings: 'khoản tích lũy', goals: 'mục tiêu', accounts: 'tài khoản ngân hàng', rules: 'quy tắc phân loại' }
 const DEBT_BLANK = { name: '', lender: '', owner: 'Personal', balance: 0, apr: 0, min_payment: 0, due_day: 1, status: 'Active', note: '', repay_type: REPAY.both, term_months: 0 }
+const DEFAULT_PERSONAL_ACCOUNT = 'Ví CH' // ô Tài khoản / ví của giao dịch mới ở Ví cá nhân
 const EMPTY = {
   debts: DEBT_BLANK,
   debts_bm: DEBT_BLANK,
@@ -30,7 +31,7 @@ export default function EntryForm({ kind, row, onClose }) {
   const [f, setF] = useState(() => {
     const init = row || (kind === 'debts_bm' ? { ...DEBT_BLANK, record_date: todayIso() } : EMPTY[kind]) || {
       date: todayIso(), type: cfg.types[1], category: baseCats(cfg.types[1])[0], amount: 0,
-      [kind === 'business' ? 'counterparty' : 'account']: '', note: '',
+      [kind === 'business' ? 'counterparty' : 'account']: kind === 'personal' ? DEFAULT_PERSONAL_ACCOUNT : '', note: '',
     }
     return isDebt ? { ...init, repay_type: init.repay_type || REPAY.both } : init // dòng cũ chưa có hình thức = trả gốc và lãi
   })
