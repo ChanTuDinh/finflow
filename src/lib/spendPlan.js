@@ -1,7 +1,7 @@
 // Forecast chi tiêu cá nhân: chia thu nhập trung bình theo tỷ lệ từng quỹ (Need, Want, ...).
-// Số tháng người dùng chọn xem (horizon)
-export const HORIZONS = [12, 24, 36, 60]
-export const resolveHorizon = (v) => (HORIZONS.includes(Number(v)) ? Number(v) : 12)
+// Số năm người dùng chọn xem (horizon): 1 năm = 12 tháng T1–T12. Giá trị cũ đã lưu theo tháng (12/24/36/60) được đổi sang năm.
+export const HORIZONS = [1, 2, 3, 5]
+export const resolveHorizon = (v) => { const n = Number(v); const y = [12, 24, 36, 60].includes(n) ? n / 12 : n; return HORIZONS.includes(y) ? y : 1 }
 
 export const BUCKETS = [
   { key: 'need', name: 'Need', pct: 60, color: '#2a78d6' },

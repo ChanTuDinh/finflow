@@ -16,8 +16,8 @@ export default function SpendPlan({ actualMonthly = 0 }) {
   const income = Number(saved.monthlyIncome) || 0
   const pcts = resolvePcts(saved.pcts)
   const total = sumPcts(pcts)
-  const horizon = resolveHorizon(saved.horizon)
-  const plan = buildPlan(income, pcts, todayIso().slice(0, 7), horizon)
+  const horizon = resolveHorizon(saved.horizon) // số năm
+  const plan = buildPlan(income, pcts, `${todayIso().slice(0, 4)}-01`, horizon * 12) // theo năm dương lịch: mỗi năm đủ 12 tháng (T1–T12)
   const slices = BUCKETS.filter((b) => pcts[b.key] > 0).map((b) => ({ ...b, value: pcts[b.key] / (total || 1) * 100, amount: plan.per[b.key] }))
   const years = [...new Set(plan.months.map((r) => r.month.slice(0, 4)))]
   const year = years.includes(fYear) ? fYear : 'all' // đổi horizon làm mất năm đang chọn -> về Tất cả
@@ -97,12 +97,12 @@ export default function SpendPlan({ actualMonthly = 0 }) {
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
-                    <div className="text-sm font-medium text-slate-700">Timeline theo tháng — {shown.length}/{horizon} tháng</div>
+                    <div className="text-sm font-medium text-slate-700">Timeline theo tháng — {shown.length} tháng · {horizon} năm từ T1/{years[0]}</div>
                     <div className="flex items-center gap-1 text-sm">
                       <span className="text-slate-700 mr-1">Horizon:</span>
                       {HORIZONS.map((h) => (
                         <button key={h} onClick={() => patch({ horizon: h })} className={`rounded-lg px-2.5 py-1 border ${h === horizon ? 'bg-slate-900 text-white border-slate-900' : 'border-teal-400 bg-white hover:bg-slate-100'}`}>
-                          {h % 12 === 0 ? `${h / 12} năm` : `${h} tháng`}
+                          {h} năm
                         </button>))}
                     </div>
                   </div>
@@ -112,6 +112,7 @@ export default function SpendPlan({ actualMonthly = 0 }) {
                         <tr>
                           <th className="sticky left-0 z-[1] bg-teal-100 py-1 pr-4 text-left">Quỹ</th>
                           {shown.map((r) => <th key={r.month} className="px-3 text-right font-semibold">{r.month.slice(5)}/{r.month.slice(0, 4)}</th>)}
+                          <th className="pl-4 text-right font-semibold text-slate-900">Tổng {shown.length} tháng</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -119,14 +120,17 @@ export default function SpendPlan({ actualMonthly = 0 }) {
                           <tr key={b.key} className="border-t border-teal-200">
                             <td className="sticky left-0 z-[1] bg-teal-100 py-1 pr-4 font-medium"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ background: b.color }} />{b.name}</td>
                             {shown.map((r) => <td key={r.month} className="px-3 text-right">{money(r.amounts[b.key])}</td>)}
+                            <td className="pl-4 text-right font-semibold">{money(plan.per[b.key] * shown.length)}</td>
                           </tr>))}
                         <tr className="border-t border-teal-400 font-semibold">
                           <td className="sticky left-0 z-[1] bg-teal-100 py-1 pr-4">Tổng</td>
                           {shown.map((r) => <td key={r.month} className="px-3 text-right">{money(r.total)}</td>)}
+                          <td className="pl-4 text-right">{money(shown.reduce((a, r) => a + r.total, 0))}</td>
                         </tr>
                         <tr className="border-t border-teal-200 text-slate-600">
                           <td className="sticky left-0 z-[1] bg-teal-100 py-1 pr-4">Lũy kế</td>
                           {shown.map((r) => <td key={r.month} className="px-3 text-right">{money(r.cumulative)}</td>)}
+                          <td />
                         </tr>
                       </tbody>
                     </table>

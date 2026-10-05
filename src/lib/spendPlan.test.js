@@ -25,9 +25,10 @@ test('buildPlan 12 tháng', () => {
 })
 test('thu nhập âm/rỗng -> 0', () => assert.equal(buildPlan('', def, '2026-10').total, 0))
 test('horizon: giá trị lạ về 12; lũy kế đúng', () => {
-  assert.equal(resolveHorizon(7), 12)
-  assert.equal(resolveHorizon('36'), 36)
-  assert.ok(HORIZONS.includes(60))
+  assert.equal(resolveHorizon(7), 1)
+  assert.equal(resolveHorizon('3'), 3)
+  assert.equal(resolveHorizon(36), 3) // giá trị cũ theo tháng
+  assert.ok(HORIZONS.includes(5))
   const p = buildPlan(10000000, def, '2026-10', 36)
   assert.equal(p.months.length, 36)
   assert.equal(p.months[35].cumulative, 10000000 * 36)
