@@ -44,13 +44,24 @@ export function monthList(startMonth, n = 12) {
   return out
 }
 
-/** Bản forecast: mỗi tháng một dòng { month, amounts, total }, cộng cả kỳ ở totals. */
-export function buildPlan(monthlyIncome, pcts, startMonth, n = 12) {
-  const income = Math.max(0, Number(monthlyIncome) || 0)
-  const per = allocate(income, pcts)
-  const rowTotal = Object.values(per).reduce((a, b) => a + b, 0)
-  const months = monthList(startMonth, n).map((month, i) => ({ month, amounts: per, total: rowTotal, cumulative: rowTotal * (i + 1) }))
-  const totals = {}
-  for (const b of BUCKETS) totals[b.key] = per[b.key] * n
-  return { per, months, totals, total: months.reduce((s, r) => s + r.total, 0) }
+/** Thu nhập trung bình / tháng dự kiến của một năm. Dữ liệu cũ (một số chung `monthlyIncome`) được coi là của năm hiện tại. */
+export function incomeForYear(saved, year, currentYear) {
+  const v = saved?.incomeByYear?.[year]
+  if (v !== undefined && v !== null && v !== '') return Math.max(0, Number(v) || 0)
+  return String(year) === String(currentYear) ? Math.max(0, Number(saved?.monthlyIncome) || 0) : 0
+}
+
+/** Bản forecast: mỗi tháng một dòng { month, amounts, total, cumulative }. incomeOf(year) -> thu nhập trung bình / tháng của năm đó. */
+export function buildPlan(incomeOf, pcts, startMonth, n = 12) {
+  const per = {} // cache theo năm
+  let cum = 0
+  const months = monthList(startMonth, n).map((month) => {
+    const y = month.slice(0, 4)
+    per[y] = per[y] || allocate(Math.max(0, Number(incomeOf(y)) || 0), pcts)
+    const amounts = per[y]
+    const total = Object.values(amounts).reduce((a, b) => a + b, 0)
+    cum += total
+    return { month, amounts, total, cumulative: cum }
+  })
+  return { months, total: cum }
 }
