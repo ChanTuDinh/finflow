@@ -7,7 +7,7 @@ import { todayIso } from '../lib/format.js'
 
 const num = (v) => (v === '' ? 0 : Number(String(v).replace(/[^\d.]/g, '')) || 0)
 
-/** Board 2 (cuối trang Ví cá nhân): Chi tiêu cá nhân forecast, có bộ lọc Năm / Tháng riêng, tách khỏi bộ lọc kỳ của board 1. */
+/** Board 2 (cuối trang Ví cá nhân): Dự đoán chi tiêu cá nhân, có bộ lọc Năm / Tháng riêng, tách khỏi bộ lọc kỳ của board 1. */
 export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
   const { settings, setSettings, money } = useStore()
   const [open, setOpen] = useState(false) // dropdown, mặc định đóng
@@ -133,7 +133,7 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
     <section className={`rounded-xl border border-teal-300 bg-teal-100 ${open ? 'space-y-3 p-4' : 'px-4 py-2'}`}>
       <div className="flex cursor-pointer select-none items-center gap-2" onClick={() => setOpen((v) => !v)}>
         <h3 className="flex flex-wrap items-center gap-2 font-semibold text-slate-700">
-          <span className="inline-block w-4 text-slate-600">{open ? '▾' : '▸'}</span>📊 Chi tiêu cá nhân forecast
+          <span className="inline-block w-4 text-slate-600">{open ? '▾' : '▸'}</span>📊 Dự đoán chi tiêu cá nhân
           <span className="text-xs font-normal text-slate-600">{open ? 'Board 2 — bộ lọc riêng, không theo Năm / Quý / Tháng phía trên' : 'Bấm để mở'}</span>
         </h3>
       </div>
