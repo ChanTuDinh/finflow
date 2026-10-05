@@ -50,6 +50,13 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
   const planShownTotal = shown.reduce((a, r) => a + r.total, 0)
   const hasUnassignedMonths = actMonths.some((x) => x.unassigned > 0)
   const dash = (v) => (v ? money(v) : '–')
+  // Dòng % kiểu chứng khoán: (KH − TT) / KH. ▲ xanh = còn trong ngân sách (chi ít hơn KH), ▼ đỏ = vượt KH; KH = 0 thì không có %.
+  const pctVs = (d, base) => {
+    if (!(base > 0)) return <span className="text-slate-500">—</span>
+    const v = (d / base) * 100
+    if (Math.abs(v) < 0.05) return <span className="text-slate-700">■ 0.0%</span>
+    return v > 0 ? <span className="font-semibold text-emerald-800">▲ {v.toFixed(1)}%</span> : <span className="font-bold text-red-700">▼ {Math.abs(v).toFixed(1)}%</span>
+  }
   const signed = (d) => `${d > 0 ? '+' : ''}${money(d)}`
   const STICKY1 = 'sticky left-0 z-[1] w-36 min-w-[9rem] bg-teal-100 py-1 pr-3' // 2 cột đầu cố định khi cuộn ngang
   const STICKY2 = 'sticky left-36 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100 px-3 text-right'
@@ -249,6 +256,11 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
                               <td className={`${STICKY2} font-semibold ${khSum - ttSum < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(khSum - ttSum)}</td>
                               {actMonths.map((x, i) => { const d = shown[i].amounts[b.key] - x.per[b.key]; return <td key={shown[i].month} className={`px-3 text-right ${d < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(d)}</td> })}
                             </tr>,
+                            cmp && <tr key={`${b.key}-pc`} className="border-t border-teal-200 text-xs" title="(KH − TT) / KH: ▲ xanh = còn trong ngân sách, ▼ đỏ = vượt kế hoạch">
+                              <td className={`${STICKY1} pl-6 text-slate-700`}>% so KH</td>
+                              <td className={`${STICKY2}`}>{pctVs(khSum - ttSum, khSum)}</td>
+                              {actMonths.map((x, i) => <td key={shown[i].month} className="px-3 text-right">{pctVs(shown[i].amounts[b.key] - x.per[b.key], shown[i].amounts[b.key])}</td>)}
+                            </tr>,
                           ]
                         })}
                         {cmp && hasUnassignedMonths && (
@@ -271,6 +283,11 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
                           <td className={STICKY1}>Tổng KH − TT</td>
                           <td className={`${STICKY2} ${planShownTotal - actSum((x) => x.total) < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(planShownTotal - actSum((x) => x.total))}</td>
                           {actMonths.map((x, i) => { const d = shown[i].total - x.total; return <td key={shown[i].month} className={`px-3 text-right ${d < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(d)}</td> })}
+                        </tr>}
+                        {cmp && <tr className="border-t border-teal-300 font-semibold" title="(KH − TT) / KH: ▲ xanh = còn trong ngân sách, ▼ đỏ = vượt kế hoạch">
+                          <td className={STICKY1}>Tổng % so KH</td>
+                          <td className={STICKY2}>{pctVs(planShownTotal - actSum((x) => x.total), planShownTotal)}</td>
+                          {actMonths.map((x, i) => <td key={shown[i].month} className="px-3 text-right">{pctVs(shown[i].total - x.total, shown[i].total)}</td>)}
                         </tr>}
                       </tbody>
                     </table>
