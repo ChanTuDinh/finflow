@@ -77,10 +77,12 @@ export default function CashFlow({ kind, onImport }) {
   // Thẻ tổng có nền màu theo tab: Ví cá nhân xanh ngọc, Ví BM (ba mẹ) tím
   const tint = { personal: 'teal', bm: 'violet' }[kind] || ''
   const statCls = { teal: '!bg-teal-300 !border-teal-500', violet: '!bg-violet-300 !border-violet-500' }[tint] || ''
-  const nMonths = spanMonths(counted)
-  const range = spanRange(counted)
-  const avgNote = nMonths ? `Trung bình trong ${nMonths} tháng (${monthLabelShort(range.from)} → ${monthLabelShort(range.to)})` : 'Chưa có dữ liệu'
-  const perMonth = (v) => (nMonths ? Math.round(v / nMonths) : 0)
+  // Trung bình / tháng tính RIÊNG theo từng loại dữ liệu: chia cho số tháng từ dòng sớm nhất đến muộn nhất CỦA CHÍNH loại đó
+  // (Thu nhập theo các dòng thu, Chi theo các dòng chi, Trả nợ theo các dòng trả nợ) — dòng chi / trả nợ ở tháng khác không kéo dài số tháng của thu nhập.
+  const incRows = counted.filter(isInflow)
+  const expRows = counted.filter((r) => !isInflow(r) && !isTransfer(r) && !isDebt(r))
+  const avgOver = (v, rs) => { const n = spanMonths(rs); return n ? Math.round(v / n) : 0 }
+  const noteOver = (rs) => { const n = spanMonths(rs), rg = spanRange(rs); return n ? `Trung bình trong ${n} tháng (${monthLabelShort(rg.from)} → ${monthLabelShort(rg.to)})` : 'Chưa có dữ liệu' }
   const inLabel = kind === 'business' ? 'Doanh thu' : 'Thu nhập'
 
   const isWalletMove = (r) => !isTransfer(r) && r.category === WALLET_MOVE_CATEGORY
@@ -224,15 +226,15 @@ export default function CashFlow({ kind, onImport }) {
         <Stat tinted={tint} className={statCls} label="Dòng tiền ròng" value={money(t.net)} tone={t.net < 0 ? 'neg' : 'pos'} />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Stat tinted={tint} className={statCls} label={`${inLabel} / tháng`} value={money(perMonth(t.income))} sub={avgNote} />
-        <Stat tinted={tint} className={statCls} label="Chi / tháng" tone="neg" value={money(perMonth(t.expense))} sub={avgNote} />
-        {kind !== 'personal' && (<Stat tinted={tint} className={statCls} label="Trả nợ" tone="neg" value={money(debtTotal)} sub={debtCounted.length ? `${debtCounted.length} khoản · TB ${money(perMonth(debtTotal))}/tháng · tách riêng khỏi Chi` : 'Chưa có khoản trả nợ'} />)}
+        <Stat tinted={tint} className={statCls} label={`${inLabel} / tháng`} value={money(avgOver(t.income, incRows))} sub={noteOver(incRows)} />
+        <Stat tinted={tint} className={statCls} label="Chi / tháng" tone="neg" value={money(avgOver(t.expense, expRows))} sub={noteOver(expRows)} />
+        {kind !== 'personal' && (<Stat tinted={tint} className={statCls} label="Trả nợ" tone="neg" value={money(debtTotal)} sub={debtCounted.length ? `${debtCounted.length} khoản · TB ${money(avgOver(debtTotal, debtCounted))}/tháng · tách riêng khỏi Chi` : 'Chưa có khoản trả nợ'} />)}
       </div>
       {kind === 'personal' && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Stat tinted={tint} className={statCls} label="Trả nợ BM" tone="neg" value={money(sumOf2(debtBmC))} sub={debtBmC.length ? `${debtBmC.length} khoản · TB ${money(perMonth(sumOf2(debtBmC)))}/tháng` : 'Chưa có khoản trả nợ'} />
-          <Stat tinted={tint} className={statCls} label="Trả nợ cá nhân" tone="neg" value={money(sumOf2(debtCnC))} sub={debtCnC.length ? `${debtCnC.length} khoản · TB ${money(perMonth(sumOf2(debtCnC)))}/tháng` : 'Chưa có khoản trả nợ'} />
-          {debtOldC.length > 0 && <Stat tinted={tint} className={statCls} label="Trả nợ chưa phân loại BM / cá nhân" tone="neg" value={money(sumOf2(debtOldC))} sub={debtOldC.length ? `${debtOldC.length} khoản · TB ${money(perMonth(sumOf2(debtOldC)))}/tháng` : 'Chưa có khoản trả nợ'} />}
+          <Stat tinted={tint} className={statCls} label="Trả nợ BM" tone="neg" value={money(sumOf2(debtBmC))} sub={debtBmC.length ? `${debtBmC.length} khoản · TB ${money(avgOver(sumOf2(debtBmC), debtBmC))}/tháng` : 'Chưa có khoản trả nợ'} />
+          <Stat tinted={tint} className={statCls} label="Trả nợ cá nhân" tone="neg" value={money(sumOf2(debtCnC))} sub={debtCnC.length ? `${debtCnC.length} khoản · TB ${money(avgOver(sumOf2(debtCnC), debtCnC))}/tháng` : 'Chưa có khoản trả nợ'} />
+          {debtOldC.length > 0 && <Stat tinted={tint} className={statCls} label="Trả nợ chưa phân loại BM / cá nhân" tone="neg" value={money(sumOf2(debtOldC))} sub={debtOldC.length ? `${debtOldC.length} khoản · TB ${money(avgOver(sumOf2(debtOldC), debtOldC))}/tháng` : 'Chưa có khoản trả nợ'} />}
         </div>)}
       {unticked.length > 0 && (
         <div className="flex flex-wrap items-center gap-3 rounded-lg bg-slate-100 px-3 py-2 text-sm">
@@ -261,7 +263,7 @@ export default function CashFlow({ kind, onImport }) {
         </div>}
       </section>
       {kind === 'personal' && <TagAnalysis rows={counted.filter((r) => !isInflow(r) && !isTransfer(r) && !isDebt(r))} />}
-      {kind === 'personal' && <SpendPlan actualMonthly={perMonth(t.income)} actualRows={rows.filter((r) => pick.isSelected(r.id) && !isInflow(r) && !isTransfer(r) && !isWalletMove(r))} />}
+      {kind === 'personal' && <SpendPlan actualMonthly={avgOver(t.income, incRows)} actualRows={rows.filter((r) => pick.isSelected(r.id) && !isInflow(r) && !isTransfer(r) && !isWalletMove(r))} />}
       {editingCard && <EntryForm kind="accounts" row={editingCard.id ? editingCard : { name: '', bank: '', owner: cardOwner, preset: '', status: 'Active', note: '', badge: '', color: '' }} onClose={() => setEditingCard(null)} />}
       {editing && <EntryForm kind={kind} row={editing.id ? editing : null} onClose={() => setEditing(null)} />}
     </div>
