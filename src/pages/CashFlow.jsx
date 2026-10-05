@@ -5,13 +5,13 @@ import { isInflow, isTransfer, TABS, WALLET_MOVE_CATEGORY, BM_FUND_CATEGORY, isD
 import { totals } from '../lib/calc.js'
 import { usePeriod } from '../lib/period.jsx'
 import { inPeriod, spanMonths } from '../lib/period.js'
-import { Stat } from '../components/ui.jsx'
+import { Stat, SelectField, FilterRow } from '../components/ui.jsx'
 import EntryForm from '../components/EntryForm.jsx'
 import FilterBar from '../components/FilterBar.jsx'
 import BankBadge from '../components/BankBadge.jsx'
 import SpendPlan from '../components/SpendPlan.jsx'
 import TagAnalysis from '../components/TagAnalysis.jsx'
-import { parseTags } from '../lib/tags.js'
+import { parseTags, tagCounts } from '../lib/tags.js'
 import { buildCsvRows, CSV_HEADER } from '../lib/csvImport.js'
 
 export default function CashFlow({ kind, onImport }) {
@@ -38,9 +38,28 @@ export default function CashFlow({ kind, onImport }) {
   // Ô tick = dòng được tính vào các thẻ tổng. Mặc định tick hết; bỏ tick (dòng / tháng / năm / bảng) thì thẻ tổng tính lại.
   // Lưu id các dòng BỎ tick trong trình duyệt (cùng cơ chế với ô tick khoản nợ), dòng mới thêm tự được tick.
   const pick = useDebtSelection(kind)
-  const shown = rows.filter((r) => inPeriod(period, r.date)).sort((a, b) => b.date.localeCompare(a.date))
-  const counted = shown.filter((r) => pick.isSelected(r.id))
-  const unticked = shown.filter((r) => !pick.isSelected(r.id))
+  const periodRows = rows.filter((r) => inPeriod(period, r.date)).sort((a, b) => b.date.localeCompare(a.date))
+  const counted = periodRows.filter((r) => pick.isSelected(r.id))
+  const unticked = periodRows.filter((r) => !pick.isSelected(r.id))
+  // Bộ lọc Danh mục / Loại / Tag chỉ lọc các bảng giao dịch bên dưới (thẻ tổng vẫn theo kỳ + ô tick). '' = tất cả; NO_TAG = chưa gắn tag
+  const NO_TAG = '__none'
+  const [fCat, setFCat] = useState('')
+  const [fType, setFType] = useState('')
+  const [fTag, setFTag] = useState('')
+  const catOpts = [...new Set(periodRows.map((r) => r.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi'))
+  const typeOpts = [...new Set(periodRows.map((r) => r.type).filter(Boolean))]
+  const tagOpts = tagCounts(periodRows)
+  const hasUntagged = periodRows.some((r) => !parseTags(r.tag).length)
+  const vCat = catOpts.includes(fCat) ? fCat : '' // lựa chọn không còn tồn tại (đổi kỳ / xoá dòng) -> về Tất cả
+  const vType = typeOpts.includes(fType) ? fType : ''
+  const vTag = fTag === NO_TAG ? (hasUntagged ? NO_TAG : '') : tagOpts.some((x) => x.tag === fTag) ? fTag : ''
+  const filtered = !!(vCat || vType || vTag)
+  const shown = filtered ? periodRows.filter((r) => {
+    if (vCat && r.category !== vCat) return false
+    if (vType && r.type !== vType) return false
+    if (vTag) { const tg = parseTags(r.tag); if (vTag === NO_TAG ? tg.length : !tg.some((x) => x.toLowerCase() === vTag.toLowerCase())) return false }
+    return true
+  }) : periodRows
   const t = totals(counted)
   const delUnticked = async () => { if (confirm(`Xoá ${unticked.length} giao dịch đang bỏ tick?\n\nKhông thể hoàn tác.`)) await removeMany(kind, unticked) }
   // Thẻ tổng có nền màu theo tab: Ví cá nhân xanh ngọc, Ví BM (ba mẹ) tím
@@ -201,6 +220,14 @@ export default function CashFlow({ kind, onImport }) {
           <button className="text-blue-600 underline" onClick={() => pick.setMany(unticked.map((r) => r.id), true)}>Tick lại tất cả</button>
           <button className="rounded-lg border border-red-300 text-red-700 px-3 py-1 hover:bg-red-50" onClick={delUnticked}>Xoá {unticked.length} dòng bỏ tick</button>
         </div>)}
+      <div className="rounded-lg bg-slate-100 px-3 pt-2">
+        <FilterRow>
+          <SelectField label="Danh mục" value={vCat} onChange={setFCat} options={[{ value: '', label: 'Tất cả danh mục' }, ...catOpts.map((c) => ({ value: c, label: c }))]} />
+          <SelectField label="Loại" value={vType} onChange={setFType} options={[{ value: '', label: 'Tất cả loại' }, ...typeOpts.map((t) => ({ value: t, label: t }))]} />
+          <SelectField label="Tag" value={vTag} onChange={setFTag} options={[{ value: '', label: 'Tất cả tag' }, ...tagOpts.map((x) => ({ value: x.tag, label: `${x.tag} (${x.count})` })), ...(hasUntagged ? [{ value: NO_TAG, label: 'Chưa gắn tag' }] : [])]} />
+          {filtered && <div className="flex items-center gap-3 pb-1.5 text-sm"><span className="text-slate-600">Hiển thị <b>{shown.length}</b>/{periodRows.length} giao dịch</span><button className="text-blue-600 underline" onClick={() => { setFCat(''); setFType(''); setFTag('') }}>Xoá bộ lọc</button></div>}
+        </FilterRow>
+      </div>
       {groups.map((g) => g.rows.length > 0 || g.always ? table(g) : null)}
       {kind === 'personal' && <TagAnalysis rows={counted.filter((r) => !isInflow(r) && !isTransfer(r))} />}
       {kind === 'personal' && <SpendPlan actualMonthly={perMonth(t.income)} />}
