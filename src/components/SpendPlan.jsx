@@ -199,22 +199,22 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
                     <table className="w-full text-sm whitespace-nowrap">
                       <thead className="text-slate-700">
                         <tr>
-                          <th className="sticky left-0 z-[1] bg-teal-100 py-1 pr-4 text-left">Quỹ</th>
+                          <th className="sticky left-0 z-[1] w-32 min-w-[8rem] bg-teal-100 py-1 pr-4 text-left">Quỹ</th>
+                          <th className="sticky left-32 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100 px-3 text-right font-semibold text-slate-900">Tổng {shown.length} tháng</th>
                           {shown.map((r) => <th key={r.month} className="px-3 text-right font-semibold">{r.month.slice(5)}/{r.month.slice(0, 4)}</th>)}
-                          <th className="pl-4 text-right font-semibold text-slate-900">Tổng {shown.length} tháng</th>
                         </tr>
                       </thead>
                       <tbody>
                         {BUCKETS.map((b) => (
                           <tr key={b.key} className="border-t border-teal-200">
-                            <td className="sticky left-0 z-[1] bg-teal-100 py-1 pr-4 font-medium"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ background: b.color }} />{b.name}</td>
+                            <td className="sticky left-0 z-[1] w-32 min-w-[8rem] bg-teal-100 py-1 pr-4 font-medium"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ background: b.color }} />{b.name}</td>
+                            <td className="sticky left-32 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100 px-3 text-right font-semibold">{money(shown.reduce((a, r) => a + r.amounts[b.key], 0))}</td>
                             {shown.map((r) => <td key={r.month} className="px-3 text-right">{money(r.amounts[b.key])}</td>)}
-                            <td className="pl-4 text-right font-semibold">{money(shown.reduce((a, r) => a + r.amounts[b.key], 0))}</td>
                           </tr>))}
                         <tr className="border-t border-teal-400 font-semibold">
-                          <td className="sticky left-0 z-[1] bg-teal-100 py-1 pr-4">Tổng</td>
+                          <td className="sticky left-0 z-[1] w-32 min-w-[8rem] bg-teal-100 py-1 pr-4">Tổng</td>
+                          <td className="sticky left-32 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100 px-3 text-right">{money(shown.reduce((a, r) => a + r.total, 0))}</td>
                           {shown.map((r) => <td key={r.month} className="px-3 text-right">{money(r.total)}</td>)}
-                          <td className="pl-4 text-right">{money(shown.reduce((a, r) => a + r.total, 0))}</td>
                         </tr>
                       </tbody>
                     </table>
