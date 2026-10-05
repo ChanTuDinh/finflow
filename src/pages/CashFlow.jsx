@@ -34,6 +34,7 @@ export default function CashFlow({ kind, onImport }) {
     if (confirm(`Nhập ${fresh.length} giao dịch (tổng ${money(total)}) vào ${TABS[kind].tab}?${skipped ? `\nBỏ qua ${skipped} dòng đã có sẵn.` : ''}`)) await importBatch({ [kind]: fresh })
   }
   const [editing, setEditing] = useState(null) // null | {} (mới) | row
+  const [logOpen, setLogOpen] = useState(false) // dropdown "Ghi chép" (bộ lọc + các bảng giao dịch), mặc định đóng
   const [openMonths, setOpenMonths] = useState({}) // `${bảng}:${yyyy-mm}` -> mở/đóng; chưa chọn thì chỉ mở tháng mới nhất
   // Ô tick = dòng được tính vào các thẻ tổng. Mặc định tick hết; bỏ tick (dòng / tháng / năm / bảng) thì thẻ tổng tính lại.
   // Lưu id các dòng BỎ tick trong trình duyệt (cùng cơ chế với ô tick khoản nợ), dòng mới thêm tự được tick.
@@ -226,15 +227,26 @@ export default function CashFlow({ kind, onImport }) {
           <button className="text-blue-600 underline" onClick={() => pick.setMany(unticked.map((r) => r.id), true)}>Tick lại tất cả</button>
           <button className="rounded-lg border border-red-300 text-red-700 px-3 py-1 hover:bg-red-50" onClick={delUnticked}>Xoá {unticked.length} dòng bỏ tick</button>
         </div>)}
-      <div className="rounded-lg bg-slate-100 px-3 pt-2">
-        <FilterRow>
-          <SelectField label="Loại" value={vType} onChange={setFType} options={[{ value: '', label: 'Tất cả loại' }, ...typeOpts.map((t) => ({ value: t, label: t }))]} />
-          <SelectField label="Danh mục" value={vCat} onChange={setFCat} options={[{ value: '', label: 'Tất cả danh mục' }, ...catOpts.map((c) => ({ value: c, label: c }))]} />
-          <SelectField label="Tag" value={vTag} onChange={setFTag} options={[{ value: '', label: 'Tất cả tag' }, ...tagOpts.map((x) => ({ value: x.tag, label: `${x.tag} (${x.count})` })), ...(hasUntagged ? [{ value: NO_TAG, label: 'Chưa gắn tag' }] : [])]} />
-          {filtered && <div className="flex items-center gap-3 pb-1.5 text-sm"><span className="text-slate-600">Hiển thị <b>{shown.length}</b>/{periodRows.length} giao dịch</span><button className="text-blue-600 underline" onClick={() => { setFCat(''); setFType(''); setFTag('') }}>Xoá bộ lọc</button></div>}
-        </FilterRow>
-      </div>
-      {groups.map((g) => g.rows.length > 0 || g.always ? table(g) : null)}
+      <section className={`rounded-xl border border-amber-300 bg-amber-100 ${logOpen ? 'space-y-3 p-4' : 'px-4 py-2'}`}>
+        <div className="flex cursor-pointer select-none items-baseline justify-between gap-2" onClick={() => setLogOpen((v) => !v)}>
+          <h3 className="font-semibold text-slate-800">
+            <span className="mr-1 inline-block w-4 text-slate-600">{logOpen ? '▾' : '▸'}</span>📒 {{ personal: 'Ghi chép chi tiêu cá nhân', business: 'Ghi chép thu / chi doanh nghiệp', bm: 'Ghi chép thu / chi Ví BM' }[kind]}
+            <span className="ml-2 text-xs font-normal text-slate-600">{periodRows.length} giao dịch{filtered ? ` · đang lọc ${shown.length}` : ''}</span>
+          </h3>
+          <span className="text-xs text-slate-600">{logOpen ? 'Bấm để đóng' : 'Bấm để mở'}</span>
+        </div>
+        {logOpen && <div className="space-y-4">
+          <div className="rounded-lg bg-amber-50 px-3 pt-2">
+            <FilterRow>
+              <SelectField label="Loại" value={vType} onChange={setFType} options={[{ value: '', label: 'Tất cả loại' }, ...typeOpts.map((t) => ({ value: t, label: t }))]} />
+              <SelectField label="Danh mục" value={vCat} onChange={setFCat} options={[{ value: '', label: 'Tất cả danh mục' }, ...catOpts.map((c) => ({ value: c, label: c }))]} />
+              <SelectField label="Tag" value={vTag} onChange={setFTag} options={[{ value: '', label: 'Tất cả tag' }, ...tagOpts.map((x) => ({ value: x.tag, label: `${x.tag} (${x.count})` })), ...(hasUntagged ? [{ value: NO_TAG, label: 'Chưa gắn tag' }] : [])]} />
+              {filtered && <div className="flex items-center gap-3 pb-1.5 text-sm"><span className="text-slate-600">Hiển thị <b>{shown.length}</b>/{periodRows.length} giao dịch</span><button className="text-blue-600 underline" onClick={() => { setFCat(''); setFType(''); setFTag('') }}>Xoá bộ lọc</button></div>}
+            </FilterRow>
+          </div>
+          {groups.map((g) => g.rows.length > 0 || g.always ? table(g) : null)}
+        </div>}
+      </section>
       {kind === 'personal' && <TagAnalysis rows={counted.filter((r) => !isInflow(r) && !isTransfer(r) && !isDebt(r))} />}
       {kind === 'personal' && <SpendPlan actualMonthly={perMonth(t.income)} actualRows={rows.filter((r) => pick.isSelected(r.id) && !isInflow(r) && !isTransfer(r) && !isDebt(r) && !isWalletMove(r))} />}
       {editingCard && <EntryForm kind="accounts" row={editingCard.id ? editingCard : { name: '', bank: '', owner: cardOwner, preset: '', status: 'Active', note: '', badge: '', color: '' }} onClose={() => setEditingCard(null)} />}
