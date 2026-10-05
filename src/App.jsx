@@ -28,8 +28,8 @@ const PAGES = [
 
 // Các tab đang ưu tiên làm việc (Ví BM, Nợ BM, Nợ BM Forecast): tô một màu riêng cho dễ thấy giữa nhiều tab
 const FOCUS_TABS = new Set(['bm', 'debtsBm', 'forecastBm'])
-// Ví cá nhân, Nợ cá nhân, Nợ CN forecast: màu xanh ngọc riêng (tách khỏi nhóm BM màu tím)
-const TEAL_TABS = new Set(['personal', 'debts', 'forecast'])
+// Ví cá nhân, Nợ cá nhân, Nợ CN forecast, Tích lũy, Forecast Tích lũy: cùng màu xanh ngọc (tách khỏi nhóm BM màu tím)
+const TEAL_TABS = new Set(['personal', 'debts', 'forecast', 'savings', 'forecastSavings'])
 
 export default function App() {
   const [page, setPage] = useState('dashboard')

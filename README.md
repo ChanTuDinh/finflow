@@ -69,7 +69,7 @@ Lãi suất là lãi danh nghĩa theo năm (lãi tháng × 12), cùng cách tín
 - Quy ước làm việc với chủ dự án: trả lời tiếng Việt, ngắn gọn; mỗi thay đổi giao diện: build + test + chụp thử (Playwright) rồi đẩy lên nhánh trên. Chụp thử: chạy `npx vite --port 5199` nền rồi dùng Playwright (cài global, import từ `$(npm root -g)/playwright/index.mjs`, Chromium có sẵn); dữ liệu mẫu (demo) nằm trong localStorage khoá `finflow:v1:demo`. Máy chạy phiên không mở được web Vercel (proxy chặn) nên không tự xem được bản deploy; sau khi đẩy, nhắc chủ dự án đợi 1-2 phút và tải lại cứng (Ctrl+Shift+R).
 
 ## Cập nhật gần đây (phiên 2026-10)
-**Menu:** Tổng quan · Báo cáo · Ví cá nhân (tab màu xanh ngọc, trước là "Cá nhân") · Nợ cá nhân · Nợ CN forecast (cùng màu xanh ngọc) · Tích lũy · Forecast Tích lũy · Doanh nghiệp · Ví BM · Nợ BM · Nợ BM Forecast (3 tab BM màu tím) · Cài đặt. "Ví BM" = ví **ba mẹ**.
+**Menu:** Tổng quan · Báo cáo · Ví cá nhân (tab màu xanh ngọc, trước là "Cá nhân") · Nợ cá nhân · Nợ CN forecast · Tích lũy · Forecast Tích lũy (5 tab này cùng màu xanh ngọc) · Doanh nghiệp · Ví BM · Nợ BM · Nợ BM Forecast (3 tab BM màu tím) · Cài đặt. "Ví BM" = ví **ba mẹ**.
 
 **Sổ thu/chi (Ví cá nhân, Doanh nghiệp, Ví BM)** — `src/pages/CashFlow.jsx`:
 - **Dropdown "📒 Ghi chép chi tiêu cá nhân"** (Doanh nghiệp: "Ghi chép thu / chi doanh nghiệp", Ví BM: "Ghi chép thu / chi Ví BM"; nền vàng nhạt, mặc định **đóng**) gồm bộ lọc Loại → Danh mục → Tag và tất cả các bảng giao dịch bên dưới; Ví cá nhân có thêm 2 khối nằm ngoài, mỗi khối một màu: Phân tích chi tiêu (xanh dương nhạt) và Dự đoán chi tiêu cá nhân (xanh ngọc). Thẻ tổng và thanh "đang bỏ tick" nằm ngoài dropdown, luôn hiện.
