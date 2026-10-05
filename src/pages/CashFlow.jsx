@@ -34,6 +34,7 @@ export default function CashFlow({ kind, onImport }) {
     if (confirm(`Nhập ${fresh.length} giao dịch (tổng ${money(total)}) vào ${TABS[kind].tab}?${skipped ? `\nBỏ qua ${skipped} dòng đã có sẵn.` : ''}`)) await importBatch({ [kind]: fresh })
   }
   const [editing, setEditing] = useState(null) // null | {} (mới) | row
+  const [outOpen, setOutOpen] = useState(false) // danh sách khoản chi / trả nợ nằm ngoài kỳ thu nhập (không vào trung bình / tháng)
   const [logOpen, setLogOpen] = useState(false) // dropdown "Ghi chép" (bộ lọc + các bảng giao dịch), mặc định đóng
   const [openMonths, setOpenMonths] = useState({}) // `${bảng}:${yyyy-mm}` -> mở/đóng; chưa chọn thì chỉ mở tháng mới nhất
   // Ô tick = dòng được tính vào các thẻ tổng. Mặc định tick hết; bỏ tick (dòng / tháng / năm / bảng) thì thẻ tổng tính lại.
@@ -89,11 +90,13 @@ export default function CashFlow({ kind, onImport }) {
   const inIncRange = (rs) => (incRange ? rs.filter((r) => r.date && r.date.slice(0, 7) >= incRange.from && r.date.slice(0, 7) <= incRange.to) : rs)
   const sumRows = (rs) => rs.reduce((a, r) => a + r.amount, 0)
   const avgSame = (rs) => { const n = incRange ? nInc : spanMonths(rs); return n ? Math.round(sumRows(inIncRange(rs)) / n) : 0 }
-  const debtSub = (rs) => { const out = sumRows(rs) - sumRows(inIncRange(rs)); return `${rs.length} khoản · TB ${money(avgSame(rs))}/tháng${out > 0 ? ` · ${money(out)} ngoài kỳ thu nhập không tính` : ''}` }
+  const offRows = incRange ? [...expRows, ...debtCounted].filter((r) => !r.date || !inIncRange([r]).length).sort((x, y) => (y.date || '').localeCompare(x.date || '')) : []
+  const seeBtn = (rs) => (rs.some((r) => offRows.includes(r)) ? <button type="button" className="ml-1 font-medium text-blue-700 underline" onClick={() => setOutOpen((v) => !v)}>{outOpen ? 'Ẩn' : 'Xem'}</button> : null)
+  const debtSub = (rs) => { const out = sumRows(rs) - sumRows(inIncRange(rs)); return <>{`${rs.length} khoản · TB ${money(avgSame(rs))}/tháng${out > 0 ? ` · ${money(out)} ngoài kỳ thu nhập không tính` : ''}`}{out > 0 && seeBtn(rs)}</> }
   const noteSame = (rs) => {
     if (!incRange) return noteOver(rs)
     const out = sumRows(rs) - sumRows(inIncRange(rs))
-    return `Trung bình trong ${nInc} tháng (${monthLabelShort(incRange.from)} → ${monthLabelShort(incRange.to)}, cùng kỳ thu nhập)${out > 0 ? ` · ngoài kỳ ${money(out)} không tính` : ''}`
+    return <>{`Trung bình trong ${nInc} tháng (${monthLabelShort(incRange.from)} → ${monthLabelShort(incRange.to)}, cùng kỳ thu nhập)${out > 0 ? ` · ngoài kỳ ${money(out)} không tính` : ''}`}{out > 0 && seeBtn(rs)}</>
   }
   const inLabel = kind === 'business' ? 'Doanh thu' : 'Thu nhập'
 
@@ -247,6 +250,31 @@ export default function CashFlow({ kind, onImport }) {
           <Stat tinted={tint} className={statCls} label="Trả nợ BM" tone="neg" value={money(sumOf2(debtBmC))} sub={debtBmC.length ? debtSub(debtBmC) : 'Chưa có khoản trả nợ'} />
           <Stat tinted={tint} className={statCls} label="Trả nợ cá nhân" tone="neg" value={money(sumOf2(debtCnC))} sub={debtCnC.length ? debtSub(debtCnC) : 'Chưa có khoản trả nợ'} />
           {debtOldC.length > 0 && <Stat tinted={tint} className={statCls} label="Trả nợ chưa phân loại BM / cá nhân" tone="neg" value={money(sumOf2(debtOldC))} sub={debtOldC.length ? debtSub(debtOldC) : 'Chưa có khoản trả nợ'} />}
+        </div>)}
+      {outOpen && offRows.length > 0 && (
+        <div className="card space-y-2 !p-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div className="text-sm font-semibold text-slate-800">Khoản chi / trả nợ nằm ngoài kỳ thu nhập ({incRange && `${monthLabelShort(incRange.from)} → ${monthLabelShort(incRange.to)}`}) — {offRows.length} khoản · {money(sumRows(offRows))} (Chi {money(sumRows(offRows.filter((r) => !isDebt(r))))} · Trả nợ {money(sumRows(offRows.filter(isDebt)))}), không tính vào trung bình / tháng</div>
+            <button type="button" className="text-sm text-slate-600 underline" onClick={() => setOutOpen(false)}>Đóng</button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-left text-xs text-slate-500"><tr><th className="py-1 pr-3">Ngày</th><th className="pr-3">Loại</th><th className="pr-3">Danh mục</th><th className="pr-3">Tag</th><th className="pr-3 text-right">Số tiền</th><th className="pr-3">Tài khoản</th><th className="pr-3">Ghi chú</th><th /></tr></thead>
+              <tbody>
+                {offRows.map((r) => (
+                  <tr key={r.id} className="border-t border-slate-100">
+                    <td className="py-1 pr-3 whitespace-nowrap">{r.date || '(không có ngày)'}</td>
+                    <td className="pr-3">{rowType(r)}</td>
+                    <td className="pr-3">{r.category}</td>
+                    <td className="pr-3">{parseTags(r.tag).join(', ')}</td>
+                    <td className="pr-3 text-right whitespace-nowrap text-red-600">{money(r.amount)}</td>
+                    <td className="pr-3">{r.account ?? r.counterparty}</td>
+                    <td className="pr-3 text-slate-500">{r.note}</td>
+                    <td className="text-right whitespace-nowrap"><button type="button" className="text-blue-600" onClick={() => setEditing(r)}>Sửa</button></td>
+                  </tr>))}
+              </tbody>
+            </table>
+          </div>
         </div>)}
       {unticked.length > 0 && (
         <div className="flex flex-wrap items-center gap-3 rounded-lg bg-slate-100 px-3 py-2 text-sm">
