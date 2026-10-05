@@ -45,7 +45,7 @@ export default function TagAnalysis({ rows }) {
       {open && (
         <div>
           {b.total <= 0
-            ? <div className="text-sm text-slate-600">Chưa có khoản chi nào trong kỳ đang chọn.</div>
+            ? <div className="text-sm text-slate-600">Chưa có khoản chi nào (ngoài trả nợ) trong kỳ đang chọn.</div>
             : <>
                 <div className="mb-1 flex flex-wrap items-center gap-3 text-xs text-slate-700">
                   <span>Chọn nhiều tag (tick trong danh sách hoặc bấm lát trên biểu đồ) để xem tổng các tag đó chiếm bao nhiêu % tổng chi.</span>
@@ -99,7 +99,7 @@ export default function TagAnalysis({ rows }) {
                   </ul>
                 </div>
                 <div className="mt-2 text-xs text-slate-600">
-                  Theo kỳ lọc Năm / Quý / Tháng phía trên và chỉ các dòng đang tick; tổng chi khớp thẻ "Chi". Giao dịch có nhiều tag được chia đều cho các tag đó. Tối đa 7 tag lớn nhất có màu riêng; các tag nhỏ hơn gộp vào một lát xám trên biểu đồ nhưng vẫn liệt kê và chọn riêng từng tag trong danh sách.
+                  Theo kỳ lọc Năm / Quý / Tháng phía trên và chỉ các dòng đang tick. Không gồm các khoản Trả nợ (nên tổng ở đây nhỏ hơn thẻ "Chi" nếu có trả nợ). Giao dịch có nhiều tag được chia đều cho các tag đó. Tối đa 7 tag lớn nhất có màu riêng; các tag nhỏ hơn gộp vào một lát xám trên biểu đồ nhưng vẫn liệt kê và chọn riêng từng tag trong danh sách.
                 </div>
               </>}
         </div>)}

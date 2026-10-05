@@ -230,7 +230,7 @@ export default function CashFlow({ kind, onImport }) {
         </FilterRow>
       </div>
       {groups.map((g) => g.rows.length > 0 || g.always ? table(g) : null)}
-      {kind === 'personal' && <TagAnalysis rows={counted.filter((r) => !isInflow(r) && !isTransfer(r))} />}
+      {kind === 'personal' && <TagAnalysis rows={counted.filter((r) => !isInflow(r) && !isTransfer(r) && !isDebt(r))} />}
       {kind === 'personal' && <SpendPlan actualMonthly={perMonth(t.income)} />}
       {editingCard && <EntryForm kind="accounts" row={editingCard.id ? editingCard : { name: '', bank: '', owner: cardOwner, preset: '', status: 'Active', note: '', badge: '', color: '' }} onClose={() => setEditingCard(null)} />}
       {editing && <EntryForm kind={kind} row={editing.id ? editing : null} onClose={() => setEditing(null)} />}
