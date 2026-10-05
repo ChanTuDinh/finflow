@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useStore } from '../lib/store.jsx'
-import { BUCKETS, resolvePcts, sumPcts, buildPlan } from '../lib/spendPlan.js'
+import { Cell, Pie, PieChart, Tooltip } from 'recharts'
+import { BUCKETS, HORIZONS, resolveHorizon, resolvePcts, sumPcts, buildPlan } from '../lib/spendPlan.js'
+import { Chart } from './ui.jsx'
 import { todayIso } from '../lib/format.js'
 
 const num = (v) => (v === '' ? 0 : Number(String(v).replace(/[^\d.]/g, '')) || 0)
@@ -13,7 +15,9 @@ export default function SpendPlan({ actualMonthly = 0 }) {
   const income = Number(saved.monthlyIncome) || 0
   const pcts = resolvePcts(saved.pcts)
   const total = sumPcts(pcts)
-  const plan = buildPlan(income, pcts, todayIso().slice(0, 7))
+  const horizon = resolveHorizon(saved.horizon)
+  const plan = buildPlan(income, pcts, todayIso().slice(0, 7), horizon)
+  const slices = BUCKETS.filter((b) => pcts[b.key] > 0).map((b) => ({ ...b, value: pcts[b.key] / (total || 1) * 100, amount: plan.per[b.key] }))
   const patch = (p) => setSettings((s) => ({ ...s, spendPlan: { ...(s.spendPlan || {}), ...p } }))
   const setPct = (key, v) => patch({ pcts: { ...pcts, [key]: v === '' ? 0 : Math.max(0, Number(v) || 0) } })
 
@@ -49,33 +53,70 @@ export default function SpendPlan({ actualMonthly = 0 }) {
                     <td className="pr-3 font-medium">{b.name}</td>
                     <td className="pr-3"><input className="input !w-20" inputMode="decimal" value={pcts[b.key]} onChange={(e) => setPct(b.key, e.target.value)} /></td>
                     <td className="pr-3 text-right">{money(plan.per[b.key])}</td>
-                    <td className="text-right">{money(plan.totals[b.key])}</td>
+                    <td className="text-right">{money(plan.per[b.key] * 12)}</td>
                   </tr>))}
                 <tr className="border-t border-slate-300 font-semibold">
                   <td /><td>Tổng</td>
                   <td className={total === 100 ? '' : 'text-red-600'}>{total}%</td>
                   <td className="pr-3 text-right">{money(plan.months[0].total)}</td>
-                  <td className="text-right">{money(plan.total)}</td>
+                  <td className="text-right">{money(plan.months[0].total * 12)}</td>
                 </tr>
               </tbody>
             </table>
           </div>
           {total !== 100 && <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm p-2">Tổng tỷ lệ đang là {total}% (nên là 100%). {total > 100 ? `Vượt thu nhập ${money(plan.months[0].total - income)}/tháng.` : `Còn chưa phân bổ ${money(income - plan.months[0].total)}/tháng.`}</div>}
           {income > 0
-            ? <div className="overflow-x-auto">
-                <div className="text-sm font-medium text-slate-700 mb-1">Forecast 12 tháng tới</div>
-                <table className="w-full text-sm whitespace-nowrap">
-                  <thead className="text-left text-slate-500"><tr><th className="py-1 pr-3">Tháng</th>{BUCKETS.map((b) => <th key={b.key} className="pr-3 text-right">{b.name}</th>)}<th className="text-right">Tổng</th></tr></thead>
-                  <tbody>
-                    {plan.months.map((r) => (
-                      <tr key={r.month} className="border-t border-slate-100">
-                        <td className="py-1 pr-3">{r.month.slice(5)}/{r.month.slice(0, 4)}</td>
-                        {BUCKETS.map((b) => <td key={b.key} className="pr-3 text-right">{money(r.amounts[b.key])}</td>)}
-                        <td className="text-right font-medium">{money(r.total)}</td>
-                      </tr>))}
-                  </tbody>
-                </table>
-              </div>
+            ? <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                  <div>
+                    <div className="text-sm font-medium text-slate-700 mb-1">Cơ cấu phân bổ (%)</div>
+                    <Chart height={260}>
+                      <PieChart margin={{ top: 16, right: 40, bottom: 16, left: 40 }}>
+                        <Pie data={slices} dataKey="value" nameKey="name" innerRadius={44} outerRadius={80} paddingAngle={2} stroke="#fcfcfb" strokeWidth={2}
+                          label={({ x, y, textAnchor, name, value }) => <text x={x} y={y} textAnchor={textAnchor} dominantBaseline="central" fontSize={12} fill="#0b0b0b">{name} {+value.toFixed(1)}%</text>} labelLine={false} isAnimationActive={false}>
+                          {slices.map((x) => <Cell key={x.key} fill={x.color} />)}
+                        </Pie>
+                        <Tooltip formatter={(v, n, { payload }) => [`${+v.toFixed(1)}% · ${money(payload.amount)}/tháng`, n]} />
+                      </PieChart>
+                    </Chart>
+                  </div>
+                  <ul className="text-sm space-y-1">
+                    {slices.map((x) => (
+                      <li key={x.key} className="flex items-center gap-2">
+                        <span className="inline-block h-3 w-3 rounded-sm" style={{ background: x.color }} />
+                        <span className="w-24 font-medium">{x.name}</span>
+                        <span className="w-14 text-right">{+x.value.toFixed(1)}%</span>
+                        <span className="ml-auto text-slate-600">{money(x.amount)}/tháng</span>
+                      </li>))}
+                  </ul>
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+                    <div className="text-sm font-medium text-slate-700">Timeline theo tháng — {horizon} tháng tới</div>
+                    <div className="flex items-center gap-1 text-sm">
+                      <span className="text-slate-500 mr-1">Horizon:</span>
+                      {HORIZONS.map((h) => (
+                        <button key={h} onClick={() => patch({ horizon: h })} className={`rounded-lg px-2.5 py-1 border ${h === horizon ? 'bg-slate-900 text-white border-slate-900' : 'border-slate-300 bg-white hover:bg-slate-100'}`}>
+                          {h % 12 === 0 ? `${h / 12} năm` : `${h} tháng`}
+                        </button>))}
+                    </div>
+                  </div>
+                  <div className="overflow-auto max-h-[28rem]">
+                    <table className="w-full text-sm whitespace-nowrap">
+                      <thead className="text-left text-slate-500 sticky top-0 bg-white"><tr><th className="py-1 pr-3">Tháng</th>{BUCKETS.map((b) => <th key={b.key} className="pr-3 text-right">{b.name}</th>)}<th className="pr-3 text-right">Tổng</th><th className="text-right">Lũy kế</th></tr></thead>
+                      <tbody>
+                        {plan.months.map((r) => (
+                          <tr key={r.month} className="border-t border-slate-100">
+                            <td className="py-1 pr-3">{r.month.slice(5)}/{r.month.slice(0, 4)}</td>
+                            {BUCKETS.map((b) => <td key={b.key} className="pr-3 text-right">{money(r.amounts[b.key])}</td>)}
+                            <td className="pr-3 text-right font-medium">{money(r.total)}</td>
+                            <td className="text-right text-slate-600">{money(r.cumulative)}</td>
+                          </tr>))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
             : <div className="text-sm text-slate-400">Nhập thu nhập trung bình để xem forecast từng tháng.</div>}
           <div className="text-xs text-slate-400">Thiết lập lưu trong trình duyệt này (không nằm trong file sao lưu).</div>
         </div>)}

@@ -1,11 +1,15 @@
 // Forecast chi tiêu cá nhân: chia thu nhập trung bình theo tỷ lệ từng quỹ (Need, Want, ...).
+// Số tháng người dùng chọn xem (horizon)
+export const HORIZONS = [12, 24, 36, 60]
+export const resolveHorizon = (v) => (HORIZONS.includes(Number(v)) ? Number(v) : 12)
+
 export const BUCKETS = [
-  { key: 'need', name: 'Need', pct: 60 },
-  { key: 'want', name: 'Want', pct: 10 },
-  { key: 'edu', name: 'Edu', pct: 10 },
-  { key: 'reserve', name: 'Reserve', pct: 10 },
-  { key: 'investment', name: 'Investment', pct: 5 },
-  { key: 'giving', name: 'Giving', pct: 5 },
+  { key: 'need', name: 'Need', pct: 60, color: '#2a78d6' },
+  { key: 'want', name: 'Want', pct: 10, color: '#eb6834' },
+  { key: 'edu', name: 'Edu', pct: 10, color: '#1baf7a' },
+  { key: 'reserve', name: 'Reserve', pct: 10, color: '#eda100' },
+  { key: 'investment', name: 'Investment', pct: 5, color: '#e87ba4' },
+  { key: 'giving', name: 'Giving', pct: 5, color: '#008300' },
 ]
 
 /** Tỷ lệ đang dùng: lấy giá trị đã lưu (nếu hợp lệ), thiếu thì dùng mặc định. -> { need: 60, ... } */
@@ -44,7 +48,8 @@ export function monthList(startMonth, n = 12) {
 export function buildPlan(monthlyIncome, pcts, startMonth, n = 12) {
   const income = Math.max(0, Number(monthlyIncome) || 0)
   const per = allocate(income, pcts)
-  const months = monthList(startMonth, n).map((month) => ({ month, amounts: per, total: Object.values(per).reduce((a, b) => a + b, 0) }))
+  const rowTotal = Object.values(per).reduce((a, b) => a + b, 0)
+  const months = monthList(startMonth, n).map((month, i) => ({ month, amounts: per, total: rowTotal, cumulative: rowTotal * (i + 1) }))
   const totals = {}
   for (const b of BUCKETS) totals[b.key] = per[b.key] * n
   return { per, months, totals, total: months.reduce((s, r) => s + r.total, 0) }
