@@ -82,6 +82,8 @@ Lãi suất là lãi danh nghĩa theo năm (lãi tháng × 12), cùng cách tín
 
 **Chi tiêu cá nhân forecast** (cuối trang Ví cá nhân; là **board 2**, dropdown mặc định **đóng** (bấm tiêu đề để mở), có bộ lọc Năm / Tháng riêng để lọc timeline, không theo bộ lọc kỳ của board 1 phía trên) — `src/components/SpendPlan.jsx`, `src/lib/spendPlan.js`: nhập thu nhập trung bình **riêng cho từng năm**, theo tháng hoặc năm (năm = tháng × 12; sang năm mới phải nhập lại, có nút "Dùng số năm trước" và nút lấy từ dữ liệu thực tế; chỉ hiện ô nhập của năm đang chọn; chọn "Tất cả năm" thì ô thu nhập, bảng quỹ và biểu đồ hiện **trung bình cộng** các năm đã nhập, không sửa được). Số thu nhập chung cũ được coi là của năm hiện tại, chia theo 6 quỹ Need 60 · Want 10 · Edu 10 · Reserve 10 · Investment 5 · Giving 5 (%, sửa được), ra bảng /tháng, /năm, **biểu đồ tròn** cơ cấu % và **timeline theo tháng (nằm ngang, mỗi tháng một cột)** cho 5 năm từ T1 của năm hiện tại (không có nút chọn horizon; mỗi năm đủ 12 tháng T1–T12; có cột Tổng kỳ lọc và hàng Tổng — tổng 12 tháng khớp cột "/ năm"). Lưu trong `settings` của trình duyệt (không nằm trong file sao lưu, chưa lên Sheet).
 
+- Danh mục Chi của Ví cá nhân trong form: Sức khoẻ, Học tập, Mua sắm, Trả nợ BM, Trả nợ cá nhân, Chuyển ví, Khác (đã bỏ Nhà ở, Ăn uống, Đi lại, Hoá đơn, Giải trí; dòng cũ đang dùng các danh mục này vẫn giữ nguyên và sửa được). Danh sách cố định nằm trong `src/lib/schema.js`.
+
 **Nợ / Nợ BM:** thẻ **Lãi phát sinh / năm** (= lãi tháng × 12); dropdown "Kịch bản N năm & thống kê trả nợ" (mặc định đóng): trả gốc + lãi đều trong 10-30 năm → trả/tháng, tổng phải trả, tổng lãi, theo từng khoản và tổng; cột "Kịch bản" trong bảng.
 
 ## Việc chưa làm / cần quyết (phiên sau)
