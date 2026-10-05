@@ -236,7 +236,6 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
                 </form>
               : <>
                   <button type="button" className="btn-ghost" onClick={() => setAddFund({ name: '', pct: '' })}>＋ Thêm quỹ</button>
-                  {!hasDebtFund && <button type="button" className="text-blue-700 underline" onClick={() => setAddFund({ name: 'Trả nợ', pct: '' })}>＋ Thêm quỹ Trả nợ</button>}
                 </>}
             {hasDebtFund && <span className="text-xs text-slate-700">Quỹ "Trả nợ": thực tế lấy từ các khoản Trả nợ BM / Trả nợ cá nhân. Quỹ khác: gắn danh mục cùng tên quỹ cho khoản chi.</span>}
           </div>
