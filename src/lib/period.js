@@ -112,6 +112,13 @@ export function spanMonths(rows = []) {
   return ms.length ? Math.max(...ms) - Math.min(...ms) + 1 : 0
 }
 
+// Khoảng tháng dùng làm mẫu số: { from: 'yyyy-mm', to: 'yyyy-mm' } (tháng của giao dịch sớm nhất và muộn nhất), hoặc null nếu không có dòng nào
+export function spanRange(rows = []) {
+  const ds = rows.filter((r) => r.date).map((r) => r.date.slice(0, 7)).sort()
+  return ds.length ? { from: ds[0], to: ds[ds.length - 1] } : null
+}
+export const monthLabelShort = (ym) => `T${Number(ym.slice(5, 7))}/${ym.slice(0, 4)}`
+
 export const dataYears = (...rowSets) => [...new Set(rowSets.flat().filter((r) => r.date).map((r) => Number(r.date.slice(0, 4))))].sort()
 
 // Gom rows theo kỳ con của p, lấp 0 cho kỳ trống: [{ period, income, expense, net }]

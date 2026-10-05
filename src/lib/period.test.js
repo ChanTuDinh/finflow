@@ -111,3 +111,12 @@ test('spanMonths: số tháng từ đầu đến cuối, tính cả tháng trố
   assert.equal(spanMonths([{ date: '2026-01-31' }, { date: '2026-03-01' }, { date: '2026-09-30' }]), 9)
   assert.equal(spanMonths([{ date: '2025-11-02' }, { date: '2026-02-01' }]), 4)
 })
+
+test('spanRange: tháng sớm nhất và muộn nhất; spanMonths khớp', async () => {
+  const { spanRange, spanMonths, monthLabelShort } = await import('./period.js')
+  const rows = [{ date: '2026-03-05' }, { date: '2025-11-30' }, { date: '2026-09-01' }, {}]
+  assert.deepEqual(spanRange(rows), { from: '2025-11', to: '2026-09' })
+  assert.equal(spanMonths(rows), 11)
+  assert.equal(monthLabelShort('2025-11'), 'T11/2025')
+  assert.equal(spanRange([]), null)
+})

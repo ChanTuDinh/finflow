@@ -4,7 +4,7 @@ import { useStore } from '../lib/store.jsx'
 import { isInflow, isTransfer, TABS, WALLET_MOVE_CATEGORY, BM_FUND_CATEGORY, isDebtPayment } from '../lib/schema.js'
 import { totals } from '../lib/calc.js'
 import { usePeriod } from '../lib/period.jsx'
-import { inPeriod, spanMonths } from '../lib/period.js'
+import { inPeriod, spanMonths, spanRange, monthLabelShort } from '../lib/period.js'
 import { Stat, SelectField, FilterRow } from '../components/ui.jsx'
 import EntryForm from '../components/EntryForm.jsx'
 import FilterBar from '../components/FilterBar.jsx'
@@ -78,6 +78,8 @@ export default function CashFlow({ kind, onImport }) {
   const tint = { personal: 'teal', bm: 'violet' }[kind] || ''
   const statCls = { teal: '!bg-teal-300 !border-teal-500', violet: '!bg-violet-300 !border-violet-500' }[tint] || ''
   const nMonths = spanMonths(counted)
+  const range = spanRange(counted)
+  const avgNote = nMonths ? `Trung bình trong ${nMonths} tháng (${monthLabelShort(range.from)} → ${monthLabelShort(range.to)})` : 'Chưa có dữ liệu'
   const perMonth = (v) => (nMonths ? Math.round(v / nMonths) : 0)
   const inLabel = kind === 'business' ? 'Doanh thu' : 'Thu nhập'
 
@@ -222,8 +224,8 @@ export default function CashFlow({ kind, onImport }) {
         <Stat tinted={tint} className={statCls} label="Dòng tiền ròng" value={money(t.net)} tone={t.net < 0 ? 'neg' : 'pos'} />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Stat tinted={tint} className={statCls} label={`${inLabel} / tháng`} value={money(perMonth(t.income))} sub={nMonths ? `Trung bình trong ${nMonths} tháng` : 'Chưa có dữ liệu'} />
-        <Stat tinted={tint} className={statCls} label="Chi / tháng" tone="neg" value={money(perMonth(t.expense))} sub={nMonths ? `Trung bình trong ${nMonths} tháng` : 'Chưa có dữ liệu'} />
+        <Stat tinted={tint} className={statCls} label={`${inLabel} / tháng`} value={money(perMonth(t.income))} sub={avgNote} />
+        <Stat tinted={tint} className={statCls} label="Chi / tháng" tone="neg" value={money(perMonth(t.expense))} sub={avgNote} />
         {kind !== 'personal' && (<Stat tinted={tint} className={statCls} label="Trả nợ" tone="neg" value={money(debtTotal)} sub={debtCounted.length ? `${debtCounted.length} khoản · TB ${money(perMonth(debtTotal))}/tháng · tách riêng khỏi Chi` : 'Chưa có khoản trả nợ'} />)}
       </div>
       {kind === 'personal' && (
