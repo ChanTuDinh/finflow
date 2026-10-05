@@ -83,6 +83,18 @@ export default function CashFlow({ kind, onImport }) {
   const expRows = counted.filter((r) => !isInflow(r) && !isTransfer(r) && !isDebt(r))
   const avgOver = (v, rs) => { const n = spanMonths(rs); return n ? Math.round(v / n) : 0 }
   const noteOver = (rs) => { const n = spanMonths(rs), rg = spanRange(rs); return n ? `Trung bình trong ${n} tháng (${monthLabelShort(rg.from)} → ${monthLabelShort(rg.to)})` : 'Chưa có dữ liệu' }
+  // Chi / tháng và trung bình Trả nợ dùng CÙNG khoảng tháng với thu nhập (để so sánh cùng kỳ): chỉ lấy khoản nằm trong khoảng, chia cho số tháng của thu nhập;
+  // khoản nằm ngoài khoảng không tính vào trung bình (thẻ ghi rõ). Chưa có dòng thu nào thì dùng khoảng tháng của chính loại đó.
+  const incRange = spanRange(incRows), nInc = spanMonths(incRows)
+  const inIncRange = (rs) => (incRange ? rs.filter((r) => r.date && r.date.slice(0, 7) >= incRange.from && r.date.slice(0, 7) <= incRange.to) : rs)
+  const sumRows = (rs) => rs.reduce((a, r) => a + r.amount, 0)
+  const avgSame = (rs) => { const n = incRange ? nInc : spanMonths(rs); return n ? Math.round(sumRows(inIncRange(rs)) / n) : 0 }
+  const debtSub = (rs) => { const out = sumRows(rs) - sumRows(inIncRange(rs)); return `${rs.length} khoản · TB ${money(avgSame(rs))}/tháng${out > 0 ? ` · ${money(out)} ngoài kỳ thu nhập không tính` : ''}` }
+  const noteSame = (rs) => {
+    if (!incRange) return noteOver(rs)
+    const out = sumRows(rs) - sumRows(inIncRange(rs))
+    return `Trung bình trong ${nInc} tháng (${monthLabelShort(incRange.from)} → ${monthLabelShort(incRange.to)}, cùng kỳ thu nhập)${out > 0 ? ` · ngoài kỳ ${money(out)} không tính` : ''}`
+  }
   const inLabel = kind === 'business' ? 'Doanh thu' : 'Thu nhập'
 
   const isWalletMove = (r) => !isTransfer(r) && r.category === WALLET_MOVE_CATEGORY
@@ -227,14 +239,14 @@ export default function CashFlow({ kind, onImport }) {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Stat tinted={tint} className={statCls} label={`${inLabel} / tháng`} value={money(avgOver(t.income, incRows))} sub={noteOver(incRows)} />
-        <Stat tinted={tint} className={statCls} label="Chi / tháng" tone="neg" value={money(avgOver(t.expense, expRows))} sub={noteOver(expRows)} />
-        {kind !== 'personal' && (<Stat tinted={tint} className={statCls} label="Trả nợ" tone="neg" value={money(debtTotal)} sub={debtCounted.length ? `${debtCounted.length} khoản · TB ${money(avgOver(debtTotal, debtCounted))}/tháng · tách riêng khỏi Chi` : 'Chưa có khoản trả nợ'} />)}
+        <Stat tinted={tint} className={statCls} label="Chi / tháng" tone="neg" value={money(avgSame(expRows))} sub={noteSame(expRows)} />
+        {kind !== 'personal' && (<Stat tinted={tint} className={statCls} label="Trả nợ" tone="neg" value={money(debtTotal)} sub={debtCounted.length ? `${debtSub(debtCounted)} · tách riêng khỏi Chi` : 'Chưa có khoản trả nợ'} />)}
       </div>
       {kind === 'personal' && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Stat tinted={tint} className={statCls} label="Trả nợ BM" tone="neg" value={money(sumOf2(debtBmC))} sub={debtBmC.length ? `${debtBmC.length} khoản · TB ${money(avgOver(sumOf2(debtBmC), debtBmC))}/tháng` : 'Chưa có khoản trả nợ'} />
-          <Stat tinted={tint} className={statCls} label="Trả nợ cá nhân" tone="neg" value={money(sumOf2(debtCnC))} sub={debtCnC.length ? `${debtCnC.length} khoản · TB ${money(avgOver(sumOf2(debtCnC), debtCnC))}/tháng` : 'Chưa có khoản trả nợ'} />
-          {debtOldC.length > 0 && <Stat tinted={tint} className={statCls} label="Trả nợ chưa phân loại BM / cá nhân" tone="neg" value={money(sumOf2(debtOldC))} sub={debtOldC.length ? `${debtOldC.length} khoản · TB ${money(avgOver(sumOf2(debtOldC), debtOldC))}/tháng` : 'Chưa có khoản trả nợ'} />}
+          <Stat tinted={tint} className={statCls} label="Trả nợ BM" tone="neg" value={money(sumOf2(debtBmC))} sub={debtBmC.length ? debtSub(debtBmC) : 'Chưa có khoản trả nợ'} />
+          <Stat tinted={tint} className={statCls} label="Trả nợ cá nhân" tone="neg" value={money(sumOf2(debtCnC))} sub={debtCnC.length ? debtSub(debtCnC) : 'Chưa có khoản trả nợ'} />
+          {debtOldC.length > 0 && <Stat tinted={tint} className={statCls} label="Trả nợ chưa phân loại BM / cá nhân" tone="neg" value={money(sumOf2(debtOldC))} sub={debtOldC.length ? debtSub(debtOldC) : 'Chưa có khoản trả nợ'} />}
         </div>)}
       {unticked.length > 0 && (
         <div className="flex flex-wrap items-center gap-3 rounded-lg bg-slate-100 px-3 py-2 text-sm">
