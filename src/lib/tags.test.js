@@ -37,6 +37,8 @@ test('pieSlices: gộp tag nhỏ, giữ lát chưa gắn tag', () => {
   const sl = pieSlices(b, 7)
   assert.deepEqual(sl.map((x) => x.kind), [...Array(7).fill('tag'), 'rest', 'none'])
   assert.equal(sl[7].name, 'Các tag nhỏ khác (3)')
+  assert.deepEqual(sl[7].children.map((x) => x.key), ['h', 'i', 'j']) // tag nhỏ vẫn còn đủ, không bị mất
+  assert.equal(sl[7].children.reduce((a, x) => a + x.amount, 0), sl[7].amount)
   assert.ok(Math.abs(sl.reduce((a, x) => a + x.pct, 0) - 1) < 1e-9)
   assert.deepEqual(pieSlices(tagBreakdown([{ amount: 5, tag: 'x' }])).map((x) => x.kind), ['tag'])
 })

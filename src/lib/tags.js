@@ -48,14 +48,14 @@ export function tagBreakdown(rows) {
 }
 
 /**
- * Các lát cho biểu đồ tròn: tối đa maxTags tag lớn nhất, phần còn lại gộp thành một lát "rest", dòng chưa gắn tag là lát "none" (nếu có).
+ * Các lát cho biểu đồ tròn: tối đa maxTags tag lớn nhất, phần còn lại gộp thành một lát "rest" (kèm children = từng tag nhỏ), dòng chưa gắn tag là lát "none" (nếu có).
  * Trả [{ key, kind: 'tag' | 'rest' | 'none', name, amount, pct, count }].
  */
 export function pieSlices(b, maxTags = 7) {
   const head = b.items.slice(0, maxTags)
   const tail = b.items.slice(maxTags)
   const out = head.map((x) => ({ key: x.tag, kind: 'tag', name: x.tag, amount: x.amount, pct: x.pct, count: x.count }))
-  if (tail.length) out.push({ key: '__rest', kind: 'rest', name: `Các tag nhỏ khác (${tail.length})`, amount: tail.reduce((a, x) => a + x.amount, 0), pct: tail.reduce((a, x) => a + x.pct, 0), count: tail.reduce((a, x) => a + x.count, 0) })
+  if (tail.length) out.push({ key: '__rest', kind: 'rest', name: `Các tag nhỏ khác (${tail.length})`, amount: tail.reduce((a, x) => a + x.amount, 0), pct: tail.reduce((a, x) => a + x.pct, 0), count: tail.reduce((a, x) => a + x.count, 0), children: tail.map((x) => ({ key: x.tag, kind: 'tag', name: x.tag, amount: x.amount, pct: x.pct, count: x.count })) }) // children: từng tag nhỏ, vẫn chọn / xem riêng được
   if (b.untagged.count) out.push({ key: '__none', kind: 'none', name: 'Chưa gắn tag', amount: b.untagged.amount, pct: b.untagged.pct, count: b.untagged.count })
   return out
 }

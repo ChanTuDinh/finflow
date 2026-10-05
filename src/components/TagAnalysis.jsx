@@ -16,9 +16,20 @@ export default function TagAnalysis({ rows }) {
   const [sel, setSel] = useState([]) // key các lát đang chọn để xem tổng; rỗng = không chọn gì (biểu đồ hiện bình thường)
   const b = tagBreakdown(rows)
   const slices = pieSlices(b).map((x, i) => ({ ...x, color: x.kind === 'tag' ? PALETTE[i % PALETTE.length] : GREY[x.kind] })) // luôn đủ 100% tổng chi
+  const SMALL = ['#7c8aa0', '#8e9bb0', '#a3aebf', '#b6c0cc'] // các tag nhỏ trong lát gộp: các sắc xám
+  const rest = slices.find((x) => x.kind === 'rest')
+  const kids = rest ? rest.children.map((c, i) => ({ ...c, color: SMALL[i % SMALL.length] })) : []
+  const leaves = [...slices.filter((x) => x.kind !== 'rest'), ...kids] // từng tag riêng lẻ (chọn được từng cái)
   const on = (k) => sel.includes(k)
-  const toggle = (k) => setSel((o) => (o.includes(k) ? o.filter((x) => x !== k) : [...o, k]))
-  const picked = slices.filter((x) => on(x.key))
+  const kidKeys = kids.map((c) => c.key)
+  const restOn = kids.length > 0 && kidKeys.every(on)
+  const restSome = kidKeys.some(on)
+  const sliceOn = (x) => (x.kind === 'rest' ? restSome : on(x.key)) // lát gộp sáng khi có tag nhỏ nào được chọn
+  const toggle = (k) => setSel((o) => {
+    if (k === '__rest') return kidKeys.every((c) => o.includes(c)) ? o.filter((x) => !kidKeys.includes(x)) : [...new Set([...o, ...kidKeys])]
+    return o.includes(k) ? o.filter((x) => x !== k) : [...o, k]
+  })
+  const picked = leaves.filter((x) => on(x.key))
   const pickedAmount = picked.reduce((a, x) => a + x.amount, 0)
   const pickedPct = b.total > 0 ? pickedAmount / b.total : 0
   const hasSel = picked.length > 0
@@ -38,7 +49,7 @@ export default function TagAnalysis({ rows }) {
             : <>
                 <div className="mb-1 flex flex-wrap items-center gap-3 text-xs text-slate-700">
                   <span>Chọn nhiều tag (tick trong danh sách hoặc bấm lát trên biểu đồ) để xem tổng các tag đó chiếm bao nhiêu % tổng chi.</span>
-                  <button className="text-blue-700 underline" onClick={() => setSel(slices.map((x) => x.key))}>Chọn tất cả</button>
+                  <button className="text-blue-700 underline" onClick={() => setSel(leaves.map((x) => x.key))}>Chọn tất cả</button>
                   <button className="text-blue-700 underline" onClick={() => setSel([])}>Bỏ chọn</button>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
@@ -47,8 +58,8 @@ export default function TagAnalysis({ rows }) {
                       <PieChart margin={{ top: 16, right: 48, bottom: 16, left: 48 }}>
                         <Pie data={slices} dataKey="amount" nameKey="name" innerRadius={58} outerRadius={96} paddingAngle={2} stroke="#e0f2fe" strokeWidth={2} isAnimationActive={false} cursor="pointer"
                           onClick={(d) => toggle(d.key ?? d.payload?.key)}
-                          label={({ x, y, textAnchor, payload }) => (payload.pct >= 0.04 ? <text x={x} y={y} textAnchor={textAnchor} dominantBaseline="central" fontSize={12} fill="#0b0b0b" opacity={!hasSel || on(payload.key) ? 1 : 0.4}>{pctLabel(payload.pct)}</text> : null)} labelLine={false}>
-                          {slices.map((x) => <Cell key={x.key} fill={x.color} fillOpacity={!hasSel || on(x.key) ? 1 : 0.25} />)}
+                          label={({ x, y, textAnchor, payload }) => (payload.pct >= 0.04 ? <text x={x} y={y} textAnchor={textAnchor} dominantBaseline="central" fontSize={12} fill="#0b0b0b" opacity={!hasSel || sliceOn(payload) ? 1 : 0.4}>{pctLabel(payload.pct)}</text> : null)} labelLine={false}>
+                          {slices.map((x) => <Cell key={x.key} fill={x.color} fillOpacity={!hasSel || sliceOn(x) ? 1 : 0.25} />)}
                         </Pie>
                         <Tooltip formatter={(v, n, { payload }) => [`${money(v)} · ${pctLabel(payload.pct)}`, n]} />
                       </PieChart>
@@ -61,16 +72,21 @@ export default function TagAnalysis({ rows }) {
                   </div>
                   <ul className="text-sm space-y-1">
                     {slices.map((x) => {
-                      const sl = on(x.key)
+                      const isRest = x.kind === 'rest'
+                      const sl = isRest ? restOn : on(x.key)
+                      const row = (y, checked, indeterminate, indent, color) => (
+                        <label className={`flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 hover:bg-sky-200 ${checked || indeterminate ? 'bg-sky-200' : hasSel ? 'opacity-60' : ''} ${indent ? 'ml-5' : ''}`}>
+                          <input type="checkbox" checked={checked} ref={(el) => { if (el) el.indeterminate = indeterminate && !checked }} onChange={() => toggle(y.key)} />
+                          <span className={`inline-block shrink-0 rounded-sm ${indent ? 'h-2.5 w-2.5' : 'h-3 w-3'}`} style={{ background: color }} />
+                          <span className={`min-w-0 flex-1 truncate ${indent ? '' : 'font-medium'}`}>{y.name}</span>
+                          <span className="w-14 text-right">{pctLabel(y.pct)}</span>
+                          <span className="w-32 text-right whitespace-nowrap text-red-700">{money(y.amount)}</span>
+                        </label>
+                      )
                       return (
                         <li key={x.key}>
-                          <label className={`flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 hover:bg-sky-200 ${sl ? 'bg-sky-200' : hasSel ? 'opacity-60' : ''}`}>
-                            <input type="checkbox" checked={sl} onChange={() => toggle(x.key)} />
-                            <span className="inline-block h-3 w-3 shrink-0 rounded-sm" style={{ background: x.color }} />
-                            <span className="min-w-0 flex-1 truncate font-medium">{x.name}</span>
-                            <span className="w-14 text-right">{pctLabel(x.pct)}</span>
-                            <span className="w-32 text-right whitespace-nowrap text-red-700">{money(x.amount)}</span>
-                          </label>
+                          {row(x, sl, isRest && restSome, false, x.color)}
+                          {isRest && kids.map((c) => <div key={c.key}>{row(c, on(c.key), false, true, c.color)}</div>)}
                         </li>)
                     })}
                     <li className={`flex items-center gap-2 border-t border-sky-400 px-1 pt-1.5 ${hasSel ? 'font-bold text-slate-900' : 'font-semibold'}`}>
@@ -83,7 +99,7 @@ export default function TagAnalysis({ rows }) {
                   </ul>
                 </div>
                 <div className="mt-2 text-xs text-slate-600">
-                  Theo kỳ lọc Năm / Quý / Tháng phía trên và chỉ các dòng đang tick; tổng chi khớp thẻ "Chi". Giao dịch có nhiều tag được chia đều cho các tag đó. Tối đa 7 tag lớn nhất có màu riêng, phần còn lại gộp vào một lát xám.
+                  Theo kỳ lọc Năm / Quý / Tháng phía trên và chỉ các dòng đang tick; tổng chi khớp thẻ "Chi". Giao dịch có nhiều tag được chia đều cho các tag đó. Tối đa 7 tag lớn nhất có màu riêng; các tag nhỏ hơn gộp vào một lát xám trên biểu đồ nhưng vẫn liệt kê và chọn riêng từng tag trong danh sách.
                 </div>
               </>}
         </div>)}
