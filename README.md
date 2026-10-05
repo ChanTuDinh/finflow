@@ -68,7 +68,7 @@ Lãi suất là lãi danh nghĩa theo năm (lãi tháng × 12), cùng cách tín
 - Quy ước làm việc với chủ dự án: trả lời tiếng Việt, ngắn gọn; mỗi thay đổi giao diện: build + test + chụp thử (Playwright) rồi đẩy lên nhánh trên. Máy chạy phiên không mở được web Vercel (proxy chặn) nên không tự xem được bản deploy; sau khi đẩy, nhắc chủ dự án đợi 1-2 phút và tải lại cứng (Ctrl+Shift+R).
 
 ## Cập nhật gần đây (phiên 2026-10)
-**Menu:** Tổng quan · Báo cáo · Ví cá nhân (tab màu xanh ngọc, trước là "Cá nhân") · Doanh nghiệp · Nợ · Forecast Nợ · Tích lũy · Forecast Tích lũy · Ví BM · Nợ BM · Nợ BM Forecast (3 tab BM màu tím) · Cài đặt. "Ví BM" = ví **ba mẹ**.
+**Menu:** Tổng quan · Báo cáo · Ví cá nhân (tab màu xanh ngọc, trước là "Cá nhân") · Doanh nghiệp · Nợ · Nợ cá nhân · Nợ CN forecast · Tích lũy · Forecast Tích lũy · Ví BM · Nợ BM · Nợ BM Forecast (3 tab BM màu tím) · Cài đặt. "Ví BM" = ví **ba mẹ**.
 
 **Sổ thu/chi (Ví cá nhân, Doanh nghiệp, Ví BM)** — `src/pages/CashFlow.jsx`:
 - Chia thành các bảng dropdown (mặc định **đóng**), mỗi bảng gom **Năm › Tháng › giao dịch**: ⬆ Tiền đi ra · 💳 Trả nợ BM · 💳 Trả nợ cá nhân · 💳 Trả nợ (dòng cũ; Ví BM/Doanh nghiệp gộp một bảng Trả nợ) · ⇄ Chuyển ví · ⬇ Tiền đi vào · 📈 Đầu tư (tiền vào) · 🏦 Quỹ BM · ↔ Chuyển nội bộ. Bảng trống (trừ Ra/Vào) bị ẩn.
