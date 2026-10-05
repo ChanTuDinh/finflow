@@ -1,4 +1,6 @@
 // Cấu trúc Google Sheet. Hàng 1 của mỗi tab là header (đúng thứ tự dưới đây).
+// 6 quỹ chi tiêu cá nhân (khớp bảng Chi tiêu cá nhân forecast)
+export const SPEND_FUNDS = ['Need', 'Want', 'Edu', 'Reserve', 'Investment', 'Giving']
 // Ví cá nhân: loại "Trả nợ" chỉ có 2 danh mục này
 export const PERSONAL_DEBT_CATEGORIES = ['Trả nợ BM', 'Trả nợ cá nhân']
 export const TABS = {
@@ -8,7 +10,7 @@ export const TABS = {
     types: ['Income', 'Expense', 'Transfer'],
     categories: {
       Income: ['Lương', 'Thưởng', 'Side project', 'Đầu tư', 'Chuyển ví', 'Khác'],
-      Expense: ['Khác', 'Chuyển ví', ...PERSONAL_DEBT_CATEGORIES], // 'Khác' đứng đầu = danh mục mặc định của Chi; Trả nợ chọn qua Loại "Trả nợ"
+      Expense: [...SPEND_FUNDS, 'Chuyển ví', 'Khác', ...PERSONAL_DEBT_CATEGORIES], // Need đứng đầu = danh mục mặc định của Chi; Trả nợ chọn qua Loại "Trả nợ"
       Transfer: ['Chuyển nội bộ'],
     },
   },
