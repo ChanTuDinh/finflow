@@ -13,6 +13,7 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
   const [open, setOpen] = useState(false) // dropdown, mặc định đóng
   const [fYear, setFYear] = useState('all') // bộ lọc riêng của board forecast
   const [fMonth, setFMonth] = useState('all')
+  const [ytd, setYtd] = useState(false) // "Tính đến tháng hiện tại": chỉ lấy từ đầu năm đến hết tháng hiện tại
   const saved = settings.spendPlan || {}
   const curYear = todayIso().slice(0, 4)
   const incomeOf = (y) => incomeForYear(saved, y, curYear) // thu nhập TB / tháng dự kiến của từng năm
@@ -31,17 +32,19 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
   const refLabel = year === 'all' ? `trung bình ${activeYears.length} năm` : year
   const perTotal = Object.values(per).reduce((a, b) => a + b, 0)
   const slices = BUCKETS.filter((b) => pcts[b.key] > 0).map((b) => ({ ...b, value: pcts[b.key] / (total || 1) * 100, amount: per[b.key] }))
-  const inYear = plan.months.filter((r) => year === 'all' || r.month.startsWith(year))
+  const todayYm = todayIso().slice(0, 7)
+  const until = ytd ? todayYm : ''
+  const inYear = plan.months.filter((r) => (year === 'all' || r.month.startsWith(year)) && (!ytd || r.month <= todayYm))
   const monthNums = [...new Set(inYear.map((r) => r.month.slice(5)))].sort()
   const month = monthNums.includes(fMonth) ? fMonth : 'all'
   const shown = inYear.filter((r) => month === 'all' || r.month.endsWith(`-${month}`))
   // Thực tế phân bổ theo quỹ, cùng bộ lọc Năm / Tháng với kế hoạch để so sánh
-  const act = actualByFund(actualRows, { years, year, month })
+  const act = actualByFund(actualRows, { years, year, month, until })
   const planAmt = Object.fromEntries(BUCKETS.map((b) => [b.key, shown.reduce((a, r) => a + r.amounts[b.key], 0)]))
   const planTotal = Object.values(planAmt).reduce((a, b) => a + b, 0)
   const actSlices = [...BUCKETS.filter((b) => act.per[b.key] > 0).map((b) => ({ key: b.key, name: b.name, color: b.color, amount: act.per[b.key] })), ...(act.unassigned > 0 ? [{ key: '__un', name: 'Chưa phân quỹ', color: '#b6c0cc', amount: act.unassigned }] : [])]
     .map((x) => ({ ...x, pct: act.total > 0 ? x.amount / act.total : 0 }))
-  const periodLabel = `${year === 'all' ? 'tất cả năm' : year}${month !== 'all' ? ` · tháng ${Number(month)}` : ''}`
+  const periodLabel = `${year === 'all' ? 'tất cả năm' : year}${month !== 'all' ? ` · tháng ${Number(month)}` : ''}${ytd ? ` · tính đến T${Number(todayYm.slice(5))}/${todayYm.slice(0, 4)}` : ''}`
   const diff = (a, b) => `${a - b >= 0 ? '+' : '−'}${Math.abs((a - b) * 100).toFixed(1)}`
   const patch = (p) => setSettings((s) => ({ ...s, spendPlan: { ...(s.spendPlan || {}), ...p } }))
   const setIncome = (y, v) => patch({ incomeByYear: { ...(saved.incomeByYear || {}), [y]: v } })
@@ -122,6 +125,10 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
       <FilterRow>
         <SelectField label="Năm" value={year} onChange={(v) => { setFYear(v); setFMonth('all') }} options={[{ value: 'all', label: 'Tất cả năm' }, ...years.map((y) => ({ value: y, label: y }))]} />
         <SelectField label="Tháng" value={month} onChange={setFMonth} options={[{ value: 'all', label: 'Cả năm' }, ...monthNums.map((m) => ({ value: m, label: `Tháng ${Number(m)}` }))]} />
+        <label className="flex cursor-pointer items-center gap-2 pb-2 text-sm text-slate-800" title="Chỉ lấy dữ liệu từ đầu năm đến hết tháng hiện tại">
+          <input type="checkbox" checked={ytd} onChange={(e) => setYtd(e.target.checked)} />
+          Tính đến tháng hiện tại <span className="text-xs text-slate-600">(T1 → T{Number(todayYm.slice(5))}/{todayYm.slice(0, 4)})</span>
+        </label>
       </FilterRow>
       <div className="space-y-4">
           {year === 'all'
@@ -193,7 +200,7 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
                 {actualBlock}
                 <div>
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
-                    <div className="text-sm font-medium text-slate-700">Timeline theo tháng — {shown.length} tháng</div>
+                    <div className="text-sm font-medium text-slate-700">Timeline theo tháng — {shown.length} tháng{ytd && shown.length === 0 ? ' (năm này chưa đến, bỏ tick "Tính đến tháng hiện tại" để xem forecast)' : ''}</div>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm whitespace-nowrap">
