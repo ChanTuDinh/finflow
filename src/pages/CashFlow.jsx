@@ -10,6 +10,7 @@ import EntryForm from '../components/EntryForm.jsx'
 import FilterBar from '../components/FilterBar.jsx'
 import BankBadge from '../components/BankBadge.jsx'
 import SpendPlan from '../components/SpendPlan.jsx'
+import TagAnalysis from '../components/TagAnalysis.jsx'
 import { parseTags } from '../lib/tags.js'
 import { buildCsvRows, CSV_HEADER } from '../lib/csvImport.js'
 
@@ -201,6 +202,7 @@ export default function CashFlow({ kind, onImport }) {
           <button className="rounded-lg border border-red-300 text-red-700 px-3 py-1 hover:bg-red-50" onClick={delUnticked}>Xoá {unticked.length} dòng bỏ tick</button>
         </div>)}
       {groups.map((g) => g.rows.length > 0 || g.always ? table(g) : null)}
+      {kind === 'personal' && <TagAnalysis rows={counted.filter((r) => !isInflow(r) && !isTransfer(r))} />}
       {kind === 'personal' && <SpendPlan actualMonthly={perMonth(t.income)} />}
       {editingCard && <EntryForm kind="accounts" row={editingCard.id ? editingCard : { name: '', bank: '', owner: cardOwner, preset: '', status: 'Active', note: '', badge: '', color: '' }} onClose={() => setEditingCard(null)} />}
       {editing && <EntryForm kind={kind} row={editing.id ? editing : null} onClose={() => setEditing(null)} />}
