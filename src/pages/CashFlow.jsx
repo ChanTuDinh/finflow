@@ -228,9 +228,16 @@ export default function CashFlow({ kind, onImport }) {
       </div>
       {kind === 'personal' && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Stat tinted={tint} className={statCls} label="Trả nợ BM" tone="neg" value={money(sumOf2(debtBmC))} sub={debtBmC.length ? `${debtBmC.length} khoản · TB ${money(perMonth(sumOf2(debtBmC)))}/tháng` : 'Chưa có khoản trả nợ'} />
-          <Stat tinted={tint} className={statCls} label="Trả nợ cá nhân" tone="neg" value={money(sumOf2(debtCnC))} sub={debtCnC.length ? `${debtCnC.length} khoản · TB ${money(perMonth(sumOf2(debtCnC)))}/tháng` : 'Chưa có khoản trả nợ'} />
-          {debtOldC.length > 0 && <Stat tinted={tint} className={statCls} label="Trả nợ chưa phân loại BM / cá nhân" tone="neg" value={money(sumOf2(debtOldC))} sub={debtOldC.length ? `${debtOldC.length} khoản · TB ${money(perMonth(sumOf2(debtOldC)))}/tháng` : 'Chưa có khoản trả nợ'} />}
+          {[['Trả nợ BM', debtBmC], ['Trả nợ cá nhân', debtCnC]].map(([label, rs]) => {
+            const tot = sumOf2(rs), avg = nMonths ? Math.round(tot / nMonths) : 0, yr = nMonths ? Math.round((tot * 12) / nMonths) : 0
+            const base = nMonths ? `Trung bình trong ${nMonths} tháng` : 'Chưa có dữ liệu'
+            return [
+              <Stat key={label} tinted={tint} className={statCls} label={label} tone="neg" value={money(tot)} sub={rs.length ? `${rs.length} khoản` : 'Chưa có khoản trả nợ'} />,
+              <Stat key={`${label}-m`} tinted={tint} className={statCls} label={`${label} / tháng`} tone="neg" value={money(avg)} sub={base} />,
+              <Stat key={`${label}-y`} tinted={tint} className={statCls} label={`${label} / năm`} tone="neg" value={money(yr)} sub="= trung bình tháng × 12" />,
+            ]
+          })}
+          {debtOldC.length > 0 && <Stat tinted={tint} className={statCls} label="Trả nợ chưa phân loại BM / cá nhân" tone="neg" value={money(sumOf2(debtOldC))} sub={`${debtOldC.length} khoản · TB ${money(perMonth(sumOf2(debtOldC)))}/tháng · sửa sang BM / cá nhân để tách`} />}
         </div>)}
       {unticked.length > 0 && (
         <div className="flex flex-wrap items-center gap-3 rounded-lg bg-slate-100 px-3 py-2 text-sm">
