@@ -8,7 +8,7 @@ export const TABS = {
     types: ['Income', 'Expense', 'Transfer'],
     categories: {
       Income: ['Lương', 'Thưởng', 'Side project', 'Đầu tư', 'Chuyển ví', 'Khác'],
-      Expense: ['Sức khoẻ', 'Học tập', 'Mua sắm', ...PERSONAL_DEBT_CATEGORIES, 'Chuyển ví', 'Khác'],
+      Expense: ['Khác', 'Chuyển ví', ...PERSONAL_DEBT_CATEGORIES], // 'Khác' đứng đầu = danh mục mặc định của Chi; Trả nợ chọn qua Loại "Trả nợ"
       Transfer: ['Chuyển nội bộ'],
     },
   },

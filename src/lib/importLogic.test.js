@@ -7,12 +7,12 @@ const p = (date, desc, amount, ref = '') => ({ date, desc, amount, ref })
 
 test('applyRules: bỏ dấu, từ khóa dài thắng, theo hướng thu/chi và phạm vi', () => {
   const rules = [
-    { keyword: 'grab', category: 'Mua sắm', direction: 'out', owner: '' },
-    { keyword: 'grab food', category: 'Sức khoẻ', direction: 'out', owner: '' },
+    { keyword: 'grab', category: 'Trả nợ cá nhân', direction: 'out', owner: '' },
+    { keyword: 'grab food', category: 'Chuyển ví', direction: 'out', owner: '' },
     { keyword: 'luong', category: 'Lương', direction: 'in', owner: 'Personal' },
   ]
-  assert.equal(applyRules(rules, 'GRAB*TRIP 123', 'out', 'Personal', 'Expense'), 'Mua sắm')
-  assert.equal(applyRules(rules, 'Grab Food HCM', 'out', 'Personal', 'Expense'), 'Sức khoẻ')
+  assert.equal(applyRules(rules, 'GRAB*TRIP 123', 'out', 'Personal', 'Expense'), 'Trả nợ cá nhân')
+  assert.equal(applyRules(rules, 'Grab Food HCM', 'out', 'Personal', 'Expense'), 'Chuyển ví')
   assert.equal(applyRules(rules, 'Lương tháng 9', 'in', 'Personal', 'Income'), 'Lương')
   assert.equal(applyRules(rules, 'Lương tháng 9', 'in', 'Business', 'Revenue'), '') // quy tắc của Personal
   assert.equal(applyRules(rules, 'LUONG', 'out', 'Personal', 'Expense'), '') // sai hướng

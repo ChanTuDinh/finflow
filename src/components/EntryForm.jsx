@@ -22,7 +22,8 @@ const ALL_CATEGORIES = [...new Set([...Object.values(TABS.personal.categories), 
 export default function EntryForm({ kind, row, onClose }) {
   const { upsert, status, data, money } = useStore()
   const cfg = TABS[kind]
-  const baseCats = (t) => (kind === 'bm' ? BM_FORM_CATEGORIES : cfg.categories)[t]
+  // Ví cá nhân: Chi thường không liệt kê Trả nợ (đã có Loại "Trả nợ" riêng) để mặc định không rơi vào chế độ trả nợ
+  const baseCats = (t) => (kind === 'bm' ? BM_FORM_CATEGORIES : cfg.categories)[t].filter((c) => !(kind === 'personal' && t === 'Expense' && PERSONAL_DEBT_CATEGORIES.includes(c)))
   const cash = CASH_KINDS.includes(kind)
   const isDebt = kind === 'debts' || kind === 'debts_bm'
   const [f, setF] = useState(() => {
