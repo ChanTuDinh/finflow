@@ -55,7 +55,8 @@ test('actualByFund: gom theo quỹ, lọc năm / tháng, danh mục khác vào c
   // "Tất cả năm" chỉ lấy các năm trong danh sách đang xét
   assert.equal(actualByFund(rows, { years: ['2026'] }).per.need, 900)
   assert.equal(actualByFund([], { years: ['2026'] }).total, 0)
-  // tính đến hết tháng 3/2026: bỏ tháng 4 và năm 2027
-  const ytd = actualByFund(rows, { years: ['2026', '2027'], until: '2026-03' })
-  assert.deepEqual([ytd.per.need, ytd.per.want, ytd.unassigned, ytd.total], [600, 100, 0, 700])
+  // tính đến hết tháng 3: mỗi năm chỉ lấy T1-T3 (bỏ tháng 4/2026; 2027-01 vẫn tính)
+  const ytd = actualByFund(rows, { years: ['2026', '2027'], untilMonth: 3 })
+  assert.deepEqual([ytd.per.need, ytd.per.want, ytd.unassigned, ytd.total], [600 + 999, 100, 0, 1699])
+  assert.equal(actualByFund(rows, { years: ['2026'], year: '2026', untilMonth: '04' }).per.need, 900)
 })

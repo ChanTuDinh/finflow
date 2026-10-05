@@ -67,10 +67,10 @@ export function buildPlan(incomeOf, pcts, startMonth, n = 12) {
 
 /**
  * Chi tiêu THỰC TẾ theo quỹ: rows = các dòng chi cá nhân (đã loại Trả nợ, Chuyển ví, chuyển khoản), danh mục trùng tên quỹ (Need, Want, ...).
- * Lọc theo năm / tháng của board forecast: years = các năm đang xét (khi year = 'all'), year = 'all' | 'yyyy', month = 'all' | 'mm', until = '' | 'yyyy-mm' (chỉ tính đến hết tháng đó).
+ * Lọc theo năm / tháng của board forecast: years = các năm đang xét (khi year = 'all'), year = 'all' | 'yyyy', month = 'all' | 'mm', untilMonth = '' | 1..12 (mỗi năm chỉ tính từ T1 đến hết tháng đó).
  * Danh mục khác (dòng cũ chưa phân quỹ) vào `unassigned`. Trả { per, unassigned, total, count }.
  */
-export function actualByFund(rows, { years = [], year = 'all', month = 'all', until = '' } = {}) {
+export function actualByFund(rows, { years = [], year = 'all', month = 'all', untilMonth = '' } = {}) {
   const per = Object.fromEntries(BUCKETS.map((b) => [b.key, 0]))
   const byName = Object.fromEntries(BUCKETS.map((b) => [b.name, b.key]))
   let unassigned = 0, count = 0
@@ -78,7 +78,7 @@ export function actualByFund(rows, { years = [], year = 'all', month = 'all', un
     const y = (r.date || '').slice(0, 4), m = (r.date || '').slice(5, 7)
     if (year === 'all' ? !years.includes(y) : y !== year) continue
     if (month !== 'all' && m !== month) continue
-    if (until && (r.date || '').slice(0, 7) > until) continue // "tính đến tháng hiện tại": bỏ các tháng sau mốc until (yyyy-mm)
+    if (untilMonth && Number(m) > Number(untilMonth)) continue // "Tính đến tháng N": mỗi năm chỉ lấy từ T1 đến hết tháng N
     const amt = Number(r.amount) || 0
     const k = byName[r.category]
     if (k) per[k] += amt; else unassigned += amt
