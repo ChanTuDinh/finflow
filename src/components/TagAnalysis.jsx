@@ -1,26 +1,20 @@
 import { useState } from 'react'
+import { Cell, Pie, PieChart, Tooltip } from 'recharts'
 import { useStore } from '../lib/store.jsx'
-import { tagBreakdown } from '../lib/tags.js'
+import { tagBreakdown, pieSlices } from '../lib/tags.js'
+import { Chart } from './ui.jsx'
 
+// Màu theo thứ tự cố định (bảng màu phân loại đã kiểm tra); lát "tag nhỏ khác" và "chưa gắn tag" dùng xám để không tranh màu với tag thật
+const PALETTE = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7']
+const GREY = { rest: '#64748b', none: '#b6c0cc' }
 const pctLabel = (p) => `${(p * 100).toFixed(1)}%`
 
-/** Dropdown "Phân tích chi tiêu cá nhân": số tiền chi và % theo tag, trên các dòng chi đang được tính (đúng kỳ lọc và đang tick). */
+/** Dropdown "Phân tích chi tiêu cá nhân": biểu đồ tròn chi theo tag (số tiền và %), trên các dòng chi đang được tính (đúng kỳ lọc và đang tick). */
 export default function TagAnalysis({ rows }) {
   const { money } = useStore()
   const [open, setOpen] = useState(false) // mặc định đóng
   const b = tagBreakdown(rows)
-  const multi = rows.some((r) => String(r.tag ?? '').includes(','))
-  const line = (key, label, amount, count, pct, muted) => (
-    <tr key={key} className="border-t border-sky-200">
-      <td className={`py-1.5 pr-3 font-medium ${muted ? 'text-slate-600' : ''}`}>{label}</td>
-      <td className="pr-3 text-right whitespace-nowrap text-red-700">{money(amount)}</td>
-      <td className="pr-3 text-right whitespace-nowrap">{pctLabel(pct)}</td>
-      <td className="pr-3 w-40 sm:w-64">
-        <div className="h-2 rounded-full bg-white overflow-hidden"><div className={`h-full rounded-full ${muted ? 'bg-slate-400' : 'bg-sky-500'}`} style={{ width: `${Math.min(100, pct * 100)}%` }} /></div>
-      </td>
-      <td className="text-right text-slate-700">{count}</td>
-    </tr>
-  )
+  const slices = pieSlices(b).map((x, i) => ({ ...x, color: x.kind === 'tag' ? PALETTE[i % PALETTE.length] : GREY[x.kind] }))
   return (
     <section className={`rounded-xl border border-sky-200 bg-sky-100 ${open ? 'space-y-2 p-4' : 'px-4 py-2'}`}>
       <div className="flex cursor-pointer select-none items-baseline justify-between gap-2" onClick={() => setOpen((v) => !v)}>
@@ -32,26 +26,37 @@ export default function TagAnalysis({ rows }) {
       </div>
       {open && (
         <div>
-          {b.count === 0
+          {b.total <= 0
             ? <div className="text-sm text-slate-600">Chưa có khoản chi nào trong kỳ đang chọn.</div>
             : <>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="text-left text-slate-700"><tr><th className="py-1 pr-3">Tag</th><th className="pr-3 text-right">Số tiền chi</th><th className="pr-3 text-right">% tổng chi</th><th className="pr-3" /><th className="text-right">Số GD</th></tr></thead>
-                    <tbody>
-                      {b.items.map((x) => line(x.tag, x.tag, x.amount, x.count, x.pct, false))}
-                      {b.untagged.count > 0 && line('__none', 'Chưa gắn tag', b.untagged.amount, b.untagged.count, b.untagged.pct, true)}
-                      <tr className="border-t border-sky-400 font-semibold">
-                        <td className="py-1.5 pr-3">Tổng chi</td>
-                        <td className="pr-3 text-right whitespace-nowrap text-red-700">{money(b.total)}</td>
-                        <td className="pr-3 text-right">100%</td><td /><td className="text-right text-slate-700">{b.count}</td>
-                      </tr>
-                    </tbody>
-                  </table>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                  <Chart height={300}>
+                    <PieChart margin={{ top: 16, right: 48, bottom: 16, left: 48 }}>
+                      <Pie data={slices} dataKey="amount" nameKey="name" innerRadius={52} outerRadius={96} paddingAngle={2} stroke="#e0f2fe" strokeWidth={2} isAnimationActive={false}
+                        label={({ x, y, textAnchor, payload }) => (payload.pct >= 0.04 ? <text x={x} y={y} textAnchor={textAnchor} dominantBaseline="central" fontSize={12} fill="#0b0b0b">{pctLabel(payload.pct)}</text> : null)} labelLine={false}>
+                        {slices.map((x) => <Cell key={x.key} fill={x.color} />)}
+                      </Pie>
+                      <Tooltip formatter={(v, n, { payload }) => [`${money(v)} · ${pctLabel(payload.pct)}`, n]} />
+                    </PieChart>
+                  </Chart>
+                  <ul className="text-sm space-y-1.5">
+                    {slices.map((x) => (
+                      <li key={x.key} className="flex items-center gap-2">
+                        <span className="inline-block h-3 w-3 shrink-0 rounded-sm" style={{ background: x.color }} />
+                        <span className="min-w-0 flex-1 truncate font-medium">{x.name}</span>
+                        <span className="w-14 text-right">{pctLabel(x.pct)}</span>
+                        <span className="w-32 text-right whitespace-nowrap text-red-700">{money(x.amount)}</span>
+                      </li>))}
+                    <li className="flex items-center gap-2 border-t border-sky-400 pt-1.5 font-semibold">
+                      <span className="inline-block h-3 w-3 shrink-0" />
+                      <span className="flex-1">Tổng chi</span>
+                      <span className="w-14 text-right">100%</span>
+                      <span className="w-32 text-right whitespace-nowrap text-red-700">{money(b.total)}</span>
+                    </li>
+                  </ul>
                 </div>
                 <div className="mt-2 text-xs text-slate-600">
-                  Theo kỳ lọc Năm / Quý / Tháng phía trên và chỉ các dòng đang tick; tổng chi khớp thẻ "Chi".
-                  {multi && ' Giao dịch có nhiều tag được tính đủ số tiền cho từng tag nên tổng % các tag có thể vượt 100%.'}
+                  Theo kỳ lọc Năm / Quý / Tháng phía trên và chỉ các dòng đang tick; tổng chi khớp thẻ "Chi". Giao dịch có nhiều tag được chia đều cho các tag đó. Tối đa 7 tag lớn nhất có màu riêng, phần còn lại gộp vào một lát xám.
                 </div>
               </>}
         </div>)}

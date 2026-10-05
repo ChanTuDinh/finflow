@@ -22,8 +22,9 @@ export function tagCounts(rows) {
 }
 
 /**
- * Phân tích chi theo tag: rows = các dòng chi. Dòng nhiều tag được tính đủ số tiền cho TỪNG tag (nên tổng % các tag có thể > 100%);
- * dòng không có tag vào mục "untagged". pct = tỷ lệ so với tổng chi. Trả { total, count, items: [{ tag, amount, count, pct }], untagged }.
+ * Phân tích chi theo tag: rows = các dòng chi. Dòng nhiều tag được CHIA ĐỀU số tiền cho các tag của nó (để tổng các phần = tổng chi, vẽ biểu đồ tròn đúng 100%);
+ * dòng không có tag vào mục "untagged". pct = tỷ lệ so với tổng chi; count = số dòng có tag đó.
+ * Trả { total, count, items: [{ tag, amount, count, pct }], untagged }.
  */
 export function tagBreakdown(rows) {
   const m = new Map()
@@ -36,12 +37,25 @@ export function tagBreakdown(rows) {
     if (!tags.length) { untagged.amount += amt; untagged.count++; continue }
     for (const t of tags) {
       const k = t.toLowerCase(), e = m.get(k) || { tag: t, amount: 0, count: 0 }
-      e.amount += amt; e.count++
+      e.amount += amt / tags.length; e.count++
       m.set(k, e)
     }
   }
   const pct = (a) => (total > 0 ? a / total : 0)
   untagged.pct = pct(untagged.amount)
-  const items = [...m.values()].map((e) => ({ ...e, pct: pct(e.amount) })).sort((a, b) => b.amount - a.amount || a.tag.localeCompare(b.tag))
+  const items = [...m.values()].map((e) => ({ ...e, amount: Math.round(e.amount), pct: pct(e.amount) })).sort((a, b) => b.amount - a.amount || a.tag.localeCompare(b.tag))
   return { total, count: rows.length, items, untagged }
+}
+
+/**
+ * Các lát cho biểu đồ tròn: tối đa maxTags tag lớn nhất, phần còn lại gộp thành một lát "rest", dòng chưa gắn tag là lát "none" (nếu có).
+ * Trả [{ key, kind: 'tag' | 'rest' | 'none', name, amount, pct, count }].
+ */
+export function pieSlices(b, maxTags = 7) {
+  const head = b.items.slice(0, maxTags)
+  const tail = b.items.slice(maxTags)
+  const out = head.map((x) => ({ key: x.tag, kind: 'tag', name: x.tag, amount: x.amount, pct: x.pct, count: x.count }))
+  if (tail.length) out.push({ key: '__rest', kind: 'rest', name: `Các tag nhỏ khác (${tail.length})`, amount: tail.reduce((a, x) => a + x.amount, 0), pct: tail.reduce((a, x) => a + x.pct, 0), count: tail.reduce((a, x) => a + x.count, 0) })
+  if (b.untagged.count) out.push({ key: '__none', kind: 'none', name: 'Chưa gắn tag', amount: b.untagged.amount, pct: b.untagged.pct, count: b.untagged.count })
+  return out
 }
