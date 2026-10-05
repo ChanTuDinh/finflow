@@ -74,7 +74,7 @@ export default function Debts({ kind = 'debts' }) {
         </div>)}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <Stat label="Tổng dư nợ hiện tại" value={money(total)} />
-        <Stat label="Trả tối thiểu / tháng" value={money(min)} />
+        <Stat label="Trả tối thiểu / tháng" value={money(min)} sub={`= ${money(min * 12)} / năm`} />
         <Stat label="Lãi phát sinh / tháng" value={money(interest)} tone="neg" />
         <Stat label="Lãi phát sinh / năm" value={money(interest * 12)} tone="neg" sub="= lãi / tháng × 12" />
       </div>
@@ -105,13 +105,13 @@ export default function Debts({ kind = 'debts' }) {
       {/* Gộp thông tin vào ít cột để cả bảng vừa một màn hình, không phải cuộn ngang. Điện thoại: dạng thẻ. */}
       <div className="hidden md:block card p-0 overflow-hidden">
         <table className="w-full text-sm table-fixed">
-          <colgroup><col style={{ width: 40 }} /><col style={{ width: '21%' }} /><col style={{ width: '14%' }} /><col style={{ width: 70 }} /><col style={{ width: '13%' }} /><col style={{ width: '23%' }} /><col /><col style={{ width: 128 }} /></colgroup>
+          <colgroup><col style={{ width: 40 }} /><col style={{ width: '19%' }} /><col style={{ width: '13%' }} /><col style={{ width: 70 }} /><col style={{ width: '11%' }} /><col style={{ width: '12%' }} /><col style={{ width: '17%' }} /><col /><col style={{ width: 128 }} /></colgroup>
           <thead className="text-xs text-slate-500 text-left">
             <tr>
               <th className="pl-3 py-2"><input ref={tickAllRef} type="checkbox" aria-label="Chọn tất cả" checked={allTicked} onChange={(e) => sel.setMany(debts.map((d) => d.id), e.target.checked)} /></th>
               <th className="px-3 py-2">Khoản nợ</th><th className="px-3 py-2 text-right">Dư nợ</th>
               <th className="px-2 py-2 text-center bg-amber-100 text-amber-800">Lãi %/năm</th>
-              <th className="px-3 py-2 text-right">Trả / tháng</th><th className="px-3 py-2 text-right bg-indigo-50 text-indigo-800">Kịch bản {years} năm</th><th className="px-3 py-2">Ghi chú</th><th />
+              <th className="px-3 py-2 text-right">Trả / tháng</th><th className="px-3 py-2 text-right">Trả / năm</th><th className="px-3 py-2 text-right bg-indigo-50 text-indigo-800">Kịch bản {years} năm</th><th className="px-3 py-2">Ghi chú</th><th />
             </tr>
           </thead>
           <tbody>
@@ -133,6 +133,10 @@ export default function Debts({ kind = 'debts' }) {
                   <div className="whitespace-nowrap">{money(d.min_payment)}</div>
                   <div className="text-xs text-slate-400">hạn ngày {d.due_day}</div>
                 </td>
+                <td className="px-3 py-2 text-right">
+                  <div className="whitespace-nowrap">{money(d.min_payment * 12)}</div>
+                  <div className="text-xs text-slate-400">= tháng × 12</div>
+                </td>
                 <td className="px-3 py-2 text-right bg-indigo-50/50">
                   <div className="whitespace-nowrap font-medium text-indigo-900">{money(scen(d).total)}</div>
                   <div className="text-xs text-slate-500 whitespace-nowrap">{money(scen(d).monthly)}/th</div><div className="text-xs text-slate-500 whitespace-nowrap">lãi {money(scen(d).interest)}</div>
@@ -144,7 +148,7 @@ export default function Debts({ kind = 'debts' }) {
                 </td>
               </tr>
             ))}
-            {!debts.length && <tr><td colSpan={8} className="px-3 py-6 text-center text-slate-400">Chưa có khoản nợ</td></tr>}
+            {!debts.length && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-400">Chưa có khoản nợ</td></tr>}
           </tbody>
         </table>
       </div>
@@ -162,7 +166,7 @@ export default function Debts({ kind = 'debts' }) {
             <div className="grid grid-cols-3 gap-2 text-sm">
               <div><div className="text-xs text-slate-500">Dư nợ</div><div className="font-medium break-words">{money(d.balance)}</div>{recorded(d.id) && recorded(d.id).balance !== d.balance && <div className="text-xs text-amber-700">ghi nhận {money(recorded(d.id).balance)}</div>}</div>
               <div className="rounded bg-amber-50 px-2 py-1 text-center"><div className="text-xs text-amber-800">Lãi %/năm</div><div className="font-semibold text-amber-900">{d.apr}</div></div>
-              <div><div className="text-xs text-slate-500">Trả / tháng</div><div className="font-medium break-words">{money(d.min_payment)}</div></div>
+              <div><div className="text-xs text-slate-500">Trả / tháng</div><div className="font-medium break-words">{money(d.min_payment)}</div><div className="text-xs text-slate-500">năm: {money(d.min_payment * 12)}</div></div>
             </div>
             <div className="rounded bg-indigo-50 px-2 py-1 text-sm flex flex-wrap justify-between gap-x-3">
               <span className="text-xs text-indigo-800">Kịch bản {years} năm</span>
