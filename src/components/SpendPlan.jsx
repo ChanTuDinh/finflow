@@ -49,6 +49,9 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
   const planShownTotal = shown.reduce((a, r) => a + r.total, 0)
   const hasUnassignedMonths = actMonths.some((x) => x.unassigned > 0)
   const dash = (v) => (v ? money(v) : '–')
+  const signed = (d) => `${d > 0 ? '+' : ''}${money(d)}`
+  const STICKY1 = 'sticky left-0 z-[1] w-36 min-w-[9rem] bg-teal-100 py-1 pr-3' // 2 cột đầu cố định khi cuộn ngang
+  const STICKY2 = 'sticky left-36 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100 px-3 text-right'
   const periodLabel = `${year === 'all' ? 'tất cả năm' : year}${month !== 'all' ? ` · tháng ${Number(month)}` : ''}${ytd ? ` · tính đến T${Number(todayYm.slice(5))}/${todayYm.slice(0, 4)}` : ''}`
   const diff = (a, b) => `${a - b >= 0 ? '+' : '−'}${Math.abs((a - b) * 100).toFixed(1)}`
   const patch = (p) => setSettings((s) => ({ ...s, spendPlan: { ...(s.spendPlan || {}), ...p } }))
@@ -211,49 +214,52 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
                     <table className="w-full text-sm whitespace-nowrap">
                       <thead className="text-slate-700">
                         <tr>
-                          <th className="sticky left-0 z-[1] w-32 min-w-[8rem] bg-teal-100 py-1 pr-4 text-left">Quỹ</th>
-                          <th className="sticky left-32 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100 px-3 text-right font-semibold text-slate-900">Tổng {shown.length} tháng</th>
+                          <th className="sticky left-0 z-[1] w-36 min-w-[9rem] bg-teal-100 py-1 pr-3 text-left">Quỹ</th>
+                          <th className="sticky left-36 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100 px-3 text-right font-semibold text-slate-900">Tổng {shown.length} tháng</th>
                           {shown.map((r) => <th key={r.month} className="px-3 text-right font-semibold">{r.month.slice(5)}/{r.month.slice(0, 4)}</th>)}
                         </tr>
                       </thead>
                       <tbody>
-                        {BUCKETS.map((b) => (
-                          <tr key={b.key} className="border-t border-teal-200">
-                            <td className="sticky left-0 z-[1] w-32 min-w-[8rem] bg-teal-100 py-1 pr-4 font-medium"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ background: b.color }} />{b.name}</td>
-                            <td className="sticky left-32 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100 px-3 text-right font-semibold">{money(shown.reduce((a, r) => a + r.amounts[b.key], 0))}</td>
-                            {shown.map((r) => <td key={r.month} className="px-3 text-right">{money(r.amounts[b.key])}</td>)}
-                          </tr>))}
-                        <tr className="border-t border-teal-400 font-semibold">
-                          <td className="sticky left-0 z-[1] w-32 min-w-[8rem] bg-teal-100 py-1 pr-4">Tổng</td>
-                          <td className="sticky left-32 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100 px-3 text-right">{money(shown.reduce((a, r) => a + r.total, 0))}</td>
-                          {shown.map((r) => <td key={r.month} className="px-3 text-right">{money(r.total)}</td>)}
-                        </tr>
-                        <tr className="border-t-2 border-teal-500">
-                          <td className="sticky left-0 z-[1] w-32 min-w-[8rem] bg-teal-100 py-1 pr-4 font-semibold text-slate-900">Thực tế chi</td>
-                          <td className="sticky left-32 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100" />
-                          <td colSpan={shown.length} className="px-3 text-xs text-slate-700">Chi thật theo danh mục quỹ (không gồm Trả nợ, Chuyển ví)</td>
-                        </tr>
-                        {BUCKETS.map((b) => (
-                          <tr key={`a-${b.key}`} className="border-t border-teal-200">
-                            <td className="sticky left-0 z-[1] w-32 min-w-[8rem] bg-teal-100 py-1 pr-4 font-medium"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ background: b.color }} />{b.name}</td>
-                            <td className="sticky left-32 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100 px-3 text-right font-semibold">{dash(actSum((x) => x.per[b.key]))}</td>
-                            {actMonths.map((x, i) => <td key={shown[i].month} className="px-3 text-right">{dash(x.per[b.key])}</td>)}
-                          </tr>))}
+                        {BUCKETS.map((b) => {
+                          const khSum = shown.reduce((a, r) => a + r.amounts[b.key], 0), ttSum = actSum((x) => x.per[b.key])
+                          return [
+                            <tr key={`${b.key}-kh`} className="border-t-2 border-teal-400">
+                              <td className={`${STICKY1} font-semibold`}><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ background: b.color }} />{b.name} <span className="text-xs font-normal text-slate-600">KH</span></td>
+                              <td className={`${STICKY2} font-semibold`}>{money(khSum)}</td>
+                              {shown.map((r) => <td key={r.month} className="px-3 text-right">{money(r.amounts[b.key])}</td>)}
+                            </tr>,
+                            <tr key={`${b.key}-tt`} className="border-t border-teal-200">
+                              <td className={`${STICKY1} pl-6 text-slate-800`}>Thực tế</td>
+                              <td className={`${STICKY2} font-semibold`}>{dash(ttSum)}</td>
+                              {actMonths.map((x, i) => <td key={shown[i].month} className="px-3 text-right">{dash(x.per[b.key])}</td>)}
+                            </tr>,
+                            <tr key={`${b.key}-df`} className="border-t border-teal-200 text-xs" title="Kế hoạch trừ thực tế: dương = còn trong ngân sách, âm = vượt kế hoạch">
+                              <td className={`${STICKY1} pl-6 text-slate-700`}>KH − TT</td>
+                              <td className={`${STICKY2} font-semibold ${khSum - ttSum < 0 ? 'text-red-700' : 'text-emerald-800'}`}>{signed(khSum - ttSum)}</td>
+                              {actMonths.map((x, i) => { const d = shown[i].amounts[b.key] - x.per[b.key]; return <td key={shown[i].month} className={`px-3 text-right ${d < 0 ? 'text-red-700' : 'text-emerald-800'}`}>{signed(d)}</td> })}
+                            </tr>,
+                          ]
+                        })}
                         {hasUnassignedMonths && (
-                          <tr className="border-t border-teal-200 text-slate-700">
-                            <td className="sticky left-0 z-[1] w-32 min-w-[8rem] bg-teal-100 py-1 pr-4"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ background: '#b6c0cc' }} />Chưa phân quỹ</td>
-                            <td className="sticky left-32 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100 px-3 text-right font-semibold">{dash(actSum((x) => x.unassigned))}</td>
+                          <tr className="border-t-2 border-teal-400 text-slate-700">
+                            <td className={STICKY1}><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ background: '#b6c0cc' }} />Chưa phân quỹ <span className="text-xs">TT</span></td>
+                            <td className={`${STICKY2} font-semibold`}>{dash(actSum((x) => x.unassigned))}</td>
                             {actMonths.map((x, i) => <td key={shown[i].month} className="px-3 text-right">{dash(x.unassigned)}</td>)}
                           </tr>)}
-                        <tr className="border-t border-teal-400 font-semibold">
-                          <td className="sticky left-0 z-[1] w-32 min-w-[8rem] bg-teal-100 py-1 pr-4">Tổng thực tế</td>
-                          <td className="sticky left-32 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100 px-3 text-right">{money(actSum((x) => x.total))}</td>
+                        <tr className="border-t-2 border-teal-500 font-semibold">
+                          <td className={STICKY1}>Tổng KH</td>
+                          <td className={STICKY2}>{money(planShownTotal)}</td>
+                          {shown.map((r) => <td key={r.month} className="px-3 text-right">{money(r.total)}</td>)}
+                        </tr>
+                        <tr className="border-t border-teal-300 font-semibold">
+                          <td className={STICKY1}>Tổng thực tế</td>
+                          <td className={STICKY2}>{money(actSum((x) => x.total))}</td>
                           {actMonths.map((x, i) => <td key={shown[i].month} className="px-3 text-right">{money(x.total)}</td>)}
                         </tr>
-                        <tr className="border-t border-teal-400 font-semibold" title="Kế hoạch trừ thực tế: dương = còn trong ngân sách, âm = vượt kế hoạch">
-                          <td className="sticky left-0 z-[1] w-32 min-w-[8rem] bg-teal-100 py-1 pr-4">KH − TT</td>
-                          {(() => { const d = planShownTotal - actSum((x) => x.total); return <td className={`sticky left-32 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100 px-3 text-right ${d < 0 ? 'text-red-700' : 'text-emerald-800'}`}>{d > 0 ? '+' : ''}{money(d)}</td> })()}
-                          {actMonths.map((x, i) => { const d = shown[i].total - x.total; return <td key={shown[i].month} className={`px-3 text-right ${d < 0 ? 'text-red-700' : 'text-emerald-800'}`}>{d > 0 ? '+' : ''}{money(d)}</td> })}
+                        <tr className="border-t border-teal-300 font-semibold" title="Kế hoạch trừ thực tế: dương = còn trong ngân sách, âm = vượt kế hoạch">
+                          <td className={STICKY1}>Tổng KH − TT</td>
+                          <td className={`${STICKY2} ${planShownTotal - actSum((x) => x.total) < 0 ? 'text-red-700' : 'text-emerald-800'}`}>{signed(planShownTotal - actSum((x) => x.total))}</td>
+                          {actMonths.map((x, i) => { const d = shown[i].total - x.total; return <td key={shown[i].month} className={`px-3 text-right ${d < 0 ? 'text-red-700' : 'text-emerald-800'}`}>{signed(d)}</td> })}
                         </tr>
                       </tbody>
                     </table>
