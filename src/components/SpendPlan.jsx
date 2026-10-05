@@ -235,8 +235,8 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
                             </tr>,
                             <tr key={`${b.key}-df`} className="border-t border-teal-200 text-xs" title="Kế hoạch trừ thực tế: dương = còn trong ngân sách, âm = vượt kế hoạch">
                               <td className={`${STICKY1} pl-6 text-slate-700`}>KH − TT</td>
-                              <td className={`${STICKY2} font-semibold ${khSum - ttSum < 0 ? 'text-red-700' : 'text-emerald-800'}`}>{signed(khSum - ttSum)}</td>
-                              {actMonths.map((x, i) => { const d = shown[i].amounts[b.key] - x.per[b.key]; return <td key={shown[i].month} className={`px-3 text-right ${d < 0 ? 'text-red-700' : 'text-emerald-800'}`}>{signed(d)}</td> })}
+                              <td className={`${STICKY2} font-semibold ${khSum - ttSum < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(khSum - ttSum)}</td>
+                              {actMonths.map((x, i) => { const d = shown[i].amounts[b.key] - x.per[b.key]; return <td key={shown[i].month} className={`px-3 text-right ${d < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(d)}</td> })}
                             </tr>,
                           ]
                         })}
@@ -258,8 +258,8 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
                         </tr>
                         <tr className="border-t border-teal-300 font-semibold" title="Kế hoạch trừ thực tế: dương = còn trong ngân sách, âm = vượt kế hoạch">
                           <td className={STICKY1}>Tổng KH − TT</td>
-                          <td className={`${STICKY2} ${planShownTotal - actSum((x) => x.total) < 0 ? 'text-red-700' : 'text-emerald-800'}`}>{signed(planShownTotal - actSum((x) => x.total))}</td>
-                          {actMonths.map((x, i) => { const d = shown[i].total - x.total; return <td key={shown[i].month} className={`px-3 text-right ${d < 0 ? 'text-red-700' : 'text-emerald-800'}`}>{signed(d)}</td> })}
+                          <td className={`${STICKY2} ${planShownTotal - actSum((x) => x.total) < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(planShownTotal - actSum((x) => x.total))}</td>
+                          {actMonths.map((x, i) => { const d = shown[i].total - x.total; return <td key={shown[i].month} className={`px-3 text-right ${d < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(d)}</td> })}
                         </tr>
                       </tbody>
                     </table>
