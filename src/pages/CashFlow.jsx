@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useDebtSelection } from '../lib/selection.jsx'
 import { useStore } from '../lib/store.jsx'
 import { isInflow, isTransfer, TABS, WALLET_MOVE_CATEGORY, BM_FUND_CATEGORY, isDebtPayment } from '../lib/schema.js'
 import { totals } from '../lib/calc.js'
@@ -32,16 +33,18 @@ export default function CashFlow({ kind, onImport }) {
   }
   const [editing, setEditing] = useState(null) // null | {} (mới) | row
   const [openMonths, setOpenMonths] = useState({}) // `${bảng}:${yyyy-mm}` -> mở/đóng; chưa chọn thì chỉ mở tháng mới nhất
-  const [sel, setSel] = useState(() => new Set()) // id các dòng đang tick
+  // Ô tick = dòng được tính vào các thẻ tổng. Mặc định tick hết; bỏ tick (dòng / tháng / năm / bảng) thì thẻ tổng tính lại.
+  // Lưu id các dòng BỎ tick trong trình duyệt (cùng cơ chế với ô tick khoản nợ), dòng mới thêm tự được tick.
+  const pick = useDebtSelection(kind)
   const shown = rows.filter((r) => inPeriod(period, r.date)).sort((a, b) => b.date.localeCompare(a.date))
-  const t = totals(shown)
-  const picked = shown.filter((r) => sel.has(r.id)) // chỉ tính dòng đang hiển thị (đổi bộ lọc kỳ không xoá nhầm dòng ẩn)
-  const toggle = (id) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
-  const delPicked = async () => { if (confirm(`Xoá ${picked.length} giao dịch đã chọn?\n\nKhông thể hoàn tác.`) && await removeMany(kind, picked)) setSel(new Set()) }
+  const counted = shown.filter((r) => pick.isSelected(r.id))
+  const unticked = shown.filter((r) => !pick.isSelected(r.id))
+  const t = totals(counted)
+  const delUnticked = async () => { if (confirm(`Xoá ${unticked.length} giao dịch đang bỏ tick?\n\nKhông thể hoàn tác.`)) await removeMany(kind, unticked) }
   // Thẻ tổng có nền màu theo tab: Ví cá nhân xanh ngọc, Ví BM (ba mẹ) tím
   const tint = { personal: 'teal', bm: 'violet' }[kind] || ''
   const statCls = { teal: '!bg-teal-300 !border-teal-500', violet: '!bg-violet-300 !border-violet-500' }[tint] || ''
-  const nMonths = spanMonths(shown)
+  const nMonths = spanMonths(counted)
   const perMonth = (v) => (nMonths ? Math.round(v / nMonths) : 0)
   const inLabel = kind === 'business' ? 'Doanh thu' : 'Thu nhập'
 
@@ -92,10 +95,10 @@ export default function CashFlow({ kind, onImport }) {
     const setOpen = (k, v) => setOpenMonths((o) => ({ ...o, [key(k)]: v }))
     const allKeys = years.flatMap((Y) => [Y.y, ...Y.months.map((M) => M.ym)])
     const allOpen = years.length > 0 && years.every((Y) => yearOpen(Y.y) && Y.months.every((M) => monthOpen(M.ym)))
-    const tickRows = (rs) => { const on = rs.every((x) => sel.has(x.id)); setSel((s) => { const n = new Set(s); rs.forEach((x) => (on ? n.delete(x.id) : n.add(x.id))); return n }) }
+    const tickRows = (rs) => pick.setMany(rs.map((x) => x.id), !rs.every((x) => pick.isSelected(x.id)))
     const secOpen = openMonths[key('__section')] ?? false // cả bảng là dropdown, mặc định đóng
-    const all = g.rows.length > 0 && g.rows.every((r) => sel.has(r.id))
-    const toggleAll = () => setSel((s) => { const n = new Set(s); g.rows.forEach((r) => (all ? n.delete(r.id) : n.add(r.id))); return n })
+    const all = g.rows.length > 0 && g.rows.every((r) => pick.isSelected(r.id))
+    const toggleAll = () => tickRows(g.rows)
     return (
       <div key={g.key} className="space-y-1">
         <div className="flex cursor-pointer select-none items-baseline justify-between rounded-lg px-1 py-1 hover:bg-slate-100" onClick={() => setOpen('__section', !secOpen)}>
@@ -107,13 +110,13 @@ export default function CashFlow({ kind, onImport }) {
         </div>
         {secOpen && <div className="card overflow-x-auto p-0">
           <table className="w-full text-sm">
-            <thead className="text-xs text-slate-500 text-left"><tr><th className="px-3 py-2 w-8"><input type="checkbox" aria-label="Chọn tất cả" checked={all} onChange={toggleAll} /></th>{['Ngày', 'Loại', 'Danh mục', 'Số tiền', kind === 'business' ? 'Đối tác' : 'Tài khoản', 'Ghi chú', 'Bởi', ''].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr></thead>
+            <thead className="text-xs text-slate-500 text-left"><tr><th className="px-3 py-2 w-8"><input type="checkbox" aria-label="Tính cả bảng" checked={all} onChange={toggleAll} /></th>{['Ngày', 'Loại', 'Danh mục', 'Số tiền', kind === 'business' ? 'Đối tác' : 'Tài khoản', 'Ghi chú', 'Bởi', ''].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr></thead>
             <tbody>
               {years.map((Y) => {
                 const yOpen = yearOpen(Y.y)
                 return [
                   <tr key={`y-${Y.y}`} className="border-t border-slate-200 bg-slate-100 cursor-pointer select-none hover:bg-slate-200" onClick={() => setOpen(Y.y, !yOpen)}>
-                    <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}><input type="checkbox" aria-label={`Chọn cả năm ${Y.y}`} checked={Y.rows.every((x) => sel.has(x.id))} onChange={() => tickRows(Y.rows)} /></td>
+                    <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}><input type="checkbox" aria-label={`Tính cả năm ${Y.y}`} checked={Y.rows.every((x) => pick.isSelected(x.id))} onChange={() => tickRows(Y.rows)} /></td>
                     <td colSpan={4} className="px-3 py-2 font-semibold text-slate-800"><span className="inline-block w-4 text-slate-500">{yOpen ? '▾' : '▸'}</span>{Y.y ? `Năm ${Y.y}` : 'Chưa có ngày'} <span className="text-xs font-normal text-slate-500">· {Y.rows.length} giao dịch</span></td>
                     <td colSpan={4} className={`px-3 py-2 text-right font-semibold ${g.tone}`}>{sumLabel(g.key, Y.rows)}</td>
                   </tr>,
@@ -121,13 +124,13 @@ export default function CashFlow({ kind, onImport }) {
                     const mOpen = monthOpen(M.ym)
                     return [
                       <tr key={`h-${M.ym}`} className="border-t border-slate-100 bg-slate-50 cursor-pointer select-none hover:bg-slate-100" onClick={() => setOpen(M.ym, !mOpen)}>
-                        <td className="px-3 py-1.5" onClick={(e) => e.stopPropagation()}><input type="checkbox" aria-label={`Chọn cả ${monthLabel(M.ym)}`} checked={M.rows.every((x) => sel.has(x.id))} onChange={() => tickRows(M.rows)} /></td>
+                        <td className="px-3 py-1.5" onClick={(e) => e.stopPropagation()}><input type="checkbox" aria-label={`Tính cả ${monthLabel(M.ym)}`} checked={M.rows.every((x) => pick.isSelected(x.id))} onChange={() => tickRows(M.rows)} /></td>
                         <td colSpan={4} className="px-3 py-1.5 pl-8 font-medium text-slate-700"><span className="inline-block w-4 text-slate-400">{mOpen ? '▾' : '▸'}</span>{monthLabel(M.ym)} <span className="text-xs font-normal text-slate-400">· {M.rows.length} giao dịch</span></td>
                         <td colSpan={4} className={`px-3 py-1.5 text-right font-medium ${g.tone}`}>{sumLabel(g.key, M.rows)}</td>
                       </tr>,
                     mOpen && M.rows.map((r) => (
-                      <tr key={r.id} className={`border-t border-slate-100 ${sel.has(r.id) ? 'bg-blue-50' : ''}`}>
-                        <td className="px-3 py-1.5"><input type="checkbox" aria-label="Chọn dòng" checked={sel.has(r.id)} onChange={() => toggle(r.id)} /></td>
+                      <tr key={r.id} className={`border-t border-slate-100 ${pick.isSelected(r.id) ? '' : 'opacity-50'}`}>
+                        <td className="px-3 py-1.5"><input type="checkbox" aria-label="Tính dòng này" checked={pick.isSelected(r.id)} onChange={() => pick.toggle(r.id)} /></td>
                         <td className="px-3 py-1.5 whitespace-nowrap">{r.date}</td>
                         <td className="px-3 py-1.5">{isTransfer(r) ? 'Chuyển nội bộ' : r.type}</td>
                         <td className="px-3 py-1.5">{r.category}</td>
@@ -189,11 +192,11 @@ export default function CashFlow({ kind, onImport }) {
         <Stat tinted={tint} className={statCls} label={`${inLabel} / tháng`} value={money(perMonth(t.income))} sub={nMonths ? `Trung bình trong ${nMonths} tháng` : 'Chưa có dữ liệu'} />
         <Stat tinted={tint} className={statCls} label="Chi / tháng" tone="neg" value={money(perMonth(t.expense))} sub={nMonths ? `Trung bình trong ${nMonths} tháng` : 'Chưa có dữ liệu'} />
       </div>
-      {picked.length > 0 && (
-        <div className="flex items-center gap-3 rounded-lg bg-slate-100 px-3 py-2 text-sm">
-          <span>Đã chọn <b>{picked.length}</b> giao dịch</span>
-          <button className="rounded-lg border border-red-300 text-red-700 px-3 py-1 hover:bg-red-50" onClick={delPicked}>Xoá đã chọn</button>
-          <button className="text-slate-500 underline" onClick={() => setSel(new Set())}>Bỏ chọn</button>
+      {unticked.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg bg-slate-100 px-3 py-2 text-sm">
+          <span>Đang bỏ tick <b>{unticked.length}</b> giao dịch — các thẻ tổng không tính những dòng này.</span>
+          <button className="text-blue-600 underline" onClick={() => pick.setMany(unticked.map((r) => r.id), true)}>Tick lại tất cả</button>
+          <button className="rounded-lg border border-red-300 text-red-700 px-3 py-1 hover:bg-red-50" onClick={delUnticked}>Xoá {unticked.length} dòng bỏ tick</button>
         </div>)}
       {groups.map((g) => g.rows.length > 0 || g.always ? table(g) : null)}
       {kind === 'personal' && <SpendPlan actualMonthly={perMonth(t.income)} />}

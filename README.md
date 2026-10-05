@@ -72,7 +72,7 @@ Lãi suất là lãi danh nghĩa theo năm (lãi tháng × 12), cùng cách tín
 
 **Sổ thu/chi (Ví cá nhân, Doanh nghiệp, Ví BM)** — `src/pages/CashFlow.jsx`:
 - Chia thành các bảng dropdown (mặc định **đóng**), mỗi bảng gom **Năm › Tháng › giao dịch**: ⬆ Tiền đi ra · 💳 Trả nợ BM · 💳 Trả nợ cá nhân · 💳 Trả nợ (dòng cũ; Ví BM/Doanh nghiệp gộp một bảng Trả nợ) · ⇄ Chuyển ví · ⬇ Tiền đi vào · 📈 Đầu tư (tiền vào) · 🏦 Quỹ BM · ↔ Chuyển nội bộ. Bảng trống (trừ Ra/Vào) bị ẩn.
-- Ô tick chọn từng dòng / cả tháng / cả năm / cả bảng, nút **Xoá đã chọn** (không hoàn tác; dòng đang đóng vẫn có thể đang được chọn — xem số N trên thanh).
+- Ô tick = dòng **được tính vào các thẻ tổng** (Thu nhập, Chi, Dòng tiền ròng, mỗi tháng). Mặc định tick hết; bỏ tick từng dòng / cả tháng / cả năm / cả bảng thì thẻ tổng tính lại. Id dòng bỏ tick lưu trong trình duyệt (`useDebtSelection(kind)`), dòng mới thêm tự được tick. Khi có dòng bỏ tick hiện thanh với **Tick lại tất cả** và **Xoá N dòng bỏ tick** (không hoàn tác). Mỗi dòng vẫn có nút Xoá riêng.
 - Thẻ tổng: Thu nhập, Chi (đỏ), Dòng tiền ròng + hàng 2 **Thu nhập / tháng**, **Chi / tháng** (trung bình theo số tháng từ giao dịch đầu đến cuối, tính cả tháng trống). Ví cá nhân nền xanh ngọc, Ví BM nền tím (`tinted` trong `ui.jsx`). Thẻ Chi tổng vẫn **tính cả** Trả nợ / Chuyển ví / Quỹ BM.
 - Dropdown **Thẻ ngân hàng**: huy hiệu chữ 2-3 ký tự + màu (không dùng logo thương hiệu), dùng chung danh sách `Accounts` với trang Nhập sao kê (thêm 2 cột `badge`, `color` — Sheet cũ cần chạy lại `setup.gs`). Cột "Tài khoản" của giao dịch vẫn là chữ gõ tay.
 - Nút **Nhập CSV** (`src/lib/csvImport.js`): cột `date,type,category,amount,account,note`; loại trùng, báo lỗi theo dòng, hỏi xác nhận trước khi ghi.
@@ -97,6 +97,6 @@ Lãi suất là lãi danh nghĩa theo năm (lãi tháng × 12), cùng cách tín
 ## Việc cần làm để kết thúc phiên (chủ dự án)
 1. Chờ Vercel deploy xong nhánh `claude/finflow-finance-manager-ra1340`, mở https://finflow-dusky-five.vercel.app/ và tải lại cứng; kiểm tra Ví cá nhân, Ví BM, Nợ BM hiển thị đúng.
 2. Bấm **⬇ Sao lưu** lưu file `finflow-backup-ngày.json` (dữ liệu chỉ nằm trong trình duyệt, mất nếu xoá dữ liệu trình duyệt / ẩn danh / đổi máy).
-3. Nếu chưa nhập thu nhập 2026: tab Ví cá nhân → **Nhập CSV** → file `thu-nhap-2026.csv` (45 dòng, tổng 475.135.587 ₫, ngày cuối tháng; file nằm ngoài repo, không commit vì là dữ liệu cá nhân — nếu mất, dựng lại từ bảng Excel gốc theo định dạng CSV ở trên). Muốn làm lại từ đầu: tick hết các bảng → Xoá đã chọn **trước**, rồi mới nhập CSV.
+3. Nếu chưa nhập thu nhập 2026: tab Ví cá nhân → **Nhập CSV** → file `thu-nhap-2026.csv` (45 dòng, tổng 475.135.587 ₫, ngày cuối tháng; file nằm ngoài repo, không commit vì là dữ liệu cá nhân — nếu mất, dựng lại từ bảng Excel gốc theo định dạng CSV ở trên). Muốn làm lại từ đầu: bỏ tick hết các bảng → **Xoá N dòng bỏ tick** **trước**, rồi mới nhập CSV.
 4. **Xoá nhánh thừa** `claude/stoic-wright-816kzb` trên GitHub (https://github.com/ChanTuDinh/finflow/branches → biểu tượng thùng rác). Phiên này không xoá được từ máy chạy phiên (kết nối bị ngắt khi xoá nhánh).
 5. Mọi thay đổi đã nằm trên nhánh `claude/finflow-finance-manager-ra1340`; chưa merge vào `main`, chưa tạo PR.
