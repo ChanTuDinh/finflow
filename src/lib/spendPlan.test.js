@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { HORIZONS, resolveHorizon, incomeForYear, BUCKETS, resolvePcts, sumPcts, allocate, monthList, buildPlan } from './spendPlan.js'
+import { incomeForYear, BUCKETS, resolvePcts, sumPcts, allocate, monthList, buildPlan } from './spendPlan.js'
 
 const def = resolvePcts()
 test('tỷ lệ mặc định cộng đúng 100%', () => assert.equal(sumPcts(def), 100))
@@ -34,11 +34,5 @@ test('incomeForYear: theo năm, số cũ chỉ áp cho năm hiện tại', () =>
   assert.equal(incomeForYear(saved, '2026', '2026'), 30000000)
   assert.equal(incomeForYear(saved, '2028', '2026'), 0)
   assert.equal(incomeForYear({ incomeByYear: { 2026: 5 }, monthlyIncome: 9 }, '2026', '2026'), 5)
-})
-test('horizon: giá trị lạ về 1; đổi giá trị cũ theo tháng', () => {
-  assert.equal(resolveHorizon(7), 1)
-  assert.equal(resolveHorizon('3'), 3)
-  assert.equal(resolveHorizon(36), 3)
-  assert.ok(HORIZONS.includes(5))
 })
 test('thu nhập âm/rỗng -> 0', () => assert.equal(buildPlan(() => '', def, '2026-10').total, 0))

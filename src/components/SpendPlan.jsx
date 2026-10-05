@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '../lib/store.jsx'
 import { Cell, Pie, PieChart, Tooltip } from 'recharts'
-import { BUCKETS, HORIZONS, resolveHorizon, resolvePcts, sumPcts, allocate, incomeForYear, buildPlan } from '../lib/spendPlan.js'
+import { BUCKETS, YEARS_AHEAD, resolvePcts, sumPcts, allocate, incomeForYear, buildPlan } from '../lib/spendPlan.js'
 import { Chart, SelectField, FilterRow } from './ui.jsx'
 import { todayIso } from '../lib/format.js'
 
@@ -17,10 +17,9 @@ export default function SpendPlan({ actualMonthly = 0 }) {
   const incomeOf = (y) => incomeForYear(saved, y, curYear) // thu nhập TB / tháng dự kiến của từng năm
   const pcts = resolvePcts(saved.pcts)
   const total = sumPcts(pcts)
-  const horizon = resolveHorizon(saved.horizon) // số năm
-  const plan = buildPlan(incomeOf, pcts, `${curYear}-01`, horizon * 12) // theo năm dương lịch: mỗi năm đủ 12 tháng (T1–T12)
+  const plan = buildPlan(incomeOf, pcts, `${curYear}-01`, YEARS_AHEAD * 12) // theo năm dương lịch: mỗi năm đủ 12 tháng (T1–T12)
   const years = [...new Set(plan.months.map((r) => r.month.slice(0, 4)))]
-  const year = years.includes(fYear) ? fYear : 'all' // đổi horizon làm mất năm đang chọn -> về Tất cả
+  const year = years.includes(fYear) ? fYear : 'all' // năm không còn trong danh sách -> về Tất cả
   const refYear = year === 'all' ? years[0] : year // năm dùng cho bảng quỹ và biểu đồ
   const income = incomeOf(refYear)
   const per = allocate(income, pcts)
@@ -56,13 +55,6 @@ export default function SpendPlan({ actualMonthly = 0 }) {
       <FilterRow>
         <SelectField label="Năm" value={year} onChange={(v) => { setFYear(v); setFMonth('all') }} options={[{ value: 'all', label: 'Tất cả năm' }, ...years.map((y) => ({ value: y, label: y }))]} />
         <SelectField label="Tháng" value={month} onChange={setFMonth} options={[{ value: 'all', label: 'Cả năm' }, ...monthNums.map((m) => ({ value: m, label: `Tháng ${Number(m)}` }))]} />
-        <div className="flex flex-col gap-1">
-          <span className="text-xs text-slate-700">Horizon</span>
-          <div className="flex items-center gap-1 text-sm">
-            {HORIZONS.map((h) => (
-              <button key={h} onClick={() => patch({ horizon: h })} className={`rounded-lg px-2.5 py-1.5 border ${h === horizon ? 'bg-slate-900 text-white border-slate-900' : 'border-slate-300 bg-white hover:bg-slate-100'}`}>{h} năm</button>))}
-          </div>
-        </div>
       </FilterRow>
       <div className="space-y-4">
           {(year === 'all' ? years : [year]).map(incomeRow)}
@@ -119,7 +111,7 @@ export default function SpendPlan({ actualMonthly = 0 }) {
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
-                    <div className="text-sm font-medium text-slate-700">Timeline theo tháng — {shown.length} tháng · {horizon} năm từ T1/{years[0]}</div>
+                    <div className="text-sm font-medium text-slate-700">Timeline theo tháng — {shown.length} tháng</div>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm whitespace-nowrap">
