@@ -1,7 +1,8 @@
-// Nhập giao dịch thu/chi từ file CSV (cột: date,type,category,amount,account,note). Dòng đã có (cùng ngày, loại, danh mục, số tiền, ghi chú) bị bỏ qua.
+// Nhập giao dịch thu/chi từ file CSV (cột: date,type,category,amount,account,note, tag — tag là tuỳ chọn, nhiều tag cách nhau bằng dấu phẩy trong ô đặt trong ngoặc kép). Dòng đã có (cùng ngày, loại, danh mục, số tiền, ghi chú) bị bỏ qua.
+import { parseTags } from './tags.js'
 import { TABS, newId, normalizeDate, parseNumber } from './schema.js'
 
-export const CSV_HEADER = ['date', 'type', 'category', 'amount', 'account', 'note']
+export const CSV_HEADER = ['date', 'type', 'category', 'amount', 'account', 'note', 'tag']
 
 // Đọc CSV có ngoặc kép; hỗ trợ dấu phẩy và xuống dòng trong ô, bỏ BOM.
 export function parseCsv(text) {
@@ -53,7 +54,7 @@ export function buildCsvRows(kind, text, existing = [], createdBy = 'me') {
     if (!cfg.types.includes(type)) return errors.push(`Dòng ${line}: loại "${type}" không hợp lệ (${cfg.types.join(' / ')})`)
     if (!category) return errors.push(`Dòng ${line}: thiếu danh mục`)
     if (!(amount > 0)) return errors.push(`Dòng ${line}: số tiền phải lớn hơn 0`)
-    const row = { id: newId(), date, type, category, amount, account: col(r, 'account'), note: col(r, 'note'), created_by: createdBy, ref: '' }
+    const row = { id: newId(), date, type, category, amount, account: col(r, 'account'), note: col(r, 'note'), created_by: createdBy, ref: '', tag: parseTags(col(r, 'tag')).join(', ') }
     if (kind === 'business') row.counterparty = ''
     const k = sig(row)
     if (seen.has(k)) return skipped++

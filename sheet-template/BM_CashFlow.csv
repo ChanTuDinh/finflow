@@ -1,3 +1,3 @@
-id,date,type,category,amount,account,note,created_by,ref
-w001,2026-09-03,Income,Khác,20000000,MB (Ví BM),Thu từ BM,me,
-w002,2026-09-10,Expense,Hoá đơn,3000000,MB (Ví BM),,me,
+id,date,type,category,amount,account,note,created_by,ref,tag
+w001,2026-09-03,Income,Khác,20000000,MB (Ví BM),Thu từ BM,me,,
+w002,2026-09-10,Expense,Hoá đơn,3000000,MB (Ví BM),,me,,

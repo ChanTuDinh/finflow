@@ -15,9 +15,9 @@ Cách B: tạo 3 tab tên đúng `Personal_CashFlow`, `Business_CashFlow`, `Debt
 
 | Tab | Cột (hàng 1 = header, giữ đúng thứ tự) |
 |---|---|
-| Personal_CashFlow | id, date, type (Income/Expense/Transfer), category, amount, account, note, created_by, ref |
+| Personal_CashFlow | id, date, type (Income/Expense/Transfer), category, amount, account, note, created_by, ref, tag (nhiều tag cách nhau dấu phẩy; cột mới — Sheet cũ cần thêm cột `tag` hoặc chạy lại `setup.gs`) |
 | BM_CashFlow | Giống hệt Personal_CashFlow — sổ thu/chi của **Ví BM**, tab tuỳ chọn |
-| Business_CashFlow | id, date, type (Revenue/Expense/Transfer), category, amount, counterparty, note, created_by, account, ref |
+| Business_CashFlow | id, date, type (Revenue/Expense/Transfer), category, amount, counterparty, note, created_by, account, ref, tag |
 | Debts | id, name, lender, owner (Personal/Business), balance, apr (%/năm), min_payment (số tiền trả mỗi tháng), due_day, status (Active/Paid), note, repay_type (`Trả gốc và lãi` / `Trả lãi only`), term_months (số tháng còn lại) |
 | Debts_BM | Giống Debts (`owner` có thêm giá trị `BM`) + `record_date`, `repay_type`, `term_months` (ngày ghi nhận, yyyy-mm-dd) — nguồn nợ thứ hai ("Nợ BM"), tách riêng, tab tuỳ chọn |
 | Debt_Payments | id, date, source (`debts`/`debts_bm`), debt_id, debt_name, type (Trả gốc / Trả lãi / Gốc + lãi), amount, principal, interest, balance_after, note, created_by, adjust_prev — lịch sử trả nợ do app ghi, tab tuỳ chọn |
@@ -83,6 +83,8 @@ Lãi suất là lãi danh nghĩa theo năm (lãi tháng × 12), cùng cách tín
 **Chi tiêu cá nhân forecast** (cuối trang Ví cá nhân; là **board 2**, dropdown mặc định **đóng** (bấm tiêu đề để mở), có bộ lọc Năm / Tháng riêng để lọc timeline, không theo bộ lọc kỳ của board 1 phía trên) — `src/components/SpendPlan.jsx`, `src/lib/spendPlan.js`: nhập thu nhập trung bình **riêng cho từng năm**, theo tháng hoặc năm (năm = tháng × 12; sang năm mới phải nhập lại, có nút "Dùng số năm trước" và nút lấy từ dữ liệu thực tế; chỉ hiện ô nhập của năm đang chọn; chọn "Tất cả năm" thì ô thu nhập, bảng quỹ và biểu đồ hiện **trung bình cộng** các năm đã nhập, không sửa được). Số thu nhập chung cũ được coi là của năm hiện tại, chia theo 6 quỹ Need 60 · Want 10 · Edu 10 · Reserve 10 · Investment 5 · Giving 5 (%, sửa được), ra bảng /tháng, /năm, **biểu đồ tròn** cơ cấu % và **timeline theo tháng (nằm ngang, mỗi tháng một cột)** cho 5 năm từ T1 của năm hiện tại (không có nút chọn horizon; mỗi năm đủ 12 tháng T1–T12; có cột Tổng kỳ lọc và hàng Tổng — tổng 12 tháng khớp cột "/ năm"). Lưu trong `settings` của trình duyệt (không nằm trong file sao lưu, chưa lên Sheet).
 
 - Danh mục Chi của Ví cá nhân trong form chỉ còn: Need (mặc định), Want, Edu, Reserve, Investment, Giving (6 quỹ của Chi tiêu cá nhân forecast), Chuyển ví, Khác, và Trả nợ BM / Trả nợ cá nhân (chọn qua Loại "Trả nợ") (đã bỏ Nhà ở, Ăn uống, Đi lại, Hoá đơn, Giải trí, Sức khoẻ, Học tập, Mua sắm; dòng cũ đang dùng các danh mục này vẫn giữ nguyên và sửa được; quy tắc nhập sao kê gán vào danh mục đã bỏ bị bỏ qua → "Khác"). Danh sách cố định nằm trong `src/lib/schema.js`.
+
+- **Tag** (`src/lib/tags.js`): mỗi giao dịch có ô Tag, nhiều tag cách nhau bằng dấu phẩy (vd. `du lịch, gia đình`), dùng để phân loại / làm biểu đồ sau này. Form hiện các tag đã dùng trong sổ đó để bấm gắn nhanh; bảng giao dịch có cột Tag; **Nhập CSV** nhận thêm cột `tag` (tuỳ chọn). Chưa có biểu đồ theo tag; hàm `tagCounts(rows)` đã sẵn để dựng. Nhập sao kê chưa gán tag tự động.
 
 **Nợ / Nợ BM:** thẻ **Lãi phát sinh / năm** (= lãi tháng × 12); dropdown "Kịch bản N năm & thống kê trả nợ" (mặc định đóng): trả gốc + lãi đều trong 10-30 năm → trả/tháng, tổng phải trả, tổng lãi, theo từng khoản và tổng; cột "Kịch bản" trong bảng.
 

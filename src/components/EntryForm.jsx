@@ -3,6 +3,7 @@ import BankBadge from './BankBadge.jsx'
 import { CARD_COLORS, cardBadge, TABS, REPAY, CASH_KINDS, DEBT_PAYMENT_CATEGORY, BM_FORM_CATEGORIES, PERSONAL_DEBT_CATEGORIES, isDebtPayment } from '../lib/schema.js'
 import { computeApr, estimateTerm } from '../lib/rate.js'
 import { todayIso } from '../lib/format.js'
+import { parseTags, toggleTag, tagCounts } from '../lib/tags.js'
 import { Field, Modal, Segmented, focusNextOnEnter } from './ui.jsx'
 import { useStore } from '../lib/store.jsx'
 
@@ -58,6 +59,7 @@ export default function EntryForm({ kind, row, onClose }) {
   const debtMode = f.type === 'Expense' && isDebtPayment(f.category)
   const catBase = kind === 'personal' && debtMode ? PERSONAL_DEBT_CATEGORIES : cash ? baseCats(f.type) : []
   const catOptions = cash && f.category && !catBase.includes(f.category) ? [...catBase, f.category] : catBase // dòng cũ có danh mục khác vẫn giữ khi sửa
+  const knownTags = cash ? tagCounts(data[kind]) : [] // tag đã dùng trong sổ này, bấm để gắn nhanh
   const goalOptions = data.goals.filter((g) => g.owner === f.owner)
 
   return (
@@ -145,6 +147,19 @@ export default function EntryForm({ kind, row, onClose }) {
           <div className="col-span-2"><Field label={who[1]}>{text(who[0])}</Field></div>
         </>)}
         {kind !== 'rules' && <div className="col-span-2"><Field label="Ghi chú">{text('note')}</Field></div>}
+        {cash && (
+          <div className="col-span-2">
+            <Field label="Tag (nhiều tag cách nhau bằng dấu phẩy, để phân loại / làm biểu đồ)">
+              <input className="input" placeholder="vd. du lịch, gia đình" value={f.tag ?? ''} onChange={(e) => set('tag', e.target.value)} />
+            </Field>
+            {knownTags.length > 0 && (
+              <div className="mt-1 flex flex-wrap gap-1">
+                {knownTags.slice(0, 30).map(({ tag }) => {
+                  const on = parseTags(f.tag).some((t) => t.toLowerCase() === tag.toLowerCase())
+                  return <button key={tag} type="button" onClick={() => set('tag', toggleTag(f.tag, tag))} className={`rounded-full border px-2 py-0.5 text-xs ${on ? 'border-teal-600 bg-teal-600 text-white' : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100'}`}>{tag}</button>
+                })}
+              </div>)}
+          </div>)}
         {formErr && <div className="col-span-2 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm p-2">{formErr}</div>}
         <div className="col-span-2 flex justify-end gap-2">
           <button type="button" className="btn-ghost" onClick={onClose}>Huỷ</button>

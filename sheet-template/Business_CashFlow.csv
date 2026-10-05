@@ -1,4 +1,4 @@
-id,date,type,category,amount,counterparty,note,created_by,account,ref
-b001,2026-09-08,Revenue,Dịch vụ,25000000,Khách A,Hợp đồng tư vấn,me,VCB Doanh nghiệp,
-b002,2026-09-10,Expense,Công cụ/SaaS,3000000,,Subscriptions,me,VCB Doanh nghiệp,
-b003,2026-09-15,Expense,Thuê ngoài,9000000,Freelancer B,,me,VCB Doanh nghiệp,
+id,date,type,category,amount,counterparty,note,created_by,account,ref,tag
+b001,2026-09-08,Revenue,Dịch vụ,25000000,Khách A,Hợp đồng tư vấn,me,VCB Doanh nghiệp,,
+b002,2026-09-10,Expense,Công cụ/SaaS,3000000,,Subscriptions,me,VCB Doanh nghiệp,,
+b003,2026-09-15,Expense,Thuê ngoài,9000000,Freelancer B,,me,VCB Doanh nghiệp,,

@@ -21,3 +21,14 @@ test('buildCsvRows: đọc dòng hợp lệ, bỏ dòng trùng và báo lỗi th
   assert.match(bad.errors[0], /Dòng 2/)
   assert.match(buildCsvRows('personal', 'a,b\n1,2').errors[0], /Thiếu cột/)
 })
+
+test('CSV: cột tag tuỳ chọn, chuẩn hoá nhiều tag', () => {
+  const csv = 'date,type,category,amount,account,note,tag\n2026-05-01,Expense,Need,100000,VCB,ăn trưa,"ăn ngoài, Tết, ăn ngoài"\n2026-05-02,Expense,Want,50000,VCB,cafe,\n'
+  const { rows, errors } = buildCsvRows('personal', csv, [], 'me')
+  assert.deepEqual(errors, [])
+  assert.deepEqual(rows.map((r) => r.tag), ['ăn ngoài, Tết', ''])
+  // file cũ không có cột tag vẫn nhập được
+  const old = buildCsvRows('personal', 'date,type,category,amount\n2026-05-03,Expense,Need,1000\n', [], 'me')
+  assert.equal(old.rows.length, 1)
+  assert.equal(old.rows[0].tag, '')
+})

@@ -6,7 +6,7 @@ export const PERSONAL_DEBT_CATEGORIES = ['Trả nợ BM', 'Trả nợ cá nhân'
 export const TABS = {
   personal: {
     tab: 'Personal_CashFlow',
-    columns: ['id', 'date', 'type', 'category', 'amount', 'account', 'note', 'created_by', 'ref'],
+    columns: ['id', 'date', 'type', 'category', 'amount', 'account', 'note', 'created_by', 'ref', 'tag'], // tag: nhiều tag cách nhau bởi dấu phẩy (cột cuối để Sheet cũ vẫn tương thích)
     types: ['Income', 'Expense', 'Transfer'],
     categories: {
       Income: ['Lương', 'Thưởng', 'Side project', 'Đầu tư', 'Chuyển ví', 'Khác'],
@@ -16,7 +16,7 @@ export const TABS = {
   },
   business: {
     tab: 'Business_CashFlow',
-    columns: ['id', 'date', 'type', 'category', 'amount', 'counterparty', 'note', 'created_by', 'account', 'ref'],
+    columns: ['id', 'date', 'type', 'category', 'amount', 'counterparty', 'note', 'created_by', 'account', 'ref', 'tag'],
     types: ['Revenue', 'Expense', 'Transfer'],
     categories: {
       Revenue: ['Bán hàng', 'Dịch vụ', 'Quảng cáo/Affiliate', 'Khác'],

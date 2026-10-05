@@ -10,6 +10,7 @@ import EntryForm from '../components/EntryForm.jsx'
 import FilterBar from '../components/FilterBar.jsx'
 import BankBadge from '../components/BankBadge.jsx'
 import SpendPlan from '../components/SpendPlan.jsx'
+import { parseTags } from '../lib/tags.js'
 import { buildCsvRows, CSV_HEADER } from '../lib/csvImport.js'
 
 export default function CashFlow({ kind, onImport }) {
@@ -110,14 +111,14 @@ export default function CashFlow({ kind, onImport }) {
         </div>
         {secOpen && <div className="card overflow-x-auto p-0">
           <table className="w-full text-sm">
-            <thead className="text-xs text-slate-500 text-left"><tr><th className="px-3 py-2 w-8"><input type="checkbox" aria-label="Tính cả bảng" checked={all} onChange={toggleAll} /></th>{['Ngày', 'Loại', 'Danh mục', 'Số tiền', kind === 'business' ? 'Đối tác' : 'Tài khoản', 'Ghi chú', 'Bởi', ''].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr></thead>
+            <thead className="text-xs text-slate-500 text-left"><tr><th className="px-3 py-2 w-8"><input type="checkbox" aria-label="Tính cả bảng" checked={all} onChange={toggleAll} /></th>{['Ngày', 'Loại', 'Danh mục', 'Tag', 'Số tiền', kind === 'business' ? 'Đối tác' : 'Tài khoản', 'Ghi chú', 'Bởi', ''].map((h) => <th key={h} className="px-3 py-2">{h}</th>)}</tr></thead>
             <tbody>
               {years.map((Y) => {
                 const yOpen = yearOpen(Y.y)
                 return [
                   <tr key={`y-${Y.y}`} className="border-t border-slate-200 bg-slate-100 cursor-pointer select-none hover:bg-slate-200" onClick={() => setOpen(Y.y, !yOpen)}>
                     <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}><input type="checkbox" aria-label={`Tính cả năm ${Y.y}`} checked={Y.rows.every((x) => pick.isSelected(x.id))} onChange={() => tickRows(Y.rows)} /></td>
-                    <td colSpan={4} className="px-3 py-2 font-semibold text-slate-800"><span className="inline-block w-4 text-slate-500">{yOpen ? '▾' : '▸'}</span>{Y.y ? `Năm ${Y.y}` : 'Chưa có ngày'} <span className="text-xs font-normal text-slate-500">· {Y.rows.length} giao dịch</span></td>
+                    <td colSpan={5} className="px-3 py-2 font-semibold text-slate-800"><span className="inline-block w-4 text-slate-500">{yOpen ? '▾' : '▸'}</span>{Y.y ? `Năm ${Y.y}` : 'Chưa có ngày'} <span className="text-xs font-normal text-slate-500">· {Y.rows.length} giao dịch</span></td>
                     <td colSpan={4} className={`px-3 py-2 text-right font-semibold ${g.tone}`}>{sumLabel(g.key, Y.rows)}</td>
                   </tr>,
                   ...(yOpen ? Y.months.flatMap((M) => {
@@ -125,7 +126,7 @@ export default function CashFlow({ kind, onImport }) {
                     return [
                       <tr key={`h-${M.ym}`} className="border-t border-slate-100 bg-slate-50 cursor-pointer select-none hover:bg-slate-100" onClick={() => setOpen(M.ym, !mOpen)}>
                         <td className="px-3 py-1.5" onClick={(e) => e.stopPropagation()}><input type="checkbox" aria-label={`Tính cả ${monthLabel(M.ym)}`} checked={M.rows.every((x) => pick.isSelected(x.id))} onChange={() => tickRows(M.rows)} /></td>
-                        <td colSpan={4} className="px-3 py-1.5 pl-8 font-medium text-slate-700"><span className="inline-block w-4 text-slate-400">{mOpen ? '▾' : '▸'}</span>{monthLabel(M.ym)} <span className="text-xs font-normal text-slate-400">· {M.rows.length} giao dịch</span></td>
+                        <td colSpan={5} className="px-3 py-1.5 pl-8 font-medium text-slate-700"><span className="inline-block w-4 text-slate-400">{mOpen ? '▾' : '▸'}</span>{monthLabel(M.ym)} <span className="text-xs font-normal text-slate-400">· {M.rows.length} giao dịch</span></td>
                         <td colSpan={4} className={`px-3 py-1.5 text-right font-medium ${g.tone}`}>{sumLabel(g.key, M.rows)}</td>
                       </tr>,
                     mOpen && M.rows.map((r) => (
@@ -134,6 +135,7 @@ export default function CashFlow({ kind, onImport }) {
                         <td className="px-3 py-1.5 whitespace-nowrap">{r.date}</td>
                         <td className="px-3 py-1.5">{isTransfer(r) ? 'Chuyển nội bộ' : r.type}</td>
                         <td className="px-3 py-1.5">{r.category}</td>
+                        <td className="px-3 py-1.5"><div className="flex flex-wrap gap-1">{parseTags(r.tag).map((t) => <span key={t} className="rounded-full bg-teal-100 px-2 py-0.5 text-xs text-teal-800">{t}</span>)}</div></td>
                         <td className={`px-3 py-1.5 text-right whitespace-nowrap ${isTransfer(r) ? 'text-slate-400' : isInflow(r) ? 'text-emerald-600' : 'text-red-600'}`}>{isTransfer(r) ? '↔' : isInflow(r) ? '+' : '−'}{money(r.amount)}</td>
                         <td className="px-3 py-1.5">{r.account ?? r.counterparty}</td>
                         <td className="px-3 py-1.5 text-slate-500">{r.note}</td>
@@ -149,7 +151,7 @@ export default function CashFlow({ kind, onImport }) {
                   }) : []),
                 ]
               })}
-              {!g.rows.length && <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-400">Chưa có dữ liệu</td></tr>}
+              {!g.rows.length && <tr><td colSpan={10} className="px-3 py-6 text-center text-slate-400">Chưa có dữ liệu</td></tr>}
             </tbody>
           </table>
         </div>}
