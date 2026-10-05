@@ -160,7 +160,7 @@ export default function CashFlow({ kind, onImport }) {
   return (
     <div className="space-y-4">
       {data._missing?.includes(kind) && <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm p-2">Sheet chưa có tab {TABS[kind].tab}. Chạy lại <code>setup.gs</code> (không xoá dữ liệu cũ) hoặc tạo tab đúng tên để lưu dữ liệu.</div>}
-      <FilterBar action={<div className="flex gap-2"><button className="btn-ghost" onClick={onImport}>Nhập sao kê</button><button className="btn-ghost" title={`File CSV, hàng đầu: ${CSV_HEADER.join(',')}`} onClick={() => csvRef.current?.click()}>Nhập CSV</button><input ref={csvRef} type="file" accept=".csv,text/csv" className="hidden" onChange={onCsv} /><button className="btn" onClick={() => setEditing({})}>+ Thêm giao dịch</button></div>} />
+      <FilterBar rows={rows} action={<div className="flex gap-2"><button className="btn-ghost" onClick={onImport}>Nhập sao kê</button><button className="btn-ghost" title={`File CSV, hàng đầu: ${CSV_HEADER.join(',')}`} onClick={() => csvRef.current?.click()}>Nhập CSV</button><input ref={csvRef} type="file" accept=".csv,text/csv" className="hidden" onChange={onCsv} /><button className="btn" onClick={() => setEditing({})}>+ Thêm giao dịch</button></div>} />
       <section className="space-y-2">
         <div className="flex cursor-pointer select-none items-center justify-between gap-2 rounded-lg px-1 py-1 hover:bg-slate-100" onClick={() => setCardsOpen((v) => !v)}>
           <h3 className="flex items-center gap-2 font-semibold text-slate-700">

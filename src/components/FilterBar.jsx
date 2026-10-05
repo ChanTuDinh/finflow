@@ -8,15 +8,16 @@ import { SelectField, Segmented, FilterRow } from './ui.jsx'
 const MONTHS = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'))
 
 // Thanh bộ lọc dùng chung: [điều khiển riêng của tab] Năm · Quý · Tháng · (Xem theo).
-// Chọn Năm/Quý/Tháng để lọc kỳ; "Xem theo" là đơn vị gom nhóm trong kỳ (chỉ tab có biểu đồ).
-export default function FilterBar({ lead, action, grain: showGrain = false }) {
+// rows (tuỳ chọn): chỉ liệt kê các năm có dữ liệu trong rows (mặc định: cả ba ví). Chọn Năm/Quý/Tháng để lọc kỳ; "Xem theo" là đơn vị gom nhóm trong kỳ (chỉ tab có biểu đồ).
+export default function FilterBar({ lead, action, grain: showGrain = false, rows }) {
   const { period, setPeriod, grain, setGrain } = usePeriod()
   const { data } = useStore()
   const years = useMemo(() => {
-    const ys = new Set(dataYears(data.personal, data.business, data.bm))
+    const ys = new Set(rows ? dataYears(rows) : dataYears(data.personal, data.business, data.bm))
     ys.add(Number(new Date().toISOString().slice(0, 4)))
+    if (period.level !== 'all') ys.add(Number(period.key.slice(0, 4))) // năm đang chọn luôn có trong danh sách
     return [...ys].sort((a, b) => b - a)
-  }, [data])
+  }, [data, rows, period])
 
   const isAll = period.level === 'all'
   const year = isAll ? 'all' : period.key.slice(0, 4)
