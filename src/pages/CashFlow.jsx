@@ -61,7 +61,12 @@ export default function CashFlow({ kind, onImport }) {
   const vTag = fTag === NO_TAG ? (hasUntagged ? NO_TAG : '') : tagOpts.some((x) => x.tag === fTag) ? fTag : ''
   const filtered = !!(vCat || vType || vTag)
   const shown = vTag ? byCat.filter((r) => (vTag === NO_TAG ? !parseTags(r.tag).length : hasTag(r, vTag))) : byCat
-  const t = totals(counted)
+  // Trả nợ tách riêng khỏi Chi: thẻ Chi không gồm khoản trả nợ, thẻ Trả nợ có riêng; Dòng tiền ròng = Thu − Chi − Trả nợ (tiền thật ra / vào)
+  const isDebt = (r) => !isInflow(r) && !isTransfer(r) && isDebtPayment(r.category)
+  const debtCounted = counted.filter(isDebt)
+  const debtTotal = debtCounted.reduce((a, r) => a + r.amount, 0)
+  const t0 = totals(counted.filter((r) => !isDebt(r)))
+  const t = { ...t0, net: t0.income - t0.expense - debtTotal }
   const delUnticked = async () => { if (confirm(`Xoá ${unticked.length} giao dịch đang bỏ tick?\n\nKhông thể hoàn tác.`)) await removeMany(kind, unticked) }
   // Thẻ tổng có nền màu theo tab: Ví cá nhân xanh ngọc, Ví BM (ba mẹ) tím
   const tint = { personal: 'teal', bm: 'violet' }[kind] || ''
@@ -72,7 +77,6 @@ export default function CashFlow({ kind, onImport }) {
 
   const isWalletMove = (r) => !isTransfer(r) && r.category === WALLET_MOVE_CATEGORY
   const isFund = (r) => !isTransfer(r) && r.category === BM_FUND_CATEGORY
-  const isDebt = (r) => !isInflow(r) && !isTransfer(r) && isDebtPayment(r.category)
   const debtOf = (c) => shown.filter((r) => isDebt(r) && r.category === c)
   // Chỉ Ví cá nhân tách Trả nợ BM / Trả nợ cá nhân; Ví BM và Doanh nghiệp giữ một bảng Trả nợ
   const split = kind === 'personal'
@@ -208,12 +212,13 @@ export default function CashFlow({ kind, onImport }) {
       </section>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Stat tinted={tint} className={statCls} label={inLabel} value={money(t.income)} />
-        <Stat tinted={tint} className={statCls} label="Chi" value={money(t.expense)} tone="neg" />
+        <Stat tinted={tint} className={statCls} label="Chi" value={money(t.expense)} tone="neg" sub="Không gồm Trả nợ" />
         <Stat tinted={tint} className={statCls} label="Dòng tiền ròng" value={money(t.net)} tone={t.net < 0 ? 'neg' : 'pos'} />
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Stat tinted={tint} className={statCls} label={`${inLabel} / tháng`} value={money(perMonth(t.income))} sub={nMonths ? `Trung bình trong ${nMonths} tháng` : 'Chưa có dữ liệu'} />
         <Stat tinted={tint} className={statCls} label="Chi / tháng" tone="neg" value={money(perMonth(t.expense))} sub={nMonths ? `Trung bình trong ${nMonths} tháng` : 'Chưa có dữ liệu'} />
+        <Stat tinted={tint} className={statCls} label="Trả nợ" tone="neg" value={money(debtTotal)} sub={debtCounted.length ? `${debtCounted.length} khoản · TB ${money(perMonth(debtTotal))}/tháng · tách riêng khỏi Chi` : 'Chưa có khoản trả nợ'} />
       </div>
       {unticked.length > 0 && (
         <div className="flex flex-wrap items-center gap-3 rounded-lg bg-slate-100 px-3 py-2 text-sm">
