@@ -44,6 +44,11 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
   const planTotal = Object.values(planAmt).reduce((a, b) => a + b, 0)
   const actSlices = [...BUCKETS.filter((b) => act.per[b.key] > 0).map((b) => ({ key: b.key, name: b.name, color: b.color, amount: act.per[b.key] })), ...(act.unassigned > 0 ? [{ key: '__un', name: 'Chưa phân quỹ', color: '#b6c0cc', amount: act.unassigned }] : [])]
     .map((x) => ({ ...x, pct: act.total > 0 ? x.amount / act.total : 0 }))
+  const actMonths = shown.map((r) => actualByFund(actualRows, { years, year: r.month.slice(0, 4), month: r.month.slice(5) })) // thực tế từng tháng đang hiển thị (cùng thứ tự `shown`)
+  const actSum = (f) => actMonths.reduce((a, x) => a + f(x), 0)
+  const planShownTotal = shown.reduce((a, r) => a + r.total, 0)
+  const hasUnassignedMonths = actMonths.some((x) => x.unassigned > 0)
+  const dash = (v) => (v ? money(v) : '–')
   const periodLabel = `${year === 'all' ? 'tất cả năm' : year}${month !== 'all' ? ` · tháng ${Number(month)}` : ''}${ytd ? ` · tính đến T${Number(todayYm.slice(5))}/${todayYm.slice(0, 4)}` : ''}`
   const diff = (a, b) => `${a - b >= 0 ? '+' : '−'}${Math.abs((a - b) * 100).toFixed(1)}`
   const patch = (p) => setSettings((s) => ({ ...s, spendPlan: { ...(s.spendPlan || {}), ...p } }))
@@ -222,6 +227,33 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
                           <td className="sticky left-0 z-[1] w-32 min-w-[8rem] bg-teal-100 py-1 pr-4">Tổng</td>
                           <td className="sticky left-32 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100 px-3 text-right">{money(shown.reduce((a, r) => a + r.total, 0))}</td>
                           {shown.map((r) => <td key={r.month} className="px-3 text-right">{money(r.total)}</td>)}
+                        </tr>
+                        <tr className="border-t-2 border-teal-500">
+                          <td className="sticky left-0 z-[1] w-32 min-w-[8rem] bg-teal-100 py-1 pr-4 font-semibold text-slate-900">Thực tế chi</td>
+                          <td className="sticky left-32 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100" />
+                          <td colSpan={shown.length} className="px-3 text-xs text-slate-700">Chi thật theo danh mục quỹ (không gồm Trả nợ, Chuyển ví)</td>
+                        </tr>
+                        {BUCKETS.map((b) => (
+                          <tr key={`a-${b.key}`} className="border-t border-teal-200">
+                            <td className="sticky left-0 z-[1] w-32 min-w-[8rem] bg-teal-100 py-1 pr-4 font-medium"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ background: b.color }} />{b.name}</td>
+                            <td className="sticky left-32 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100 px-3 text-right font-semibold">{dash(actSum((x) => x.per[b.key]))}</td>
+                            {actMonths.map((x, i) => <td key={shown[i].month} className="px-3 text-right">{dash(x.per[b.key])}</td>)}
+                          </tr>))}
+                        {hasUnassignedMonths && (
+                          <tr className="border-t border-teal-200 text-slate-700">
+                            <td className="sticky left-0 z-[1] w-32 min-w-[8rem] bg-teal-100 py-1 pr-4"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ background: '#b6c0cc' }} />Chưa phân quỹ</td>
+                            <td className="sticky left-32 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100 px-3 text-right font-semibold">{dash(actSum((x) => x.unassigned))}</td>
+                            {actMonths.map((x, i) => <td key={shown[i].month} className="px-3 text-right">{dash(x.unassigned)}</td>)}
+                          </tr>)}
+                        <tr className="border-t border-teal-400 font-semibold">
+                          <td className="sticky left-0 z-[1] w-32 min-w-[8rem] bg-teal-100 py-1 pr-4">Tổng thực tế</td>
+                          <td className="sticky left-32 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100 px-3 text-right">{money(actSum((x) => x.total))}</td>
+                          {actMonths.map((x, i) => <td key={shown[i].month} className="px-3 text-right">{money(x.total)}</td>)}
+                        </tr>
+                        <tr className="border-t border-teal-400 font-semibold" title="Kế hoạch trừ thực tế: dương = còn trong ngân sách, âm = vượt kế hoạch">
+                          <td className="sticky left-0 z-[1] w-32 min-w-[8rem] bg-teal-100 py-1 pr-4">KH − TT</td>
+                          {(() => { const d = planShownTotal - actSum((x) => x.total); return <td className={`sticky left-32 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100 px-3 text-right ${d < 0 ? 'text-red-700' : 'text-emerald-800'}`}>{d > 0 ? '+' : ''}{money(d)}</td> })()}
+                          {actMonths.map((x, i) => { const d = shown[i].total - x.total; return <td key={shown[i].month} className={`px-3 text-right ${d < 0 ? 'text-red-700' : 'text-emerald-800'}`}>{d > 0 ? '+' : ''}{money(d)}</td> })}
                         </tr>
                       </tbody>
                     </table>
