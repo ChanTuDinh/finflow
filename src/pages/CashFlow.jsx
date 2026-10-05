@@ -41,25 +41,24 @@ export default function CashFlow({ kind, onImport }) {
   const periodRows = rows.filter((r) => inPeriod(period, r.date)).sort((a, b) => b.date.localeCompare(a.date))
   const counted = periodRows.filter((r) => pick.isSelected(r.id))
   const unticked = periodRows.filter((r) => !pick.isSelected(r.id))
-  // Bộ lọc Danh mục / Loại / Tag chỉ lọc các bảng giao dịch bên dưới (thẻ tổng vẫn theo kỳ + ô tick). '' = tất cả; NO_TAG = chưa gắn tag
+  // Bộ lọc Loại / Danh mục / Tag chỉ lọc các bảng giao dịch bên dưới (thẻ tổng vẫn theo kỳ + ô tick). '' = tất cả; NO_TAG = chưa gắn tag
   const NO_TAG = '__none'
   const [fCat, setFCat] = useState('')
   const [fType, setFType] = useState('')
   const [fTag, setFTag] = useState('')
-  const catOpts = [...new Set(periodRows.map((r) => r.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi'))
+  // Lọc theo thứ tự Loại → Danh mục → Tag: danh sách Danh mục chỉ gồm loại đang chọn, danh sách Tag chỉ gồm loại + danh mục đang chọn
+  const hasTag = (r, tag) => parseTags(r.tag).some((x) => x.toLowerCase() === tag.toLowerCase())
   const typeOpts = [...new Set(periodRows.map((r) => r.type).filter(Boolean))]
-  const tagOpts = tagCounts(periodRows)
-  const hasUntagged = periodRows.some((r) => !parseTags(r.tag).length)
-  const vCat = catOpts.includes(fCat) ? fCat : '' // lựa chọn không còn tồn tại (đổi kỳ / xoá dòng) -> về Tất cả
-  const vType = typeOpts.includes(fType) ? fType : ''
+  const vType = typeOpts.includes(fType) ? fType : '' // lựa chọn không còn tồn tại (đổi kỳ / xoá dòng) -> về Tất cả
+  const byType = vType ? periodRows.filter((r) => r.type === vType) : periodRows
+  const catOpts = [...new Set(byType.map((r) => r.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi'))
+  const vCat = catOpts.includes(fCat) ? fCat : ''
+  const byCat = vCat ? byType.filter((r) => r.category === vCat) : byType
+  const tagOpts = tagCounts(byCat)
+  const hasUntagged = byCat.some((r) => !parseTags(r.tag).length)
   const vTag = fTag === NO_TAG ? (hasUntagged ? NO_TAG : '') : tagOpts.some((x) => x.tag === fTag) ? fTag : ''
   const filtered = !!(vCat || vType || vTag)
-  const shown = filtered ? periodRows.filter((r) => {
-    if (vCat && r.category !== vCat) return false
-    if (vType && r.type !== vType) return false
-    if (vTag) { const tg = parseTags(r.tag); if (vTag === NO_TAG ? tg.length : !tg.some((x) => x.toLowerCase() === vTag.toLowerCase())) return false }
-    return true
-  }) : periodRows
+  const shown = vTag ? byCat.filter((r) => (vTag === NO_TAG ? !parseTags(r.tag).length : hasTag(r, vTag))) : byCat
   const t = totals(counted)
   const delUnticked = async () => { if (confirm(`Xoá ${unticked.length} giao dịch đang bỏ tick?\n\nKhông thể hoàn tác.`)) await removeMany(kind, unticked) }
   // Thẻ tổng có nền màu theo tab: Ví cá nhân xanh ngọc, Ví BM (ba mẹ) tím
@@ -222,8 +221,8 @@ export default function CashFlow({ kind, onImport }) {
         </div>)}
       <div className="rounded-lg bg-slate-100 px-3 pt-2">
         <FilterRow>
-          <SelectField label="Danh mục" value={vCat} onChange={setFCat} options={[{ value: '', label: 'Tất cả danh mục' }, ...catOpts.map((c) => ({ value: c, label: c }))]} />
           <SelectField label="Loại" value={vType} onChange={setFType} options={[{ value: '', label: 'Tất cả loại' }, ...typeOpts.map((t) => ({ value: t, label: t }))]} />
+          <SelectField label="Danh mục" value={vCat} onChange={setFCat} options={[{ value: '', label: 'Tất cả danh mục' }, ...catOpts.map((c) => ({ value: c, label: c }))]} />
           <SelectField label="Tag" value={vTag} onChange={setFTag} options={[{ value: '', label: 'Tất cả tag' }, ...tagOpts.map((x) => ({ value: x.tag, label: `${x.tag} (${x.count})` })), ...(hasUntagged ? [{ value: NO_TAG, label: 'Chưa gắn tag' }] : [])]} />
           {filtered && <div className="flex items-center gap-3 pb-1.5 text-sm"><span className="text-slate-600">Hiển thị <b>{shown.length}</b>/{periodRows.length} giao dịch</span><button className="text-blue-600 underline" onClick={() => { setFCat(''); setFType(''); setFTag('') }}>Xoá bộ lọc</button></div>}
         </FilterRow>
