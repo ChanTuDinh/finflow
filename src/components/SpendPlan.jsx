@@ -20,9 +20,14 @@ export default function SpendPlan({ actualMonthly = 0 }) {
   const plan = buildPlan(incomeOf, pcts, `${curYear}-01`, YEARS_AHEAD * 12) // theo năm dương lịch: mỗi năm đủ 12 tháng (T1–T12)
   const years = [...new Set(plan.months.map((r) => r.month.slice(0, 4)))]
   const year = years.includes(fYear) ? fYear : 'all' // năm không còn trong danh sách -> về Tất cả
-  const refYear = year === 'all' ? years[0] : year // năm dùng cho bảng quỹ và biểu đồ
-  const income = incomeOf(refYear)
-  const per = allocate(income, pcts)
+  // Một năm: số của năm đó. "Tất cả năm": trung bình cộng các năm đã nhập thu nhập (năm chưa nhập không kéo số xuống).
+  const activeYears = years.filter((y) => incomeOf(y) > 0)
+  const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0)
+  const income = year === 'all' ? Math.round(mean(activeYears.map(incomeOf))) : incomeOf(year)
+  const per = year === 'all'
+    ? Object.fromEntries(BUCKETS.map((b) => [b.key, Math.round(mean(activeYears.map((y) => allocate(incomeOf(y), pcts)[b.key])))]))
+    : allocate(income, pcts)
+  const refLabel = year === 'all' ? `trung bình ${activeYears.length} năm` : year
   const perTotal = Object.values(per).reduce((a, b) => a + b, 0)
   const slices = BUCKETS.filter((b) => pcts[b.key] > 0).map((b) => ({ ...b, value: pcts[b.key] / (total || 1) * 100, amount: per[b.key] }))
   const inYear = plan.months.filter((r) => year === 'all' || r.month.startsWith(year))
@@ -57,14 +62,28 @@ export default function SpendPlan({ actualMonthly = 0 }) {
         <SelectField label="Tháng" value={month} onChange={setFMonth} options={[{ value: 'all', label: 'Cả năm' }, ...monthNums.map((m) => ({ value: m, label: `Tháng ${Number(m)}` }))]} />
       </FilterRow>
       <div className="space-y-4">
-          {(year === 'all' ? years : [year]).map(incomeRow)}
-          <div className="text-xs text-slate-700 flex flex-wrap items-center gap-2">
-            Thu nhập nhập riêng cho từng năm (năm = tháng × 12). {year === 'all' ? 'Chọn một năm ở bộ lọc để chỉ nhập năm đó.' : ''}
-            {actualMonthly > 0 && <button className="text-blue-600" onClick={() => setIncome(refYear, actualMonthly)}>Lấy từ dữ liệu thực tế cho {refYear}: {money(actualMonthly)}/tháng</button>}
-          </div>
+          {year === 'all'
+            ? <div className="space-y-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className="text-sm">Thu nhập trung bình / tháng — {refLabel}
+                    <input className="input mt-1 !bg-teal-50" readOnly value={income || ''} placeholder="0" />
+                  </label>
+                  <label className="text-sm">Thu nhập trung bình / năm — {refLabel}
+                    <input className="input mt-1 !bg-teal-50" readOnly value={income ? income * 12 : ''} placeholder="0" />
+                  </label>
+                </div>
+                <div className="text-xs text-slate-700">{activeYears.length ? `Trung bình cộng của các năm đã nhập (${activeYears.join(', ')}).` : 'Chưa năm nào có thu nhập dự kiến.'} Chọn một năm ở bộ lọc để nhập thu nhập năm đó.</div>
+              </div>
+            : <>
+                {incomeRow(year)}
+                <div className="text-xs text-slate-700 flex flex-wrap items-center gap-2">
+                  Thu nhập nhập riêng cho từng năm (năm = tháng × 12).
+                  {actualMonthly > 0 && <button className="text-blue-600" onClick={() => setIncome(year, actualMonthly)}>Lấy từ dữ liệu thực tế cho {year}: {money(actualMonthly)}/tháng</button>}
+                </div>
+              </>}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="text-left text-slate-700"><tr><th className="py-1 pr-3">TT</th><th className="pr-3">Quỹ</th><th className="pr-3">% đề xuất</th><th className="pr-3 text-right">/ tháng ({refYear})</th><th className="text-right">/ năm ({refYear})</th></tr></thead>
+              <thead className="text-left text-slate-700"><tr><th className="py-1 pr-3">TT</th><th className="pr-3">Quỹ</th><th className="pr-3">% đề xuất</th><th className="pr-3 text-right">/ tháng ({refLabel})</th><th className="text-right">/ năm ({refLabel})</th></tr></thead>
               <tbody>
                 {BUCKETS.map((b, i) => (
                   <tr key={b.key} className="border-t border-teal-200">
@@ -88,7 +107,7 @@ export default function SpendPlan({ actualMonthly = 0 }) {
             ? <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                   <div>
-                    <div className="text-sm font-medium text-slate-700 mb-1">Cơ cấu phân bổ (%) — {refYear}</div>
+                    <div className="text-sm font-medium text-slate-700 mb-1">Cơ cấu phân bổ (%) — {refLabel}</div>
                     <Chart height={260}>
                       <PieChart margin={{ top: 16, right: 40, bottom: 16, left: 40 }}>
                         <Pie data={slices} dataKey="value" nameKey="name" innerRadius={44} outerRadius={80} paddingAngle={2} stroke="#ccfbf1" strokeWidth={2}
