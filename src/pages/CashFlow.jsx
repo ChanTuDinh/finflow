@@ -48,9 +48,11 @@ export default function CashFlow({ kind, onImport }) {
   const [fTag, setFTag] = useState('')
   // Lọc theo thứ tự Loại → Danh mục → Tag: danh sách Danh mục chỉ gồm loại đang chọn, danh sách Tag chỉ gồm loại + danh mục đang chọn
   const hasTag = (r, tag) => parseTags(r.tag).some((x) => x.toLowerCase() === tag.toLowerCase())
-  const typeOpts = [...new Set(periodRows.map((r) => r.type).filter(Boolean))]
+  // Loại hiển thị: khoản trả nợ lưu là Expense + danh mục trả nợ (để forecast nhận ra) nhưng hiện / lọc là "Trả nợ", như Loại trong form
+  const rowType = (r) => (isTransfer(r) ? 'Chuyển nội bộ' : !isInflow(r) && isDebtPayment(r.category) ? 'Trả nợ' : r.type)
+  const typeOpts = [...new Set(periodRows.map(rowType).filter(Boolean))]
   const vType = typeOpts.includes(fType) ? fType : '' // lựa chọn không còn tồn tại (đổi kỳ / xoá dòng) -> về Tất cả
-  const byType = vType ? periodRows.filter((r) => r.type === vType) : periodRows
+  const byType = vType ? periodRows.filter((r) => rowType(r) === vType) : periodRows
   const catOpts = [...new Set(byType.map((r) => r.category).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi'))
   const vCat = catOpts.includes(fCat) ? fCat : ''
   const byCat = vCat ? byType.filter((r) => r.category === vCat) : byType
@@ -152,7 +154,7 @@ export default function CashFlow({ kind, onImport }) {
                       <tr key={r.id} className={`border-t border-slate-100 ${pick.isSelected(r.id) ? '' : 'opacity-50'}`}>
                         <td className="px-3 py-1.5"><input type="checkbox" aria-label="Tính dòng này" checked={pick.isSelected(r.id)} onChange={() => pick.toggle(r.id)} /></td>
                         <td className="px-3 py-1.5 whitespace-nowrap">{r.date}</td>
-                        <td className="px-3 py-1.5">{isTransfer(r) ? 'Chuyển nội bộ' : r.type}</td>
+                        <td className="px-3 py-1.5">{rowType(r)}</td>
                         <td className="px-3 py-1.5">{r.category}</td>
                         <td className="px-3 py-1.5"><div className="flex flex-wrap gap-1">{parseTags(r.tag).map((t) => <span key={t} className="rounded-full bg-teal-100 px-2 py-0.5 text-xs text-teal-800">{t}</span>)}</div></td>
                         <td className={`px-3 py-1.5 text-right whitespace-nowrap ${isTransfer(r) ? 'text-slate-400' : isInflow(r) ? 'text-emerald-600' : 'text-red-600'}`}>{isTransfer(r) ? '↔' : isInflow(r) ? '+' : '−'}{money(r.amount)}</td>
