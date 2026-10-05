@@ -101,17 +101,28 @@ export default function SpendPlan({ actualMonthly = 0 }) {
                         </button>))}
                     </div>
                   </div>
-                  <div className="overflow-auto max-h-[28rem]">
+                  <div className="overflow-x-auto">
                     <table className="w-full text-sm whitespace-nowrap">
-                      <thead className="text-left text-slate-500 sticky top-0 bg-white"><tr><th className="py-1 pr-3">Tháng</th>{BUCKETS.map((b) => <th key={b.key} className="pr-3 text-right">{b.name}</th>)}<th className="pr-3 text-right">Tổng</th><th className="text-right">Lũy kế</th></tr></thead>
+                      <thead className="text-slate-500">
+                        <tr>
+                          <th className="sticky left-0 z-[1] bg-white py-1 pr-4 text-left">Quỹ</th>
+                          {plan.months.map((r) => <th key={r.month} className="px-3 text-right font-semibold">{r.month.slice(5)}/{r.month.slice(0, 4)}</th>)}
+                        </tr>
+                      </thead>
                       <tbody>
-                        {plan.months.map((r) => (
-                          <tr key={r.month} className="border-t border-slate-100">
-                            <td className="py-1 pr-3">{r.month.slice(5)}/{r.month.slice(0, 4)}</td>
-                            {BUCKETS.map((b) => <td key={b.key} className="pr-3 text-right">{money(r.amounts[b.key])}</td>)}
-                            <td className="pr-3 text-right font-medium">{money(r.total)}</td>
-                            <td className="text-right text-slate-600">{money(r.cumulative)}</td>
+                        {BUCKETS.map((b) => (
+                          <tr key={b.key} className="border-t border-slate-100">
+                            <td className="sticky left-0 z-[1] bg-white py-1 pr-4 font-medium"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ background: b.color }} />{b.name}</td>
+                            {plan.months.map((r) => <td key={r.month} className="px-3 text-right">{money(r.amounts[b.key])}</td>)}
                           </tr>))}
+                        <tr className="border-t border-slate-300 font-semibold">
+                          <td className="sticky left-0 z-[1] bg-white py-1 pr-4">Tổng</td>
+                          {plan.months.map((r) => <td key={r.month} className="px-3 text-right">{money(r.total)}</td>)}
+                        </tr>
+                        <tr className="border-t border-slate-100 text-slate-600">
+                          <td className="sticky left-0 z-[1] bg-white py-1 pr-4">Lũy kế</td>
+                          {plan.months.map((r) => <td key={r.month} className="px-3 text-right">{money(r.cumulative)}</td>)}
+                        </tr>
                       </tbody>
                     </table>
                   </div>
