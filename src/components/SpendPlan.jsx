@@ -153,11 +153,6 @@ export default function SpendPlan({ actualMonthly = 0 }) {
                           {shown.map((r) => <td key={r.month} className="px-3 text-right">{money(r.total)}</td>)}
                           <td className="pl-4 text-right">{money(shown.reduce((a, r) => a + r.total, 0))}</td>
                         </tr>
-                        <tr className="border-t border-teal-200 text-slate-600">
-                          <td className="sticky left-0 z-[1] bg-teal-100 py-1 pr-4">Lũy kế</td>
-                          {shown.map((r) => <td key={r.month} className="px-3 text-right">{money(r.cumulative)}</td>)}
-                          <td />
-                        </tr>
                       </tbody>
                     </table>
                   </div>
