@@ -2,15 +2,16 @@ import { useState } from 'react'
 import { useStore } from '../lib/store.jsx'
 import { Cell, Pie, PieChart, Tooltip } from 'recharts'
 import { BUCKETS, HORIZONS, resolveHorizon, resolvePcts, sumPcts, buildPlan } from '../lib/spendPlan.js'
-import { Chart } from './ui.jsx'
+import { Chart, SelectField, FilterRow } from './ui.jsx'
 import { todayIso } from '../lib/format.js'
 
 const num = (v) => (v === '' ? 0 : Number(String(v).replace(/[^\d.]/g, '')) || 0)
 
-/** Chi tiêu cá nhân forecast (cuối trang Ví cá nhân): nhập thu nhập trung bình, chia theo tỷ lệ từng quỹ, ra bảng 12 tháng. */
+/** Board 2 (cuối trang Ví cá nhân): Chi tiêu cá nhân forecast, có bộ lọc Năm / Tháng riêng, tách khỏi bộ lọc kỳ của board 1. */
 export default function SpendPlan({ actualMonthly = 0 }) {
   const { settings, setSettings, money } = useStore()
-  const [open, setOpen] = useState(false)
+  const [fYear, setFYear] = useState('all') // bộ lọc riêng của board forecast
+  const [fMonth, setFMonth] = useState('all')
   const saved = settings.spendPlan || {}
   const income = Number(saved.monthlyIncome) || 0
   const pcts = resolvePcts(saved.pcts)
@@ -18,19 +19,23 @@ export default function SpendPlan({ actualMonthly = 0 }) {
   const horizon = resolveHorizon(saved.horizon)
   const plan = buildPlan(income, pcts, todayIso().slice(0, 7), horizon)
   const slices = BUCKETS.filter((b) => pcts[b.key] > 0).map((b) => ({ ...b, value: pcts[b.key] / (total || 1) * 100, amount: plan.per[b.key] }))
+  const years = [...new Set(plan.months.map((r) => r.month.slice(0, 4)))]
+  const year = years.includes(fYear) ? fYear : 'all' // đổi horizon làm mất năm đang chọn -> về Tất cả
+  const inYear = plan.months.filter((r) => year === 'all' || r.month.startsWith(year))
+  const monthNums = [...new Set(inYear.map((r) => r.month.slice(5)))].sort()
+  const month = monthNums.includes(fMonth) ? fMonth : 'all'
+  const shown = inYear.filter((r) => month === 'all' || r.month.endsWith(`-${month}`))
   const patch = (p) => setSettings((s) => ({ ...s, spendPlan: { ...(s.spendPlan || {}), ...p } }))
   const setPct = (key, v) => patch({ pcts: { ...pcts, [key]: v === '' ? 0 : Math.max(0, Number(v) || 0) } })
 
   return (
-    <section className="space-y-2">
-      <div className="flex cursor-pointer select-none items-center justify-between gap-2 rounded-lg px-1 py-1 hover:bg-slate-100" onClick={() => setOpen((v) => !v)}>
-        <h3 className="flex items-center gap-2 font-semibold text-slate-700">
-          <span className="inline-block w-4 text-slate-400">{open ? '▾' : '▸'}</span>📊 Chi tiêu cá nhân forecast
-          {!open && income > 0 && <span className="text-xs font-normal text-slate-400">Thu nhập {money(income)}/tháng · Need {money(plan.per.need)}/tháng</span>}
-        </h3>
-      </div>
-      {open && (
-        <div className="card space-y-4">
+    <section className="space-y-3 border-t-2 border-teal-600 pt-4">
+      <h3 className="font-semibold text-slate-700">📊 Chi tiêu cá nhân forecast <span className="text-xs font-normal text-slate-400">Board 2 — bộ lọc riêng, không theo Năm / Quý / Tháng phía trên</span></h3>
+      <FilterRow>
+        <SelectField label="Năm" value={year} onChange={(v) => { setFYear(v); setFMonth('all') }} options={[{ value: 'all', label: 'Tất cả năm' }, ...years.map((y) => ({ value: y, label: y }))]} />
+        <SelectField label="Tháng" value={month} onChange={setFMonth} options={[{ value: 'all', label: 'Cả năm' }, ...monthNums.map((m) => ({ value: m, label: `Tháng ${Number(m)}` }))]} />
+      </FilterRow>
+      <div className="card space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label className="text-sm">Thu nhập trung bình / tháng
               <input className="input mt-1" inputMode="numeric" value={income || ''} placeholder="0" onChange={(e) => patch({ monthlyIncome: num(e.target.value) })} />
@@ -92,7 +97,7 @@ export default function SpendPlan({ actualMonthly = 0 }) {
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
-                    <div className="text-sm font-medium text-slate-700">Timeline theo tháng — {horizon} tháng tới</div>
+                    <div className="text-sm font-medium text-slate-700">Timeline theo tháng — {shown.length}/{horizon} tháng</div>
                     <div className="flex items-center gap-1 text-sm">
                       <span className="text-slate-500 mr-1">Horizon:</span>
                       {HORIZONS.map((h) => (
@@ -106,22 +111,22 @@ export default function SpendPlan({ actualMonthly = 0 }) {
                       <thead className="text-slate-500">
                         <tr>
                           <th className="sticky left-0 z-[1] bg-white py-1 pr-4 text-left">Quỹ</th>
-                          {plan.months.map((r) => <th key={r.month} className="px-3 text-right font-semibold">{r.month.slice(5)}/{r.month.slice(0, 4)}</th>)}
+                          {shown.map((r) => <th key={r.month} className="px-3 text-right font-semibold">{r.month.slice(5)}/{r.month.slice(0, 4)}</th>)}
                         </tr>
                       </thead>
                       <tbody>
                         {BUCKETS.map((b) => (
                           <tr key={b.key} className="border-t border-slate-100">
                             <td className="sticky left-0 z-[1] bg-white py-1 pr-4 font-medium"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ background: b.color }} />{b.name}</td>
-                            {plan.months.map((r) => <td key={r.month} className="px-3 text-right">{money(r.amounts[b.key])}</td>)}
+                            {shown.map((r) => <td key={r.month} className="px-3 text-right">{money(r.amounts[b.key])}</td>)}
                           </tr>))}
                         <tr className="border-t border-slate-300 font-semibold">
                           <td className="sticky left-0 z-[1] bg-white py-1 pr-4">Tổng</td>
-                          {plan.months.map((r) => <td key={r.month} className="px-3 text-right">{money(r.total)}</td>)}
+                          {shown.map((r) => <td key={r.month} className="px-3 text-right">{money(r.total)}</td>)}
                         </tr>
                         <tr className="border-t border-slate-100 text-slate-600">
                           <td className="sticky left-0 z-[1] bg-white py-1 pr-4">Lũy kế</td>
-                          {plan.months.map((r) => <td key={r.month} className="px-3 text-right">{money(r.cumulative)}</td>)}
+                          {shown.map((r) => <td key={r.month} className="px-3 text-right">{money(r.cumulative)}</td>)}
                         </tr>
                       </tbody>
                     </table>
@@ -130,7 +135,7 @@ export default function SpendPlan({ actualMonthly = 0 }) {
               </>
             : <div className="text-sm text-slate-400">Nhập thu nhập trung bình để xem forecast từng tháng.</div>}
           <div className="text-xs text-slate-400">Thiết lập lưu trong trình duyệt này (không nằm trong file sao lưu).</div>
-        </div>)}
+        </div>
     </section>
   )
 }
