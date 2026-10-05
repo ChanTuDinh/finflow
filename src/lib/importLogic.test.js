@@ -7,16 +7,17 @@ const p = (date, desc, amount, ref = '') => ({ date, desc, amount, ref })
 
 test('applyRules: bỏ dấu, từ khóa dài thắng, theo hướng thu/chi và phạm vi', () => {
   const rules = [
-    { keyword: 'grab', category: 'Đi lại', direction: 'out', owner: '' },
-    { keyword: 'grab food', category: 'Ăn uống', direction: 'out', owner: '' },
+    { keyword: 'grab', category: 'Mua sắm', direction: 'out', owner: '' },
+    { keyword: 'grab food', category: 'Sức khoẻ', direction: 'out', owner: '' },
     { keyword: 'luong', category: 'Lương', direction: 'in', owner: 'Personal' },
   ]
-  assert.equal(applyRules(rules, 'GRAB*TRIP 123', 'out', 'Personal', 'Expense'), 'Đi lại')
-  assert.equal(applyRules(rules, 'Grab Food HCM', 'out', 'Personal', 'Expense'), 'Ăn uống')
+  assert.equal(applyRules(rules, 'GRAB*TRIP 123', 'out', 'Personal', 'Expense'), 'Mua sắm')
+  assert.equal(applyRules(rules, 'Grab Food HCM', 'out', 'Personal', 'Expense'), 'Sức khoẻ')
   assert.equal(applyRules(rules, 'Lương tháng 9', 'in', 'Personal', 'Income'), 'Lương')
   assert.equal(applyRules(rules, 'Lương tháng 9', 'in', 'Business', 'Revenue'), '') // quy tắc của Personal
   assert.equal(applyRules(rules, 'LUONG', 'out', 'Personal', 'Expense'), '') // sai hướng
   assert.equal(applyRules([{ keyword: 'abc', category: 'Không tồn tại' }], 'abc', 'out', 'Personal', 'Expense'), '') // danh mục không hợp lệ
+  assert.equal(applyRules([{ keyword: 'grab', category: 'Đi lại' }], 'grab', 'out', 'Personal', 'Expense'), '') // danh mục đã bỏ khỏi form (Ví cá nhân) -> bỏ qua quy tắc
 })
 
 test('stageRows: loại và định tuyến theo chủ tài khoản, dấu -> Thu/Chi', () => {
