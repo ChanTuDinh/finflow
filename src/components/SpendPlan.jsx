@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import { useStore } from '../lib/store.jsx'
 import { Cell, Pie, PieChart, Tooltip } from 'recharts'
-import { BUCKETS, YEARS_AHEAD, resolvePcts, sumPcts, allocate, incomeForYear, buildPlan } from '../lib/spendPlan.js'
+import { BUCKETS, YEARS_AHEAD, resolvePcts, sumPcts, allocate, incomeForYear, buildPlan, actualByFund } from '../lib/spendPlan.js'
 import { Chart, SelectField, FilterRow } from './ui.jsx'
 import { todayIso } from '../lib/format.js'
 
 const num = (v) => (v === '' ? 0 : Number(String(v).replace(/[^\d.]/g, '')) || 0)
 
 /** Board 2 (cuối trang Ví cá nhân): Chi tiêu cá nhân forecast, có bộ lọc Năm / Tháng riêng, tách khỏi bộ lọc kỳ của board 1. */
-export default function SpendPlan({ actualMonthly = 0 }) {
+export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
   const { settings, setSettings, money } = useStore()
   const [open, setOpen] = useState(false) // dropdown, mặc định đóng
   const [fYear, setFYear] = useState('all') // bộ lọc riêng của board forecast
@@ -35,6 +35,14 @@ export default function SpendPlan({ actualMonthly = 0 }) {
   const monthNums = [...new Set(inYear.map((r) => r.month.slice(5)))].sort()
   const month = monthNums.includes(fMonth) ? fMonth : 'all'
   const shown = inYear.filter((r) => month === 'all' || r.month.endsWith(`-${month}`))
+  // Thực tế phân bổ theo quỹ, cùng bộ lọc Năm / Tháng với kế hoạch để so sánh
+  const act = actualByFund(actualRows, { years, year, month })
+  const planAmt = Object.fromEntries(BUCKETS.map((b) => [b.key, shown.reduce((a, r) => a + r.amounts[b.key], 0)]))
+  const planTotal = Object.values(planAmt).reduce((a, b) => a + b, 0)
+  const actSlices = [...BUCKETS.filter((b) => act.per[b.key] > 0).map((b) => ({ key: b.key, name: b.name, color: b.color, amount: act.per[b.key] })), ...(act.unassigned > 0 ? [{ key: '__un', name: 'Chưa phân quỹ', color: '#b6c0cc', amount: act.unassigned }] : [])]
+    .map((x) => ({ ...x, pct: act.total > 0 ? x.amount / act.total : 0 }))
+  const periodLabel = `${year === 'all' ? 'tất cả năm' : year}${month !== 'all' ? ` · tháng ${Number(month)}` : ''}`
+  const diff = (a, b) => `${a - b >= 0 ? '+' : '−'}${Math.abs((a - b) * 100).toFixed(1)}`
   const patch = (p) => setSettings((s) => ({ ...s, spendPlan: { ...(s.spendPlan || {}), ...p } }))
   const setIncome = (y, v) => patch({ incomeByYear: { ...(saved.incomeByYear || {}), [y]: v } })
   const incomeRow = (y) => {
@@ -54,6 +62,53 @@ export default function SpendPlan({ actualMonthly = 0 }) {
     )
   }
   const setPct = (key, v) => patch({ pcts: { ...pcts, [key]: v === '' ? 0 : Math.max(0, Number(v) || 0) } })
+
+  const actualBlock = (
+    <div className="space-y-2 border-t border-teal-300 pt-3">
+      <div className="text-sm font-medium text-slate-700">Thực tế phân bổ theo quỹ — {periodLabel} <span className="text-xs font-normal text-slate-600">(chi thật theo danh mục Need / Want / Edu / Reserve / Investment / Giving; không gồm Trả nợ và Chuyển ví)</span></div>
+      {act.total <= 0
+        ? <div className="text-sm text-slate-600">Chưa có khoản chi nào trong kỳ này. Gắn danh mục Need, Want, Edu, Reserve, Investment, Giving cho giao dịch chi để thấy thực tế phân bổ.</div>
+        : <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-4 items-center">
+            <Chart height={240}>
+              <PieChart margin={{ top: 16, right: 40, bottom: 16, left: 40 }}>
+                <Pie data={actSlices} dataKey="amount" nameKey="name" innerRadius={44} outerRadius={80} paddingAngle={2} stroke="#ccfbf1" strokeWidth={2} isAnimationActive={false}
+                  label={({ x, y, textAnchor, payload }) => (payload.pct >= 0.04 ? <text x={x} y={y} textAnchor={textAnchor} dominantBaseline="central" fontSize={12} fill="#0b0b0b">{payload.name} {(payload.pct * 100).toFixed(1)}%</text> : null)} labelLine={false}>
+                  {actSlices.map((x) => <Cell key={x.key} fill={x.color} />)}
+                </Pie>
+                <Tooltip formatter={(v, n, { payload }) => [`${money(v)} · ${(payload.pct * 100).toFixed(1)}%`, n]} />
+              </PieChart>
+            </Chart>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm whitespace-nowrap">
+                <thead className="text-left text-slate-700"><tr><th className="py-1 pr-3">Quỹ</th><th className="pr-3 text-right">KH %</th><th className="pr-3 text-right">TT %</th><th className="pr-3 text-right" title="Chênh = TT % − KH % (điểm phần trăm)">Chênh</th><th className="pr-3 text-right">KH tiền</th><th className="text-right">TT tiền</th></tr></thead>
+                <tbody>
+                  {BUCKETS.map((b) => {
+                    const kh = (pcts[b.key] || 0) / 100, tt = act.total > 0 ? act.per[b.key] / act.total : 0
+                    return (
+                      <tr key={b.key} className="border-t border-teal-200">
+                        <td className="py-1 pr-3 font-medium"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ background: b.color }} />{b.name}</td>
+                        <td className="pr-3 text-right">{(kh * 100).toFixed(1)}%</td>
+                        <td className="pr-3 text-right">{(tt * 100).toFixed(1)}%</td>
+                        <td className="pr-3 text-right">{diff(tt, kh)}</td>
+                        <td className="pr-3 text-right">{money(planAmt[b.key])}</td>
+                        <td className="text-right">{money(act.per[b.key])}</td>
+                      </tr>)
+                  })}
+                  {act.unassigned > 0 && (
+                    <tr className="border-t border-teal-200 text-slate-700">
+                      <td className="py-1 pr-3"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ background: '#b6c0cc' }} />Chưa phân quỹ</td>
+                      <td className="pr-3 text-right">—</td><td className="pr-3 text-right">{((act.unassigned / act.total) * 100).toFixed(1)}%</td><td className="pr-3 text-right">—</td><td className="pr-3 text-right">—</td><td className="text-right">{money(act.unassigned)}</td>
+                    </tr>)}
+                  <tr className="border-t border-teal-400 font-semibold">
+                    <td className="py-1 pr-3">Tổng</td><td className="pr-3 text-right">{total}%</td><td className="pr-3 text-right">100%</td><td className="pr-3" /><td className="pr-3 text-right">{money(planTotal)}</td><td className="text-right">{money(act.total)}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div className="mt-1 text-xs text-slate-700">KH = kế hoạch (theo thu nhập dự kiến), TT = thực tế. Chênh = TT % − KH %. "Chưa phân quỹ" gồm các khoản chi có danh mục khác (dòng cũ).</div>
+            </div>
+          </div>}
+    </div>
+  )
 
   return (
     <section className={`rounded-xl border border-teal-300 bg-teal-100 ${open ? 'space-y-3 p-4' : 'px-4 py-2'}`}>
@@ -135,6 +190,7 @@ export default function SpendPlan({ actualMonthly = 0 }) {
                       </li>))}
                   </ul>
                 </div>
+                {actualBlock}
                 <div>
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
                     <div className="text-sm font-medium text-slate-700">Timeline theo tháng — {shown.length} tháng</div>
@@ -165,7 +221,7 @@ export default function SpendPlan({ actualMonthly = 0 }) {
                   </div>
                 </div>
               </>
-            : <div className="text-sm text-slate-600">Nhập thu nhập trung bình dự kiến của từng năm để xem forecast từng tháng.</div>}
+            : <><div className="text-sm text-slate-600">Nhập thu nhập trung bình dự kiến của từng năm để xem forecast từng tháng.</div>{actualBlock}</>}
           <div className="text-xs text-slate-600">Thiết lập lưu trong trình duyệt này (không nằm trong file sao lưu).</div>
         </div>
       </>}

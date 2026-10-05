@@ -36,3 +36,23 @@ test('incomeForYear: theo năm, số cũ chỉ áp cho năm hiện tại', () =>
   assert.equal(incomeForYear({ incomeByYear: { 2026: 5 }, monthlyIncome: 9 }, '2026', '2026'), 5)
 })
 test('thu nhập âm/rỗng -> 0', () => assert.equal(buildPlan(() => '', def, '2026-10').total, 0))
+
+test('actualByFund: gom theo quỹ, lọc năm / tháng, danh mục khác vào chưa phân quỹ', async () => {
+  const { actualByFund } = await import('./spendPlan.js')
+  const rows = [
+    { date: '2026-03-05', category: 'Need', amount: 600 },
+    { date: '2026-03-20', category: 'Want', amount: 100 },
+    { date: '2026-04-02', category: 'Need', amount: 300 },
+    { date: '2026-04-09', category: 'Nhà ở', amount: 50 },
+    { date: '2027-01-01', category: 'Need', amount: 999 },
+  ]
+  const all = actualByFund(rows, { years: ['2026', '2027'] })
+  assert.deepEqual([all.per.need, all.per.want, all.unassigned, all.total, all.count], [1899, 100, 50, 2049, 5])
+  const y26 = actualByFund(rows, { years: ['2026', '2027'], year: '2026' })
+  assert.deepEqual([y26.per.need, y26.total], [900, 1050])
+  const apr = actualByFund(rows, { years: ['2026', '2027'], year: '2026', month: '04' })
+  assert.deepEqual([apr.per.need, apr.unassigned, apr.total], [300, 50, 350])
+  // "Tất cả năm" chỉ lấy các năm trong danh sách đang xét
+  assert.equal(actualByFund(rows, { years: ['2026'] }).per.need, 900)
+  assert.equal(actualByFund([], { years: ['2026'] }).total, 0)
+})
