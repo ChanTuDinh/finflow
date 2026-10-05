@@ -60,3 +60,22 @@ test('actualByFund: gom theo quỹ, lọc năm / tháng, danh mục khác vào c
   assert.deepEqual([ytd.per.need, ytd.per.want, ytd.unassigned, ytd.total], [600 + 999, 100, 0, 1699])
   assert.equal(actualByFund(rows, { years: ['2026'], year: '2026', untilMonth: '04' }).per.need, 900)
 })
+
+test('actualFundTags: tag con của từng quỹ, % trên tổng quỹ, quỹ khác không lẫn vào', async () => {
+  const { actualFundTags } = await import('./spendPlan.js')
+  const rows = [
+    { date: '2026-03-05', category: 'Need', amount: 600, tag: 'Food' },
+    { date: '2026-03-06', category: 'Need', amount: 300, tag: 'Food, Điện nước' },
+    { date: '2026-03-07', category: 'Need', amount: 100, tag: '' },
+    { date: '2026-03-08', category: 'Want', amount: 999, tag: 'Cafe' },
+    { date: '2026-03-09', category: 'Nhà ở', amount: 50, tag: 'Thuê' },
+    { date: '2027-03-09', category: 'Need', amount: 7, tag: 'Food' },
+  ]
+  const opts = { years: ['2026'], year: '2026' }
+  const need = actualFundTags(rows, opts, 'need')
+  assert.equal(need.total, 1000)
+  assert.deepEqual(need.items.map((x) => [x.tag, x.amount, x.pct]), [['Food', 750, 0.75], ['Điện nước', 150, 0.15]])
+  assert.deepEqual([need.untagged.amount, need.untagged.pct], [100, 0.1])
+  assert.deepEqual(actualFundTags(rows, opts, '__un').items.map((x) => x.tag), ['Thuê'])
+  assert.equal(actualFundTags(rows, opts, 'giving').total, 0)
+})

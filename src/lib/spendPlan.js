@@ -1,4 +1,5 @@
 // Forecast chi tiêu cá nhân: chia thu nhập trung bình theo tỷ lệ từng quỹ (Need, Want, ...).
+import { tagBreakdown } from './tags.js'
 // Forecast cho 5 năm dương lịch kể từ năm hiện tại (mỗi năm đủ 12 tháng T1–T12)
 export const YEARS_AHEAD = 5
 
@@ -65,24 +66,37 @@ export function buildPlan(incomeOf, pcts, startMonth, n = 12) {
   return { months, total: cum }
 }
 
+/** Lọc các dòng chi thực tế theo bộ lọc của board forecast: years (khi year = 'all'), year, month, untilMonth (mỗi năm chỉ lấy từ T1 đến hết tháng đó). */
+export function filterActual(rows, { years = [], year = 'all', month = 'all', untilMonth = '' } = {}) {
+  return rows.filter((r) => {
+    const y = (r.date || '').slice(0, 4), m = (r.date || '').slice(5, 7)
+    if (year === 'all' ? !years.includes(y) : y !== year) return false
+    if (month !== 'all' && m !== month) return false
+    if (untilMonth && Number(m) > Number(untilMonth)) return false
+    return true
+  })
+}
+
 /**
  * Chi tiêu THỰC TẾ theo quỹ: rows = các dòng chi cá nhân (đã loại Trả nợ, Chuyển ví, chuyển khoản), danh mục trùng tên quỹ (Need, Want, ...).
- * Lọc theo năm / tháng của board forecast: years = các năm đang xét (khi year = 'all'), year = 'all' | 'yyyy', month = 'all' | 'mm', untilMonth = '' | 1..12 (mỗi năm chỉ tính từ T1 đến hết tháng đó).
- * Danh mục khác (dòng cũ chưa phân quỹ) vào `unassigned`. Trả { per, unassigned, total, count }.
+ * Bộ lọc như `filterActual`. Danh mục khác (dòng cũ chưa phân quỹ) vào `unassigned`. Trả { per, unassigned, total, count }.
  */
-export function actualByFund(rows, { years = [], year = 'all', month = 'all', untilMonth = '' } = {}) {
+export function actualByFund(rows, opts = {}) {
   const per = Object.fromEntries(BUCKETS.map((b) => [b.key, 0]))
   const byName = Object.fromEntries(BUCKETS.map((b) => [b.name, b.key]))
   let unassigned = 0, count = 0
-  for (const r of rows) {
-    const y = (r.date || '').slice(0, 4), m = (r.date || '').slice(5, 7)
-    if (year === 'all' ? !years.includes(y) : y !== year) continue
-    if (month !== 'all' && m !== month) continue
-    if (untilMonth && Number(m) > Number(untilMonth)) continue // "Tính đến tháng N": mỗi năm chỉ lấy từ T1 đến hết tháng N
+  for (const r of filterActual(rows, opts)) {
     const amt = Number(r.amount) || 0
     const k = byName[r.category]
     if (k) per[k] += amt; else unassigned += amt
     count++
   }
   return { per, unassigned, total: Object.values(per).reduce((a, b) => a + b, 0) + unassigned, count }
+}
+
+/** Các tag con của một quỹ (fundKey = key quỹ, hoặc '__un' = chưa phân quỹ): cùng định dạng `tagBreakdown` (số tiền, % trên tổng của quỹ đó). */
+export function actualFundTags(rows, opts, fundKey) {
+  const names = Object.fromEntries(BUCKETS.map((b) => [b.name, b.key]))
+  const inFund = filterActual(rows, opts).filter((r) => (fundKey === '__un' ? !names[r.category] : names[r.category] === fundKey))
+  return tagBreakdown(inFund)
 }
