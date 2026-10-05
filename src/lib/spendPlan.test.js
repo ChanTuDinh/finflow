@@ -79,3 +79,42 @@ test('actualFundTags: tag con của từng quỹ, % trên tổng quỹ, quỹ kh
   assert.deepEqual(actualFundTags(rows, opts, '__un').items.map((x) => x.tag), ['Thuê'])
   assert.equal(actualFundTags(rows, opts, 'giving').total, 0)
 })
+
+test('quỹ thêm: fundsFrom, newFund (trùng tên, key), allocate / buildPlan theo quỹ mới', async () => {
+  const m = await import('./spendPlan.js')
+  const saved = { extraFunds: [{ key: 'x_tra_no', name: 'Trả nợ' }] }
+  const funds = m.fundsFrom(saved)
+  assert.equal(funds.length, 7)
+  assert.equal(funds[6].pct, 0)
+  assert.ok(m.newFund('need', funds).error) // trùng tên (không phân biệt hoa thường)
+  assert.ok(m.newFund('  ', funds).error)
+  const nf = m.newFund('Du lịch', funds)
+  assert.equal(nf.fund.key, 'x_du_lich')
+  assert.equal(m.newFund('Trả nợ ', [...funds]).error, 'Quỹ "Trả nợ" đã có')
+  const pcts = { need: 50, want: 10, edu: 10, reserve: 10, investment: 5, giving: 5, x_tra_no: 10 }
+  assert.equal(m.sumPcts(pcts, funds), 100)
+  const a = m.allocate(1000, pcts, funds)
+  assert.equal(a.x_tra_no, 100)
+  assert.equal(Object.values(a).reduce((x, y) => x + y, 0), 1000)
+  const p = m.buildPlan(() => 1000, pcts, '2026-01', 2, funds)
+  assert.equal(p.months[0].amounts.x_tra_no, 100)
+  assert.equal(p.total, 2000)
+})
+
+test('quỹ Trả nợ lấy thực tế từ các khoản trả nợ; không có quỹ này thì trả nợ bị bỏ qua', async () => {
+  const m = await import('./spendPlan.js')
+  const rows = [
+    { date: '2026-03-05', category: 'Trả nợ BM', amount: 5000, tag: 'Vay A' },
+    { date: '2026-03-06', category: 'Trả nợ cá nhân', amount: 3000, tag: '' },
+    { date: '2026-03-07', category: 'Need', amount: 100, tag: '' },
+    { date: '2026-03-08', category: 'Nhà ở', amount: 50, tag: '' },
+  ]
+  const opts = { years: ['2026'], year: '2026' }
+  const without = m.actualByFund(rows, opts)
+  assert.deepEqual([without.per.need, without.unassigned, without.total], [100, 50, 150])
+  const funds = m.fundsFrom({ extraFunds: [{ key: 'x_tra_no', name: 'Trả nợ' }] })
+  const withDebt = m.actualByFund(rows, opts, funds)
+  assert.deepEqual([withDebt.per.x_tra_no, withDebt.per.need, withDebt.unassigned, withDebt.total], [8000, 100, 50, 8150])
+  assert.deepEqual(m.actualFundTags(rows, opts, 'x_tra_no', funds).items.map((x) => [x.tag, x.amount]), [['Vay A', 5000]])
+  assert.deepEqual(m.actualFundTags(rows, opts, '__un', funds).untagged.amount, 50)
+})

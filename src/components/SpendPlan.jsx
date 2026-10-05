@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '../lib/store.jsx'
 import { Cell, Pie, PieChart, Tooltip } from 'recharts'
-import { BUCKETS, YEARS_AHEAD, resolvePcts, sumPcts, allocate, incomeForYear, buildPlan, actualByFund, actualFundTags } from '../lib/spendPlan.js'
+import { YEARS_AHEAD, fundsFrom, newFund, isDebtFund, resolvePcts, sumPcts, allocate, incomeForYear, buildPlan, actualByFund, actualFundTags } from '../lib/spendPlan.js'
 import { Chart, SelectField, FilterRow } from './ui.jsx'
 import { todayIso } from '../lib/format.js'
 
@@ -20,9 +20,10 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
   const saved = settings.spendPlan || {}
   const curYear = todayIso().slice(0, 4)
   const incomeOf = (y) => incomeForYear(saved, y, curYear) // thu nhập TB / tháng dự kiến của từng năm
-  const pcts = resolvePcts(saved.pcts)
-  const total = sumPcts(pcts)
-  const plan = buildPlan(incomeOf, pcts, `${curYear}-01`, YEARS_AHEAD * 12) // theo năm dương lịch: mỗi năm đủ 12 tháng (T1–T12)
+  const funds = fundsFrom(saved) // 6 quỹ mặc định + quỹ đã thêm
+  const pcts = resolvePcts(saved.pcts, funds)
+  const total = sumPcts(pcts, funds)
+  const plan = buildPlan(incomeOf, pcts, `${curYear}-01`, YEARS_AHEAD * 12, funds) // theo năm dương lịch: mỗi năm đủ 12 tháng (T1–T12)
   const years = [...new Set(plan.months.map((r) => r.month.slice(0, 4)))]
   const year = years.includes(fYear) ? fYear : 'all' // năm không còn trong danh sách -> về Tất cả
   // Một năm: số của năm đó. "Tất cả năm": trung bình cộng các năm đã nhập thu nhập (năm chưa nhập không kéo số xuống).
@@ -30,21 +31,21 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
   const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0)
   const income = year === 'all' ? Math.round(mean(activeYears.map(incomeOf))) : incomeOf(year)
   const per = year === 'all'
-    ? Object.fromEntries(BUCKETS.map((b) => [b.key, Math.round(mean(activeYears.map((y) => allocate(incomeOf(y), pcts)[b.key])))]))
-    : allocate(income, pcts)
+    ? Object.fromEntries(funds.map((b) => [b.key, Math.round(mean(activeYears.map((y) => allocate(incomeOf(y), pcts, funds)[b.key])))]))
+    : allocate(income, pcts, funds)
   const refLabel = year === 'all' ? `trung bình ${activeYears.length} năm` : year
   const perTotal = Object.values(per).reduce((a, b) => a + b, 0)
-  const slices = BUCKETS.filter((b) => pcts[b.key] > 0).map((b) => ({ ...b, value: pcts[b.key] / (total || 1) * 100, amount: per[b.key] }))
+  const slices = funds.filter((b) => pcts[b.key] > 0).map((b) => ({ ...b, value: pcts[b.key] / (total || 1) * 100, amount: per[b.key] }))
   const untilMonth = ytd ? ytdMonth : ''
   const inYear = plan.months.filter((r) => (year === 'all' || r.month.startsWith(year)) && (!ytd || Number(r.month.slice(5)) <= ytdMonth))
   const monthNums = [...new Set(inYear.map((r) => r.month.slice(5)))].sort()
   const month = monthNums.includes(fMonth) ? fMonth : 'all'
   const shown = inYear.filter((r) => month === 'all' || r.month.endsWith(`-${month}`))
   // Thực tế phân bổ theo quỹ, cùng bộ lọc Năm / Tháng với kế hoạch để so sánh
-  const act = actualByFund(actualRows, { years, year, month, untilMonth })
-  const actSlices = [...BUCKETS.filter((b) => act.per[b.key] > 0).map((b) => ({ key: b.key, name: b.name, color: b.color, amount: act.per[b.key] })), ...(act.unassigned > 0 ? [{ key: '__un', name: 'Chưa phân quỹ', color: '#b6c0cc', amount: act.unassigned }] : [])]
+  const act = actualByFund(actualRows, { years, year, month, untilMonth }, funds)
+  const actSlices = [...funds.filter((b) => act.per[b.key] > 0).map((b) => ({ key: b.key, name: b.name, color: b.color, amount: act.per[b.key] })), ...(act.unassigned > 0 ? [{ key: '__un', name: 'Chưa phân quỹ', color: '#b6c0cc', amount: act.unassigned }] : [])]
     .map((x) => ({ ...x, pct: act.total > 0 ? x.amount / act.total : 0 }))
-  const actMonths = shown.map((r) => actualByFund(actualRows, { years, year: r.month.slice(0, 4), month: r.month.slice(5) })) // thực tế từng tháng đang hiển thị (cùng thứ tự `shown`)
+  const actMonths = shown.map((r) => actualByFund(actualRows, { years, year: r.month.slice(0, 4), month: r.month.slice(5) }, funds)) // thực tế từng tháng đang hiển thị (cùng thứ tự `shown`)
   const actSum = (f) => actMonths.reduce((a, x) => a + f(x), 0)
   const planShownTotal = shown.reduce((a, r) => a + r.total, 0)
   const hasUnassignedMonths = actMonths.some((x) => x.unassigned > 0)
@@ -61,7 +62,7 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
   const STICKY2 = 'sticky left-36 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100 px-3 text-right'
   const actOpts = { years, year, month, untilMonth }
   const selSlice = actSlices.find((x) => x.key === selFund) || null // quỹ được chọn (nếu còn dữ liệu)
-  const fundTags = selSlice ? actualFundTags(actualRows, actOpts, selSlice.key) : null
+  const fundTags = selSlice ? actualFundTags(actualRows, actOpts, selSlice.key, funds) : null
   const pickFund = (k) => setSelFund((cur) => (cur === k ? null : k))
   const periodLabel = `${year === 'all' ? 'tất cả năm' : year}${month !== 'all' ? ` · tháng ${Number(month)}` : ''}${ytd ? ` · T1 → T${ytdMonth}` : ''}`
   const patch = (p) => setSettings((s) => ({ ...s, spendPlan: { ...(s.spendPlan || {}), ...p } }))
@@ -83,12 +84,26 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
     )
   }
   const setPct = (key, v) => patch({ pcts: { ...pcts, [key]: v === '' ? 0 : Math.max(0, Number(v) || 0) } })
+  const [addFund, setAddFund] = useState(null) // null = đóng; { name, pct, error } = đang thêm quỹ
+  const submitFund = (name, pct) => {
+    const r = newFund(name, funds)
+    if (r.error) return setAddFund({ name, pct, error: r.error })
+    patch({ extraFunds: [...(saved.extraFunds || []), r.fund], pcts: { ...pcts, [r.fund.key]: Math.max(0, Number(pct) || 0) } })
+    setAddFund(null)
+  }
+  const removeFund = (f) => {
+    if (!confirm(`Xoá quỹ "${f.name}" khỏi kế hoạch?\n\nGiao dịch đã ghi không bị xoá.`)) return
+    const { [f.key]: _drop, ...rest } = pcts
+    patch({ extraFunds: (saved.extraFunds || []).filter((x) => x.key !== f.key), pcts: rest })
+    setSelFund((cur) => (cur === f.key ? null : cur))
+  }
+  const hasDebtFund = funds.some(isDebtFund)
 
   const actualBlock = (
     <div className="space-y-2 border-t border-teal-300 pt-3">
-      <div className="text-sm font-medium text-slate-700">Thực tế phân bổ theo quỹ — {periodLabel} <span className="text-xs font-normal text-slate-600">(chi thật theo danh mục Need / Want / Edu / Reserve / Investment / Giving; không gồm Trả nợ và Chuyển ví)</span></div>
+      <div className="text-sm font-medium text-slate-700">Thực tế phân bổ theo quỹ — {periodLabel} <span className="text-xs font-normal text-slate-600">(chi thật theo danh mục trùng tên quỹ: {funds.map((f) => f.name).join(' / ')}; không gồm Chuyển ví{hasDebtFund ? '' : ' và Trả nợ — thêm quỹ Trả nợ nếu muốn tính'})</span></div>
       {act.total <= 0
-        ? <div className="text-sm text-slate-600">Chưa có khoản chi nào trong kỳ này. Gắn danh mục Need, Want, Edu, Reserve, Investment, Giving cho giao dịch chi để thấy thực tế phân bổ.</div>
+        ? <div className="text-sm text-slate-600">Chưa có khoản chi nào trong kỳ này. Gắn danh mục trùng tên quỹ cho giao dịch chi để thấy thực tế phân bổ.</div>
         : <>
             <div className="text-xs text-slate-700">Bấm vào một vùng màu (hoặc một dòng bên phải) để xem các tag con của quỹ đó; bấm lại để bỏ chọn.</div>
             <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-4 items-start">
@@ -189,24 +204,41 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
               </>}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="text-left text-slate-700"><tr><th className="py-1 pr-3">TT</th><th className="pr-3">Quỹ</th><th className="pr-3">% đề xuất</th><th className="pr-3 text-right">/ tháng ({refLabel})</th><th className="text-right">/ năm ({refLabel})</th></tr></thead>
+              <thead className="text-left text-slate-700"><tr><th className="py-1 pr-3">TT</th><th className="pr-3">Quỹ</th><th className="pr-3">% đề xuất</th><th className="pr-3 text-right">/ tháng ({refLabel})</th><th className="text-right">/ năm ({refLabel})</th><th className="w-8" /></tr></thead>
               <tbody>
-                {BUCKETS.map((b, i) => (
+                {funds.map((b, i) => (
                   <tr key={b.key} className="border-t border-teal-200">
                     <td className="py-1 pr-3">{i + 1}</td>
-                    <td className="pr-3 font-medium">{b.name}</td>
+                    <td className="pr-3 font-medium"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ background: b.color }} />{b.name}</td>
                     <td className="pr-3"><input className="input !w-20" inputMode="decimal" value={pcts[b.key]} onChange={(e) => setPct(b.key, e.target.value)} /></td>
                     <td className="pr-3 text-right">{money(per[b.key])}</td>
                     <td className="text-right">{money(per[b.key] * 12)}</td>
+                    <td className="pl-2 text-right">{b.custom && <button type="button" className="text-red-700" title={`Xoá quỹ ${b.name}`} onClick={() => removeFund(b)}>✕</button>}</td>
                   </tr>))}
                 <tr className="border-t border-teal-400 font-semibold">
                   <td /><td>Tổng</td>
                   <td className={total === 100 ? '' : 'text-red-600'}>{total}%</td>
                   <td className="pr-3 text-right">{money(perTotal)}</td>
-                  <td className="text-right">{money(perTotal * 12)}</td>
+                  <td className="text-right">{money(perTotal * 12)}</td><td />
                 </tr>
               </tbody>
             </table>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            {addFund
+              ? <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); submitFund(addFund.name, addFund.pct) }}>
+                  <input autoFocus className="input !w-44" placeholder="Tên quỹ (vd. Trả nợ)" value={addFund.name} onChange={(e) => setAddFund({ ...addFund, name: e.target.value, error: '' })} />
+                  <input className="input !w-20" inputMode="decimal" placeholder="% " value={addFund.pct} onChange={(e) => setAddFund({ ...addFund, pct: e.target.value, error: '' })} />
+                  <span className="text-slate-700">%</span>
+                  <button type="submit" className="btn">Thêm</button>
+                  <button type="button" className="btn-ghost" onClick={() => setAddFund(null)}>Huỷ</button>
+                  {addFund.error && <span className="text-red-700">{addFund.error}</span>}
+                </form>
+              : <>
+                  <button type="button" className="btn-ghost" onClick={() => setAddFund({ name: '', pct: '' })}>＋ Thêm quỹ</button>
+                  {!hasDebtFund && <button type="button" className="text-blue-700 underline" onClick={() => setAddFund({ name: 'Trả nợ', pct: '' })}>＋ Thêm quỹ Trả nợ</button>}
+                </>}
+            {hasDebtFund && <span className="text-xs text-slate-700">Quỹ "Trả nợ": thực tế lấy từ các khoản Trả nợ BM / Trả nợ cá nhân. Quỹ khác: gắn danh mục cùng tên quỹ cho khoản chi.</span>}
           </div>
           {total !== 100 && <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm p-2">Tổng tỷ lệ đang là {total}% (nên là 100%). {total > 100 ? `Vượt thu nhập ${money(perTotal - income)}/tháng.` : `Còn chưa phân bổ ${money(income - perTotal)}/tháng.`}</div>}
           {plan.total > 0
@@ -249,7 +281,7 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
                         </tr>
                       </thead>
                       <tbody>
-                        {BUCKETS.map((b) => {
+                        {funds.map((b) => {
                           const khSum = shown.reduce((a, r) => a + r.amounts[b.key], 0), ttSum = actSum((x) => x.per[b.key])
                           return [
                             <tr key={`${b.key}-kh`} className={cmp ? 'border-t-2 border-teal-400' : 'border-t border-teal-200'}>

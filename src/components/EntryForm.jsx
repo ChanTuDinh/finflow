@@ -22,10 +22,17 @@ const ALL_CATEGORIES = [...new Set([...Object.values(TABS.personal.categories), 
 
 // Form thêm/sửa cho mọi tab dữ liệu: personal | business | debts | savings | goals.
 export default function EntryForm({ kind, row, onClose }) {
-  const { upsert, status, data, money } = useStore()
+  const { upsert, status, data, money, settings } = useStore()
   const cfg = TABS[kind]
   // Ví cá nhân: Chi thường không liệt kê Trả nợ (đã có Loại "Trả nợ" riêng) để mặc định không rơi vào chế độ trả nợ
-  const baseCats = (t) => (kind === 'bm' ? BM_FORM_CATEGORIES : cfg.categories)[t].filter((c) => !(kind === 'personal' && t === 'Expense' && PERSONAL_DEBT_CATEGORIES.includes(c)))
+  // Quỹ do người dùng thêm (Dự đoán chi tiêu cá nhân) cũng là danh mục Chi của Ví cá nhân (trừ quỹ "Trả nợ", đã có Loại Trả nợ)
+  const extraFundCats = kind === 'personal' ? (settings.spendPlan?.extraFunds || []).map((f) => f.name).filter((n) => n && n.trim().toLowerCase() !== 'trả nợ') : []
+  const baseCats = (t) => {
+    const base = (kind === 'bm' ? BM_FORM_CATEGORIES : cfg.categories)[t].filter((c) => !(kind === 'personal' && t === 'Expense' && PERSONAL_DEBT_CATEGORIES.includes(c)))
+    if (!(kind === 'personal' && t === 'Expense')) return base
+    const at = base.indexOf('Chuyển ví')
+    return [...base.slice(0, at), ...extraFundCats.filter((n) => !base.includes(n)), ...base.slice(at)] // quỹ thêm đứng sau 6 quỹ mặc định
+  }
   const cash = CASH_KINDS.includes(kind)
   const isDebt = kind === 'debts' || kind === 'debts_bm'
   const [f, setF] = useState(() => {
