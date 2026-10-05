@@ -13,6 +13,7 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
   const [open, setOpen] = useState(false) // dropdown, mặc định đóng
   const [fYear, setFYear] = useState('all') // bộ lọc riêng của board forecast
   const [fMonth, setFMonth] = useState('all')
+  const [cmp, setCmp] = useState(false) // "Hiển thị so sánh KH/TT": mặc định tắt — chỉ hiện kế hoạch, bật thì thêm thực tế và chênh lệch
   const [ytd, setYtd] = useState(false) // "Tính đến tháng hiện tại": chỉ lấy từ đầu năm đến hết tháng hiện tại
   const saved = settings.spendPlan || {}
   const curYear = todayIso().slice(0, 4)
@@ -137,6 +138,10 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
           <input type="checkbox" checked={ytd} onChange={(e) => setYtd(e.target.checked)} />
           Tính đến tháng hiện tại <span className="text-xs text-slate-600">(T1 → T{Number(todayYm.slice(5))}/{todayYm.slice(0, 4)})</span>
         </label>
+        <label className="flex cursor-pointer items-center gap-2 pb-2 text-sm text-slate-800" title="Hiện thêm thực tế chi và chênh lệch so với kế hoạch (KH) ở biểu đồ và timeline">
+          <input type="checkbox" checked={cmp} onChange={(e) => setCmp(e.target.checked)} />
+          Hiển thị so sánh KH/TT
+        </label>
       </FilterRow>
       <div className="space-y-4">
           {year === 'all'
@@ -205,7 +210,7 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
                       </li>))}
                   </ul>
                 </div>
-                {actualBlock}
+                {cmp && actualBlock}
                 <div>
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
                     <div className="text-sm font-medium text-slate-700">Timeline theo tháng — {shown.length} tháng{ytd && shown.length === 0 ? ' (năm này chưa đến, bỏ tick "Tính đến tháng hiện tại" để xem forecast)' : ''}</div>
@@ -223,50 +228,50 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
                         {BUCKETS.map((b) => {
                           const khSum = shown.reduce((a, r) => a + r.amounts[b.key], 0), ttSum = actSum((x) => x.per[b.key])
                           return [
-                            <tr key={`${b.key}-kh`} className="border-t-2 border-teal-400">
-                              <td className={`${STICKY1} font-semibold`}><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ background: b.color }} />{b.name} <span className="text-xs font-normal text-slate-600">KH</span></td>
+                            <tr key={`${b.key}-kh`} className={cmp ? 'border-t-2 border-teal-400' : 'border-t border-teal-200'}>
+                              <td className={`${STICKY1} font-semibold`}><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ background: b.color }} />{b.name}{cmp && <span className="ml-1 text-xs font-normal text-slate-600">KH</span>}</td>
                               <td className={`${STICKY2} font-semibold`}>{money(khSum)}</td>
                               {shown.map((r) => <td key={r.month} className="px-3 text-right">{money(r.amounts[b.key])}</td>)}
                             </tr>,
-                            <tr key={`${b.key}-tt`} className="border-t border-teal-200">
+                            cmp && <tr key={`${b.key}-tt`} className="border-t border-teal-200">
                               <td className={`${STICKY1} pl-6 text-slate-800`}>Thực tế</td>
                               <td className={`${STICKY2} font-semibold`}>{dash(ttSum)}</td>
                               {actMonths.map((x, i) => <td key={shown[i].month} className="px-3 text-right">{dash(x.per[b.key])}</td>)}
                             </tr>,
-                            <tr key={`${b.key}-df`} className="border-t border-teal-200 text-xs" title="Kế hoạch trừ thực tế: dương = còn trong ngân sách, âm = vượt kế hoạch">
+                            cmp && <tr key={`${b.key}-df`} className="border-t border-teal-200 text-xs" title="Kế hoạch trừ thực tế: dương = còn trong ngân sách, âm = vượt kế hoạch">
                               <td className={`${STICKY1} pl-6 text-slate-700`}>KH − TT</td>
                               <td className={`${STICKY2} font-semibold ${khSum - ttSum < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(khSum - ttSum)}</td>
                               {actMonths.map((x, i) => { const d = shown[i].amounts[b.key] - x.per[b.key]; return <td key={shown[i].month} className={`px-3 text-right ${d < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(d)}</td> })}
                             </tr>,
                           ]
                         })}
-                        {hasUnassignedMonths && (
+                        {cmp && hasUnassignedMonths && (
                           <tr className="border-t-2 border-teal-400 text-slate-700">
                             <td className={STICKY1}><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ background: '#b6c0cc' }} />Chưa phân quỹ <span className="text-xs">TT</span></td>
                             <td className={`${STICKY2} font-semibold`}>{dash(actSum((x) => x.unassigned))}</td>
                             {actMonths.map((x, i) => <td key={shown[i].month} className="px-3 text-right">{dash(x.unassigned)}</td>)}
                           </tr>)}
                         <tr className="border-t-2 border-teal-500 font-semibold">
-                          <td className={STICKY1}>Tổng KH</td>
+                          <td className={STICKY1}>{cmp ? 'Tổng KH' : 'Tổng'}</td>
                           <td className={STICKY2}>{money(planShownTotal)}</td>
                           {shown.map((r) => <td key={r.month} className="px-3 text-right">{money(r.total)}</td>)}
                         </tr>
-                        <tr className="border-t border-teal-300 font-semibold">
+                        {cmp && <tr className="border-t border-teal-300 font-semibold">
                           <td className={STICKY1}>Tổng thực tế</td>
                           <td className={STICKY2}>{money(actSum((x) => x.total))}</td>
                           {actMonths.map((x, i) => <td key={shown[i].month} className="px-3 text-right">{money(x.total)}</td>)}
-                        </tr>
-                        <tr className="border-t border-teal-300 font-semibold" title="Kế hoạch trừ thực tế: dương = còn trong ngân sách, âm = vượt kế hoạch">
+                        </tr>}
+                        {cmp && <tr className="border-t border-teal-300 font-semibold" title="Kế hoạch trừ thực tế: dương = còn trong ngân sách, âm = vượt kế hoạch">
                           <td className={STICKY1}>Tổng KH − TT</td>
                           <td className={`${STICKY2} ${planShownTotal - actSum((x) => x.total) < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(planShownTotal - actSum((x) => x.total))}</td>
                           {actMonths.map((x, i) => { const d = shown[i].total - x.total; return <td key={shown[i].month} className={`px-3 text-right ${d < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(d)}</td> })}
-                        </tr>
+                        </tr>}
                       </tbody>
                     </table>
                   </div>
                 </div>
               </>
-            : <><div className="text-sm text-slate-600">Nhập thu nhập trung bình dự kiến của từng năm để xem forecast từng tháng.</div>{actualBlock}</>}
+            : <><div className="text-sm text-slate-600">Nhập thu nhập trung bình dự kiến của từng năm để xem forecast từng tháng.</div>{cmp && actualBlock}</>}
           <div className="text-xs text-slate-600">Thiết lập lưu trong trình duyệt này (không nằm trong file sao lưu).</div>
         </div>
       </>}
