@@ -118,3 +118,19 @@ test('quỹ Trả nợ lấy thực tế từ các khoản trả nợ; không c�
   assert.deepEqual(m.actualFundTags(rows, opts, 'x_tra_no', funds).items.map((x) => [x.tag, x.amount]), [['Vay A', 5000]])
   assert.deepEqual(m.actualFundTags(rows, opts, '__un', funds).untagged.amount, 50)
 })
+
+test('Ví BM: quỹ mặc định + quỹ thêm; quỹ Trả nợ nhận khoản Trả nợ của Ví BM', async () => {
+  const m = await import('./spendPlan.js')
+  const funds = m.fundsFrom({ extraFunds: [{ key: 'x_du_phong', name: 'Dự phòng' }] }, m.BM_FUNDS)
+  assert.deepEqual(funds.map((f) => f.name), ['Chi phí sống', 'Trả nợ', 'Dự phòng'])
+  const pcts = m.resolvePcts({}, funds)
+  assert.deepEqual([pcts.sinhhoat, pcts.tranno, pcts.x_du_phong, m.sumPcts(pcts, funds)], [60, 40, 0, 100])
+  const rows = [
+    { date: '2026-05-01', category: 'Chi phí sống', amount: 300 },
+    { date: '2026-05-05', category: 'Trả nợ', amount: 100 },
+    { date: '2026-05-06', category: 'Khác', amount: 7 },
+  ]
+  const a = m.actualByFund(rows, { years: ['2026'] }, funds)
+  assert.deepEqual([a.per.sinhhoat, a.per.tranno, a.unassigned, a.total], [300, 100, 7, 407])
+  assert.equal(m.fundsFrom({}).length, 6) // ví cá nhân vẫn 6 quỹ mặc định
+})

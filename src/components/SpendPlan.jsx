@@ -1,14 +1,21 @@
 import { useState } from 'react'
 import { useStore } from '../lib/store.jsx'
 import { Cell, Pie, PieChart, Tooltip } from 'recharts'
-import { YEARS_AHEAD, fundsFrom, newFund, isDebtFund, resolvePcts, sumPcts, allocate, incomeForYear, buildPlan, actualByFund, actualFundTags } from '../lib/spendPlan.js'
+import { BUCKETS, YEARS_AHEAD, fundsFrom, newFund, isDebtFund, resolvePcts, sumPcts, allocate, incomeForYear, buildPlan, actualByFund, actualFundTags } from '../lib/spendPlan.js'
 import { Chart, SelectField, FilterRow } from './ui.jsx'
 import { todayIso } from '../lib/format.js'
 
 const num = (v) => (v === '' ? 0 : Number(String(v).replace(/[^\d.]/g, '')) || 0)
 
+// Giao diện theo ví: teal = Ví cá nhân (xanh ngọc), violet = Ví BM (tím). Các lớp màu viết sẵn là "teal-*" rồi đổi tên màu lúc chạy,
+// nên danh sách lớp của màu còn lại phải xuất hiện nguyên văn trong file để Tailwind sinh CSS:
+// bg-violet-100 border-violet-200 border-violet-300 border-violet-400 border-violet-500 hover:bg-violet-200 bg-violet-200 ring-violet-500 !bg-violet-50
+const THEMES = { teal: { color: 'teal', stroke: '#ccfbf1' }, violet: { color: 'violet', stroke: '#ede9fe' } }
+
 /** Board 2 (cuối trang Ví cá nhân): Dự đoán chi tiêu cá nhân, có bộ lọc Năm / Tháng riêng, tách khỏi bộ lọc kỳ của board 1. */
-export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
+export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey = 'spendPlan', baseFunds = BUCKETS, title = 'Dự đoán chi tiêu cá nhân', theme = 'teal', incomeName = 'Thu nhập', boardNote = 'Board 2 — bộ lọc riêng, không theo Năm / Quý / Tháng phía trên' }) {
+  const th = THEMES[theme] || THEMES.teal
+  const cx = (c) => c.replace(/teal-/g, `${th.color}-`)
   const { settings, setSettings, money } = useStore()
   const [open, setOpen] = useState(false) // dropdown, mặc định đóng
   const [fYear, setFYear] = useState('all') // bộ lọc riêng của board forecast
@@ -17,10 +24,10 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
   const [cmp, setCmp] = useState(false) // "Hiển thị so sánh KH/TT": mặc định tắt — chỉ hiện kế hoạch, bật thì thêm thực tế và chênh lệch
   const [ytd, setYtd] = useState(false) // "Tính đến tháng ...": mỗi năm chỉ lấy từ T1 đến hết tháng đã chọn
   const [ytdMonth, setYtdMonth] = useState(Number(todayIso().slice(5, 7))) // mặc định tháng hiện tại, chọn được tháng khác
-  const saved = settings.spendPlan || {}
+  const saved = settings[planKey] || {}
   const curYear = todayIso().slice(0, 4)
   const incomeOf = (y) => incomeForYear(saved, y, curYear) // thu nhập TB / tháng dự kiến của từng năm
-  const funds = fundsFrom(saved) // 6 quỹ mặc định + quỹ đã thêm
+  const funds = fundsFrom(saved, baseFunds) // quỹ mặc định của ví + quỹ đã thêm
   const pcts = resolvePcts(saved.pcts, funds)
   const total = sumPcts(pcts, funds)
   const plan = buildPlan(incomeOf, pcts, `${curYear}-01`, YEARS_AHEAD * 12, funds) // theo năm dương lịch: mỗi năm đủ 12 tháng (T1–T12)
@@ -58,24 +65,24 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
     return v > 0 ? <span className="font-semibold text-emerald-800">▲ {v.toFixed(1)}%</span> : <span className="font-bold text-red-700">▼ {Math.abs(v).toFixed(1)}%</span>
   }
   const signed = (d) => `${d > 0 ? '+' : ''}${money(d)}`
-  const STICKY1 = 'sticky left-0 z-[1] w-36 min-w-[9rem] bg-teal-100 py-1 pr-3' // 2 cột đầu cố định khi cuộn ngang
-  const STICKY2 = 'sticky left-36 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100 px-3 text-right'
+  const STICKY1 = cx('sticky left-0 z-[1] w-36 min-w-[9rem] bg-teal-100 py-1 pr-3') // 2 cột đầu cố định khi cuộn ngang
+  const STICKY2 = cx('sticky left-36 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100 px-3 text-right')
   const actOpts = { years, year, month, untilMonth }
   const selSlice = actSlices.find((x) => x.key === selFund) || null // quỹ được chọn (nếu còn dữ liệu)
   const fundTags = selSlice ? actualFundTags(actualRows, actOpts, selSlice.key, funds) : null
   const pickFund = (k) => setSelFund((cur) => (cur === k ? null : k))
   const periodLabel = `${year === 'all' ? 'tất cả năm' : year}${month !== 'all' ? ` · tháng ${Number(month)}` : ''}${ytd ? ` · T1 → T${ytdMonth}` : ''}`
-  const patch = (p) => setSettings((s) => ({ ...s, spendPlan: { ...(s.spendPlan || {}), ...p } }))
+  const patch = (p) => setSettings((s) => ({ ...s, [planKey]: { ...(s[planKey] || {}), ...p } }))
   const setIncome = (y, v) => patch({ incomeByYear: { ...(saved.incomeByYear || {}), [y]: v } })
   const incomeRow = (y) => {
     const m = incomeOf(y), prev = incomeOf(String(Number(y) - 1))
     return (
       <div key={y} className="space-y-1">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <label className="text-sm">Thu nhập trung bình / tháng — {y}
+          <label className="text-sm">{incomeName} trung bình / tháng — {y}
             <input className="input mt-1" inputMode="numeric" value={m || ''} placeholder="0" onChange={(e) => setIncome(y, num(e.target.value))} />
           </label>
-          <label className="text-sm">Thu nhập trung bình / năm — {y}
+          <label className="text-sm">{incomeName} trung bình / năm — {y}
             <input className="input mt-1" inputMode="numeric" value={m ? m * 12 : ''} placeholder="0" onChange={(e) => setIncome(y, Math.round(num(e.target.value) / 12))} />
           </label>
         </div>
@@ -100,7 +107,7 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
   const hasDebtFund = funds.some(isDebtFund)
 
   const actualBlock = (
-    <div className="space-y-2 border-t border-teal-300 pt-3">
+    <div className={cx("space-y-2 border-t border-teal-300 pt-3")}>
       <div className="text-sm font-medium text-slate-700">Thực tế phân bổ theo quỹ — {periodLabel} <span className="text-xs font-normal text-slate-600">(chi thật theo danh mục trùng tên quỹ: {funds.map((f) => f.name).join(' / ')}; không gồm Chuyển ví{hasDebtFund ? '' : ' và Trả nợ — thêm quỹ Trả nợ nếu muốn tính'})</span></div>
       {act.total <= 0
         ? <div className="text-sm text-slate-600">Chưa có khoản chi nào trong kỳ này. Gắn danh mục trùng tên quỹ cho giao dịch chi để thấy thực tế phân bổ.</div>
@@ -109,7 +116,7 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
             <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-4 items-start">
               <Chart height={260}>
                 <PieChart margin={{ top: 16, right: 40, bottom: 16, left: 40 }}>
-                  <Pie data={actSlices} dataKey="amount" nameKey="name" innerRadius={44} outerRadius={84} paddingAngle={2} stroke="#ccfbf1" strokeWidth={2} isAnimationActive={false} cursor="pointer"
+                  <Pie data={actSlices} dataKey="amount" nameKey="name" innerRadius={44} outerRadius={84} paddingAngle={2} stroke={th.stroke} strokeWidth={2} isAnimationActive={false} cursor="pointer"
                     onClick={(d) => pickFund(d.key ?? d.payload?.key)}
                     label={({ x, y, textAnchor, payload }) => (payload.pct >= 0.04 ? <text x={x} y={y} textAnchor={textAnchor} dominantBaseline="central" fontSize={12} fill="#0b0b0b" opacity={!selSlice || selSlice.key === payload.key ? 1 : 0.4}>{payload.key === '__un' ? '' : `${payload.name} `}{(payload.pct * 100).toFixed(1)}%</text> : null)} labelLine={false}>
                     {actSlices.map((x) => <Cell key={x.key} fill={x.color} fillOpacity={!selSlice || selSlice.key === x.key ? 1 : 0.25} />)}
@@ -121,19 +128,19 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
                 <ul className="text-sm space-y-1">
                   {actSlices.map((x) => (
                     <li key={x.key}>
-                      <button type="button" onClick={() => pickFund(x.key)} className={`flex w-full items-center gap-2 rounded px-1 py-0.5 text-left hover:bg-teal-200 ${selSlice?.key === x.key ? 'bg-teal-200 ring-1 ring-teal-500' : selSlice ? 'opacity-60' : ''}`}>
+                      <button type="button" onClick={() => pickFund(x.key)} className={cx(`flex w-full items-center gap-2 rounded px-1 py-0.5 text-left hover:bg-teal-200 ${selSlice?.key === x.key ? 'bg-teal-200 ring-1 ring-teal-500' : selSlice ? 'opacity-60' : ''}`)}>
                         <span className="inline-block h-3 w-3 shrink-0 rounded-sm" style={{ background: x.color }} />
                         <span className="min-w-0 flex-1 truncate font-medium">{x.name}</span>
                         <span className="w-14 text-right">{(x.pct * 100).toFixed(1)}%</span>
                         <span className="w-32 text-right whitespace-nowrap">{money(x.amount)}</span>
                       </button>
                     </li>))}
-                  <li className="flex items-center gap-2 border-t border-teal-400 px-1 pt-1.5 font-semibold">
+                  <li className={cx("flex items-center gap-2 border-t border-teal-400 px-1 pt-1.5 font-semibold")}>
                     <span className="inline-block h-3 w-3 shrink-0" /><span className="flex-1">Tổng chi thực tế</span><span className="w-14 text-right">100%</span><span className="w-32 text-right whitespace-nowrap">{money(act.total)}</span>
                   </li>
                 </ul>
                 {selSlice && fundTags && (
-                  <div className="rounded-lg border border-teal-300 bg-white/60 p-3">
+                  <div className={cx("rounded-lg border border-teal-300 bg-white/60 p-3")}>
                     <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2 text-sm">
                       <span className="flex items-center gap-2 font-semibold"><span className="inline-block h-3 w-3 rounded-sm" style={{ background: selSlice.color }} />Tag trong {selSlice.name}</span>
                       <span className="text-xs text-slate-700">{money(fundTags.total)} · {(selSlice.pct * 100).toFixed(1)}% tổng chi</span>
@@ -142,9 +149,9 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
                       <thead className="text-left text-slate-700"><tr><th className="py-0.5 pr-3">Tag</th><th className="pr-3 text-right">Số tiền</th><th className="pr-3 text-right">% trong {selSlice.name}</th><th className="text-right">Số GD</th></tr></thead>
                       <tbody>
                         {fundTags.items.map((x) => (
-                          <tr key={x.tag} className="border-t border-teal-200"><td className="py-1 pr-3 font-medium">{x.tag}</td><td className="pr-3 text-right whitespace-nowrap">{money(x.amount)}</td><td className="pr-3 text-right">{(x.pct * 100).toFixed(1)}%</td><td className="text-right text-slate-700">{x.count}</td></tr>))}
+                          <tr key={x.tag} className={cx("border-t border-teal-200")}><td className="py-1 pr-3 font-medium">{x.tag}</td><td className="pr-3 text-right whitespace-nowrap">{money(x.amount)}</td><td className="pr-3 text-right">{(x.pct * 100).toFixed(1)}%</td><td className="text-right text-slate-700">{x.count}</td></tr>))}
                         {fundTags.untagged.count > 0 && (
-                          <tr className="border-t border-teal-200 text-slate-700"><td className="py-1 pr-3">Chưa gắn tag</td><td className="pr-3 text-right whitespace-nowrap">{money(fundTags.untagged.amount)}</td><td className="pr-3 text-right">{(fundTags.untagged.pct * 100).toFixed(1)}%</td><td className="text-right">{fundTags.untagged.count}</td></tr>)}
+                          <tr className={cx("border-t border-teal-200 text-slate-700")}><td className="py-1 pr-3">Chưa gắn tag</td><td className="pr-3 text-right whitespace-nowrap">{money(fundTags.untagged.amount)}</td><td className="pr-3 text-right">{(fundTags.untagged.pct * 100).toFixed(1)}%</td><td className="text-right">{fundTags.untagged.count}</td></tr>)}
                       </tbody>
                     </table>
                     {fundTags.items.length === 0 && fundTags.untagged.count === 0 && <div className="text-sm text-slate-600">Không có khoản chi nào.</div>}
@@ -156,11 +163,11 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
   )
 
   return (
-    <section className={`rounded-xl border border-teal-300 bg-teal-100 ${open ? 'space-y-3 p-4' : 'px-4 py-2'}`}>
+    <section className={cx(`rounded-xl border border-teal-300 bg-teal-100 ${open ? 'space-y-3 p-4' : 'px-4 py-2'}`)}>
       <div className="flex cursor-pointer select-none items-center gap-2" onClick={() => setOpen((v) => !v)}>
         <h3 className="flex flex-wrap items-center gap-2 font-semibold text-slate-700">
-          <span className="inline-block w-4 text-slate-600">{open ? '▾' : '▸'}</span>📊 Dự đoán chi tiêu cá nhân
-          <span className="text-xs font-normal text-slate-600">{open ? 'Board 2 — bộ lọc riêng, không theo Năm / Quý / Tháng phía trên' : 'Bấm để mở'}</span>
+          <span className="inline-block w-4 text-slate-600">{open ? '▾' : '▸'}</span>📊 {title}
+          <span className="text-xs font-normal text-slate-600">{open ? boardNote : 'Bấm để mở'}</span>
         </h3>
       </div>
       {open && <>
@@ -186,11 +193,11 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
           {year === 'all'
             ? <div className="space-y-1">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <label className="text-sm">Thu nhập trung bình / tháng — {refLabel}
-                    <input className="input mt-1 !bg-teal-50" readOnly value={income || ''} placeholder="0" />
+                  <label className="text-sm">{incomeName} trung bình / tháng — {refLabel}
+                    <input className={cx("input mt-1 !bg-teal-50")} readOnly value={income || ''} placeholder="0" />
                   </label>
-                  <label className="text-sm">Thu nhập trung bình / năm — {refLabel}
-                    <input className="input mt-1 !bg-teal-50" readOnly value={income ? income * 12 : ''} placeholder="0" />
+                  <label className="text-sm">{incomeName} trung bình / năm — {refLabel}
+                    <input className={cx("input mt-1 !bg-teal-50")} readOnly value={income ? income * 12 : ''} placeholder="0" />
                   </label>
                 </div>
                 <div className="text-xs text-slate-700">{activeYears.length ? `Trung bình cộng của các năm đã nhập (${activeYears.join(', ')}).` : 'Chưa năm nào có thu nhập dự kiến.'} Chọn một năm ở bộ lọc để nhập thu nhập năm đó.</div>
@@ -198,7 +205,7 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
             : <>
                 {incomeRow(year)}
                 <div className="text-xs text-slate-700 flex flex-wrap items-center gap-2">
-                  Thu nhập nhập riêng cho từng năm (năm = tháng × 12).
+                  {incomeName} dự kiến nhập riêng cho từng năm (năm = tháng × 12).
                   {actualMonthly > 0 && <button className="text-blue-600" onClick={() => setIncome(year, actualMonthly)}>Lấy từ dữ liệu thực tế cho {year}: {money(actualMonthly)}/tháng</button>}
                 </div>
               </>}
@@ -207,7 +214,7 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
               <thead className="text-left text-slate-700"><tr><th className="py-1 pr-3">TT</th><th className="pr-3">Quỹ</th><th className="pr-3">% đề xuất</th><th className="pr-3 text-right">/ tháng ({refLabel})</th><th className="text-right">/ năm ({refLabel})</th><th className="w-8" /></tr></thead>
               <tbody>
                 {funds.map((b, i) => (
-                  <tr key={b.key} className="border-t border-teal-200">
+                  <tr key={b.key} className={cx("border-t border-teal-200")}>
                     <td className="py-1 pr-3">{i + 1}</td>
                     <td className="pr-3 font-medium"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ background: b.color }} />{b.name}</td>
                     <td className="pr-3"><input className="input !w-20" inputMode="decimal" value={pcts[b.key]} onChange={(e) => setPct(b.key, e.target.value)} /></td>
@@ -215,7 +222,7 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
                     <td className="text-right">{money(per[b.key] * 12)}</td>
                     <td className="pl-2 text-right">{b.custom && <button type="button" className="text-red-700" title={`Xoá quỹ ${b.name}`} onClick={() => removeFund(b)}>✕</button>}</td>
                   </tr>))}
-                <tr className="border-t border-teal-400 font-semibold">
+                <tr className={cx("border-t border-teal-400 font-semibold")}>
                   <td /><td>Tổng</td>
                   <td className={total === 100 ? '' : 'text-red-600'}>{total}%</td>
                   <td className="pr-3 text-right">{money(perTotal)}</td>
@@ -237,7 +244,7 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
               : <>
                   <button type="button" className="btn-ghost" onClick={() => setAddFund({ name: '', pct: '' })}>＋ Thêm quỹ</button>
                 </>}
-            {hasDebtFund && <span className="text-xs text-slate-700">Quỹ "Trả nợ": thực tế lấy từ các khoản Trả nợ BM / Trả nợ cá nhân. Quỹ khác: gắn danh mục cùng tên quỹ cho khoản chi.</span>}
+            {hasDebtFund && <span className="text-xs text-slate-700">Quỹ "Trả nợ": thực tế lấy từ các khoản Trả nợ. Quỹ khác: gắn danh mục cùng tên quỹ cho khoản chi.</span>}
           </div>
           {total !== 100 && <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm p-2">Tổng tỷ lệ đang là {total}% (nên là 100%). {total > 100 ? `Vượt thu nhập ${money(perTotal - income)}/tháng.` : `Còn chưa phân bổ ${money(income - perTotal)}/tháng.`}</div>}
           {plan.total > 0
@@ -247,7 +254,7 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
                     <div className="text-sm font-medium text-slate-700 mb-1">Cơ cấu phân bổ (%) — {refLabel}</div>
                     <Chart height={260}>
                       <PieChart margin={{ top: 16, right: 40, bottom: 16, left: 40 }}>
-                        <Pie data={slices} dataKey="value" nameKey="name" innerRadius={44} outerRadius={80} paddingAngle={2} stroke="#ccfbf1" strokeWidth={2}
+                        <Pie data={slices} dataKey="value" nameKey="name" innerRadius={44} outerRadius={80} paddingAngle={2} stroke={th.stroke} strokeWidth={2}
                           label={({ x, y, textAnchor, name, value }) => <text x={x} y={y} textAnchor={textAnchor} dominantBaseline="central" fontSize={12} fill="#0b0b0b">{name} {+value.toFixed(1)}%</text>} labelLine={false} isAnimationActive={false}>
                           {slices.map((x) => <Cell key={x.key} fill={x.color} />)}
                         </Pie>
@@ -274,8 +281,8 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
                     <table className="w-full text-sm whitespace-nowrap">
                       <thead className="text-slate-700">
                         <tr>
-                          <th className="sticky left-0 z-[1] w-36 min-w-[9rem] bg-teal-100 py-1 pr-3 text-left">Quỹ</th>
-                          <th className="sticky left-36 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100 px-3 text-right font-semibold text-slate-900">Tổng {shown.length} tháng</th>
+                          <th className={cx("sticky left-0 z-[1] w-36 min-w-[9rem] bg-teal-100 py-1 pr-3 text-left")}>Quỹ</th>
+                          <th className={cx("sticky left-36 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100 px-3 text-right font-semibold text-slate-900")}>Tổng {shown.length} tháng</th>
                           {shown.map((r) => <th key={r.month} className="px-3 text-right font-semibold">{r.month.slice(5)}/{r.month.slice(0, 4)}</th>)}
                         </tr>
                       </thead>
@@ -283,22 +290,22 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
                         {funds.map((b) => {
                           const khSum = shown.reduce((a, r) => a + r.amounts[b.key], 0), ttSum = actSum((x) => x.per[b.key])
                           return [
-                            <tr key={`${b.key}-kh`} className={cmp ? 'border-t-2 border-teal-400' : 'border-t border-teal-200'}>
+                            <tr key={`${b.key}-kh`} className={cx(cmp ? 'border-t-2 border-teal-400' : 'border-t border-teal-200')}>
                               <td className={`${STICKY1} font-semibold`}><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ background: b.color }} />{b.name}{cmp && <span className="ml-1 text-xs font-normal text-slate-600">KH</span>}</td>
                               <td className={`${STICKY2} font-semibold`}>{money(khSum)}</td>
                               {shown.map((r) => <td key={r.month} className="px-3 text-right">{money(r.amounts[b.key])}</td>)}
                             </tr>,
-                            cmp && <tr key={`${b.key}-tt`} className="border-t border-teal-200">
+                            cmp && <tr key={`${b.key}-tt`} className={cx("border-t border-teal-200")}>
                               <td className={`${STICKY1} pl-6 text-slate-800`}>Thực tế</td>
                               <td className={`${STICKY2} font-semibold`}>{dash(ttSum)}</td>
                               {actMonths.map((x, i) => <td key={shown[i].month} className="px-3 text-right">{dash(x.per[b.key])}</td>)}
                             </tr>,
-                            cmp && <tr key={`${b.key}-df`} className="border-t border-teal-200 text-xs" title="Kế hoạch trừ thực tế: dương = còn trong ngân sách, âm = vượt kế hoạch">
+                            cmp && <tr key={`${b.key}-df`} className={cx("border-t border-teal-200 text-xs")} title="Kế hoạch trừ thực tế: dương = còn trong ngân sách, âm = vượt kế hoạch">
                               <td className={`${STICKY1} pl-6 text-slate-700`}>KH − TT</td>
                               <td className={`${STICKY2} font-semibold ${khSum - ttSum < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(khSum - ttSum)}</td>
                               {actMonths.map((x, i) => { const d = shown[i].amounts[b.key] - x.per[b.key]; return <td key={shown[i].month} className={`px-3 text-right ${d < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(d)}</td> })}
                             </tr>,
-                            cmp && <tr key={`${b.key}-pc`} className="border-t border-teal-200 text-xs" title="(KH − TT) / KH: ▲ xanh = còn trong ngân sách, ▼ đỏ = vượt kế hoạch">
+                            cmp && <tr key={`${b.key}-pc`} className={cx("border-t border-teal-200 text-xs")} title="(KH − TT) / KH: ▲ xanh = còn trong ngân sách, ▼ đỏ = vượt kế hoạch">
                               <td className={`${STICKY1} pl-6 text-slate-700`}>% so KH</td>
                               <td className={`${STICKY2}`}>{pctVs(khSum - ttSum, khSum)}</td>
                               {actMonths.map((x, i) => <td key={shown[i].month} className="px-3 text-right">{pctVs(shown[i].amounts[b.key] - x.per[b.key], shown[i].amounts[b.key])}</td>)}
@@ -306,27 +313,27 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [] }) {
                           ]
                         })}
                         {cmp && hasUnassignedMonths && (
-                          <tr className="border-t-2 border-teal-400 text-slate-700">
+                          <tr className={cx("border-t-2 border-teal-400 text-slate-700")}>
                             <td className={STICKY1}><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ background: '#b6c0cc' }} />Chưa phân quỹ <span className="text-xs">TT</span></td>
                             <td className={`${STICKY2} font-semibold`}>{dash(actSum((x) => x.unassigned))}</td>
                             {actMonths.map((x, i) => <td key={shown[i].month} className="px-3 text-right">{dash(x.unassigned)}</td>)}
                           </tr>)}
-                        <tr className="border-t-2 border-teal-500 font-semibold">
+                        <tr className={cx("border-t-2 border-teal-500 font-semibold")}>
                           <td className={STICKY1}>{cmp ? 'Tổng KH' : 'Tổng'}</td>
                           <td className={STICKY2}>{money(planShownTotal)}</td>
                           {shown.map((r) => <td key={r.month} className="px-3 text-right">{money(r.total)}</td>)}
                         </tr>
-                        {cmp && <tr className="border-t border-teal-300 font-semibold">
+                        {cmp && <tr className={cx("border-t border-teal-300 font-semibold")}>
                           <td className={STICKY1}>Tổng thực tế</td>
                           <td className={STICKY2}>{money(actSum((x) => x.total))}</td>
                           {actMonths.map((x, i) => <td key={shown[i].month} className="px-3 text-right">{money(x.total)}</td>)}
                         </tr>}
-                        {cmp && <tr className="border-t border-teal-300 font-semibold" title="Kế hoạch trừ thực tế: dương = còn trong ngân sách, âm = vượt kế hoạch">
+                        {cmp && <tr className={cx("border-t border-teal-300 font-semibold")} title="Kế hoạch trừ thực tế: dương = còn trong ngân sách, âm = vượt kế hoạch">
                           <td className={STICKY1}>Tổng KH − TT</td>
                           <td className={`${STICKY2} ${planShownTotal - actSum((x) => x.total) < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(planShownTotal - actSum((x) => x.total))}</td>
                           {actMonths.map((x, i) => { const d = shown[i].total - x.total; return <td key={shown[i].month} className={`px-3 text-right ${d < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(d)}</td> })}
                         </tr>}
-                        {cmp && <tr className="border-t border-teal-300 font-semibold" title="(KH − TT) / KH: ▲ xanh = còn trong ngân sách, ▼ đỏ = vượt kế hoạch">
+                        {cmp && <tr className={cx("border-t border-teal-300 font-semibold")} title="(KH − TT) / KH: ▲ xanh = còn trong ngân sách, ▼ đỏ = vượt kế hoạch">
                           <td className={STICKY1}>Tổng % so KH</td>
                           <td className={STICKY2}>{pctVs(planShownTotal - actSum((x) => x.total), planShownTotal)}</td>
                           {actMonths.map((x, i) => <td key={shown[i].month} className="px-3 text-right">{pctVs(shown[i].total - x.total, shown[i].total)}</td>)}

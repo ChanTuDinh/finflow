@@ -15,10 +15,10 @@ export const BUCKETS = [
 
 // Quỹ do người dùng thêm (settings.spendPlan.extraFunds = [{ key, name }]); màu lấy tiếp các màu phân loại sau 6 quỹ mặc định
 export const EXTRA_COLORS = ['#4a3aa7', '#e34948', '#0ea5e9', '#a16207', '#be185d', '#475569']
-/** Danh sách quỹ đang dùng: 6 quỹ mặc định + quỹ người dùng thêm. */
-export function fundsFrom(saved) {
+/** Danh sách quỹ đang dùng: các quỹ mặc định của ví (base) + quỹ người dùng thêm. */
+export function fundsFrom(saved, base = BUCKETS) {
   const extra = (saved?.extraFunds || []).filter((f) => f && f.key && String(f.name || '').trim())
-  return [...BUCKETS, ...extra.map((f, i) => ({ key: f.key, name: String(f.name).trim(), pct: 0, color: EXTRA_COLORS[i % EXTRA_COLORS.length], custom: true }))]
+  return [...base, ...extra.map((f, i) => ({ key: f.key, name: String(f.name).trim(), pct: 0, color: EXTRA_COLORS[i % EXTRA_COLORS.length], custom: true }))]
 }
 const normName = (s) => String(s || '').trim().toLowerCase()
 /** Quỹ "Trả nợ" lấy thực tế từ các khoản trả nợ (Trả nợ BM / cá nhân / cũ); quỹ khác lấy từ danh mục chi trùng tên quỹ. */
@@ -34,6 +34,12 @@ export function newFund(name, funds) {
   while (funds.some((f) => f.key === key)) key += '_'
   return { fund: { key, name: n } }
 }
+
+// Quỹ mặc định của Ví BM (ba mẹ): trùng tên với danh mục Chi của Ví BM (Chi phí sống, Trả nợ) nên thực tế lấy thẳng từ giao dịch
+export const BM_FUNDS = [
+  { key: 'sinhhoat', name: 'Chi phí sống', pct: 60, color: '#2a78d6' },
+  { key: 'tranno', name: 'Trả nợ', pct: 40, color: '#eb6834' },
+]
 
 /** Tỷ lệ đang dùng: lấy giá trị đã lưu (nếu hợp lệ), thiếu thì dùng mặc định. -> { need: 60, ... } */
 export function resolvePcts(saved, funds = BUCKETS) {

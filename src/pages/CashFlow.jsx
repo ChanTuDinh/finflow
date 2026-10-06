@@ -12,6 +12,7 @@ import BankBadge from '../components/BankBadge.jsx'
 import SpendPlan from '../components/SpendPlan.jsx'
 import TagAnalysis from '../components/TagAnalysis.jsx'
 import BmAnalysis from '../components/BmAnalysis.jsx'
+import { BM_FUNDS } from '../lib/spendPlan.js'
 import { parseTags, tagCounts } from '../lib/tags.js'
 import { buildCsvRows, CSV_HEADER } from '../lib/csvImport.js'
 
@@ -306,6 +307,7 @@ export default function CashFlow({ kind, onImport }) {
       {kind === 'bm' && <BmAnalysis rows={rows.filter((r) => pick.isSelected(r.id))} />}
       {kind === 'personal' && <TagAnalysis rows={counted.filter((r) => !isInflow(r) && !isTransfer(r) && !isDebt(r))} />}
       {kind === 'personal' && <TagAnalysis rows={debtCounted} title="Phân tích trả nợ" icon="💳" theme="rose" totalWord="trả nợ" emptyText="Chưa có khoản trả nợ nào trong kỳ đang chọn." scopeNote="Gồm mọi khoản Trả nợ (Trả nợ BM, Trả nợ cá nhân và dòng Trả nợ cũ); tổng khớp các thẻ Trả nợ ở trên." />}
+      {kind === 'bm' && <SpendPlan planKey="bmPlan" baseFunds={BM_FUNDS} theme="violet" title="Dự đoán thu chi ví Ba Mẹ" incomeName="Thu" boardNote="Bộ lọc riêng, không theo Năm / Quý / Tháng phía trên" actualMonthly={avgOver(t.income, incRows)} actualRows={rows.filter((r) => pick.isSelected(r.id) && !isInflow(r) && !isTransfer(r) && !isWalletMove(r))} />}
       {kind === 'personal' && <SpendPlan actualMonthly={avgOver(t.income, incRows)} actualRows={rows.filter((r) => pick.isSelected(r.id) && !isInflow(r) && !isTransfer(r) && !isWalletMove(r))} />}
       {editingCard && <EntryForm kind="accounts" row={editingCard.id ? editingCard : { name: '', bank: '', owner: cardOwner, preset: '', status: 'Active', note: '', badge: '', color: '' }} onClose={() => setEditingCard(null)} />}
       {editing && <EntryForm kind={kind} row={editing.id ? editing : null} onClose={() => setEditing(null)} />}

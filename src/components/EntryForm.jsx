@@ -26,11 +26,11 @@ export default function EntryForm({ kind, row, onClose }) {
   const cfg = TABS[kind]
   // Ví cá nhân: Chi thường không liệt kê Trả nợ (đã có Loại "Trả nợ" riêng) để mặc định không rơi vào chế độ trả nợ
   // Quỹ do người dùng thêm (Dự đoán chi tiêu cá nhân) cũng là danh mục Chi của Ví cá nhân (trừ quỹ "Trả nợ", đã có Loại Trả nợ)
-  const extraFundCats = kind === 'personal' ? (settings.spendPlan?.extraFunds || []).map((f) => f.name).filter((n) => n && n.trim().toLowerCase() !== 'trả nợ') : []
+  const extraFundCats = kind === 'personal' ? (settings.spendPlan?.extraFunds || []).map((f) => f.name).filter((n) => n && n.trim().toLowerCase() !== 'trả nợ') : kind === 'bm' ? (settings.bmPlan?.extraFunds || []).map((f) => f.name).filter(Boolean) : [] // quỹ thêm ở Dự đoán thu chi Ví BM cũng là danh mục Chi của Ví BM
   const baseCats = (t) => {
     const base = (kind === 'bm' ? BM_FORM_CATEGORIES : cfg.categories)[t].filter((c) => !(kind === 'personal' && t === 'Expense' && PERSONAL_DEBT_CATEGORIES.includes(c)))
-    if (!(kind === 'personal' && t === 'Expense')) return base
-    const at = base.indexOf('Chuyển ví')
+    if (!((kind === 'personal' || kind === 'bm') && t === 'Expense')) return base
+    const at = base.indexOf('Chuyển ví') >= 0 ? base.indexOf('Chuyển ví') : base.length
     return [...base.slice(0, at), ...extraFundCats.filter((n) => !base.includes(n)), ...base.slice(at)] // quỹ thêm đứng sau 6 quỹ mặc định
   }
   const cash = CASH_KINDS.includes(kind)
