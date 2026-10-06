@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '../lib/store.jsx'
 import { Cell, Pie, PieChart, Tooltip } from 'recharts'
-import { BUCKETS, YEARS_AHEAD, fundsFrom, newFund, isDebtFund, resolvePcts, resolveAmounts, amountsToPlan, sumPcts, allocate, incomeForYear, buildPlan, actualByFund, actualFundTags, actualFundRows } from '../lib/spendPlan.js'
+import { BUCKETS, YEARS_AHEAD, fundsFrom, newFund, isDebtFund, resolvePcts, resolveAmounts, amountsToPlan, sumPcts, allocate, incomeForYear, buildPlan, filterActual, actualByFund, actualFundTags, actualFundRows } from '../lib/spendPlan.js'
 import { Chart, SelectField, FilterRow } from './ui.jsx'
 import { todayIso } from '../lib/format.js'
 
@@ -13,7 +13,7 @@ const num = (v) => (v === '' ? 0 : Number(String(v).replace(/[^\d.]/g, '')) || 0
 const THEMES = { teal: { color: 'teal', stroke: '#ccfbf1' }, violet: { color: 'violet', stroke: '#ede9fe' } }
 
 /** Board 2 (cuối trang Ví cá nhân): Dự đoán chi tiêu cá nhân, có bộ lọc Năm / Tháng riêng, tách khỏi bộ lọc kỳ của board 1. */
-export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey = 'spendPlan', baseFunds = BUCKETS, title = 'Dự đoán chi tiêu cá nhân', mode = 'percent', matchBy = 'category', theme = 'teal', incomeName = 'Thu nhập', boardNote = 'Board 2 — bộ lọc riêng, không theo Năm / Quý / Tháng phía trên' }) {
+export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey = 'spendPlan', baseFunds = BUCKETS, title = 'Dự đoán chi tiêu cá nhân', mode = 'percent', matchBy = 'category', withIncome = false, incomeRows = [], theme = 'teal', incomeName = 'Thu nhập', boardNote = 'Board 2 — bộ lọc riêng, không theo Năm / Quý / Tháng phía trên' }) {
   const th = THEMES[theme] || THEMES.teal
   const isAmt = mode === 'amount' // true: mỗi dòng nhập SỐ TIỀN dự kiến / tháng (Ví BM theo tag); false: chia thu nhập theo %
   const isTag = matchBy === 'tag' // thực tế khớp theo TAG của giao dịch (thay vì danh mục)
@@ -31,7 +31,8 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey 
   const funds = fundsFrom(saved, baseFunds) // quỹ / dòng mặc định của ví + đã thêm
   const amounts = isAmt ? resolveAmounts(saved.amounts, funds) : null
   const amtPlan = isAmt ? amountsToPlan(amounts, funds) : null // chế độ số tiền: tổng các dòng đóng vai trò "thu nhập", % suy ra từ số tiền
-  const incomeOf = isAmt ? () => amtPlan.income : (y) => incomeForYear(saved, y, curYear) // thu nhập TB / tháng dự kiến của từng năm
+  const expIncomeOf = (y) => incomeForYear(saved, y, curYear) // thu nhập / thu TB mỗi tháng DỰ KIẾN của từng năm (người dùng nhập)
+  const incomeOf = isAmt ? () => amtPlan.income : expIncomeOf // số dùng để chia kế hoạch: chế độ số tiền = tổng các dòng; chế độ % = thu nhập dự kiến
   const pcts = isAmt ? amtPlan.pcts : resolvePcts(saved.pcts, funds)
   const total = isAmt ? (amtPlan.income > 0 ? 100 : 0) : sumPcts(pcts, funds)
   const plan = buildPlan(incomeOf, pcts, `${curYear}-01`, YEARS_AHEAD * 12, funds) // theo năm dương lịch: mỗi năm đủ 12 tháng (T1–T12)
@@ -41,6 +42,8 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey 
   const activeYears = years.filter((y) => incomeOf(y) > 0)
   const mean = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0)
   const income = year === 'all' ? Math.round(mean(activeYears.map(incomeOf))) : incomeOf(year)
+  const expYears = years.filter((y) => expIncomeOf(y) > 0)
+  const expIncome = year === 'all' ? Math.round(mean(expYears.map(expIncomeOf))) : expIncomeOf(year) // thu dự kiến / tháng đang xem (Tất cả năm = trung bình các năm đã nhập)
   const per = year === 'all'
     ? Object.fromEntries(funds.map((b) => [b.key, Math.round(mean(activeYears.map((y) => allocate(incomeOf(y), pcts, funds)[b.key])))]))
     : allocate(income, pcts, funds)
@@ -57,6 +60,9 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey 
   const actSlices = [...funds.filter((b) => act.per[b.key] > 0).map((b) => ({ key: b.key, name: b.name, color: b.color, amount: act.per[b.key] })), ...(act.unassigned > 0 ? [{ key: '__un', name: (isTag ? 'Tag khác / chưa gắn tag' : 'Chưa phân quỹ'), color: '#b6c0cc', amount: act.unassigned }] : [])]
     .map((x) => ({ ...x, pct: act.total > 0 ? x.amount / act.total : 0 }))
   const actMonths = shown.map((r) => actualByFund(actualRows, { years, year: r.month.slice(0, 4), month: r.month.slice(5) }, funds, matchBy)) // thực tế từng tháng đang hiển thị (cùng thứ tự `shown`)
+  const incActMonths = withIncome ? shown.map((r) => filterActual(incomeRows, { years, year: r.month.slice(0, 4), month: r.month.slice(5) }).reduce((a, x) => a + (Number(x.amount) || 0), 0)) : [] // thu thực tế từng tháng đang hiển thị
+  const incPlanMonths = withIncome ? shown.map((r) => expIncomeOf(r.month.slice(0, 4))) : []
+  const sumArr = (xs) => xs.reduce((a, b) => a + b, 0)
   const actSum = (f) => actMonths.reduce((a, x) => a + f(x), 0)
   const planShownTotal = shown.reduce((a, r) => a + r.total, 0)
   const hasUnassignedMonths = actMonths.some((x) => x.unassigned > 0)
@@ -80,7 +86,7 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey 
   const patch = (p) => setSettings((s) => ({ ...s, [planKey]: { ...(s[planKey] || {}), ...p } }))
   const setIncome = (y, v) => patch({ incomeByYear: { ...(saved.incomeByYear || {}), [y]: v } })
   const incomeRow = (y) => {
-    const m = incomeOf(y), prev = incomeOf(String(Number(y) - 1))
+    const m = expIncomeOf(y), prev = expIncomeOf(String(Number(y) - 1))
     return (
       <div key={y} className="space-y-1">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -211,17 +217,17 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey 
         </label>
       </FilterRow>
       <div className="space-y-4">
-          {!isAmt && (year === 'all'
+          {(!isAmt || withIncome) && (year === 'all'
             ? <div className="space-y-1">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <label className="text-sm">{incomeName} trung bình / tháng — {refLabel}
-                    <input className={cx("input mt-1 !bg-teal-50")} readOnly value={income || ''} placeholder="0" />
+                    <input className={cx("input mt-1 !bg-teal-50")} readOnly value={expIncome || ''} placeholder="0" />
                   </label>
                   <label className="text-sm">{incomeName} trung bình / năm — {refLabel}
-                    <input className={cx("input mt-1 !bg-teal-50")} readOnly value={income ? income * 12 : ''} placeholder="0" />
+                    <input className={cx("input mt-1 !bg-teal-50")} readOnly value={expIncome ? expIncome * 12 : ''} placeholder="0" />
                   </label>
                 </div>
-                <div className="text-xs text-slate-700">{activeYears.length ? `Trung bình cộng của các năm đã nhập (${activeYears.join(', ')}).` : 'Chưa năm nào có thu nhập dự kiến.'} Chọn một năm ở bộ lọc để nhập thu nhập năm đó.</div>
+                <div className="text-xs text-slate-700">{expYears.length ? `Trung bình cộng của các năm đã nhập (${expYears.join(', ')}).` : 'Chưa năm nào có thu nhập dự kiến.'} Chọn một năm ở bộ lọc để nhập thu nhập năm đó.</div>
               </div>
             : <>
                 {incomeRow(year)}
@@ -273,9 +279,16 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey 
             {hasDebtFund && <span className="text-xs text-slate-700">Quỹ "Trả nợ": thực tế lấy từ các khoản Trả nợ. Quỹ khác: gắn danh mục cùng tên quỹ cho khoản chi.</span>}
           </div>
           {!isAmt && total !== 100 && <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm p-2">Tổng tỷ lệ đang là {total}% (nên là 100%). {total > 100 ? `Vượt thu nhập ${money(perTotal - income)}/tháng.` : `Còn chưa phân bổ ${money(income - perTotal)}/tháng.`}</div>}
-          {plan.total > 0
+          {withIncome && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+              <div className="rounded-lg border border-violet-300 bg-white p-2"><div className="text-xs text-slate-700">{incomeName} dự kiến / tháng</div><div className="font-semibold">{expIncome ? money(expIncome) : '–'}</div></div>
+              <div className="rounded-lg border border-violet-300 bg-white p-2"><div className="text-xs text-slate-700">Trả nợ dự kiến / tháng</div><div className="font-semibold">{money(perTotal)}</div></div>
+              <div className="rounded-lg border border-violet-300 bg-white p-2"><div className="text-xs text-slate-700">Còn lại / tháng</div><div className={`font-semibold ${expIncome - perTotal < 0 ? 'text-red-700' : 'text-emerald-800'}`}>{signed(expIncome - perTotal)}</div></div>
+              <div className="rounded-lg border border-violet-300 bg-white p-2"><div className="text-xs text-slate-700">Trả nợ / {incomeName.toLowerCase()}</div><div className="font-semibold">{expIncome > 0 ? `${((perTotal / expIncome) * 100).toFixed(1)}%` : '—'}</div></div>
+            </div>)}
+          {(plan.total > 0 || (withIncome && expIncome > 0))
             ? <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                {slices.length > 0 && <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                   <div>
                     <div className="text-sm font-medium text-slate-700 mb-1">{isAmt ? 'Cơ cấu dự kiến trả nợ / tháng (%)' : `Cơ cấu phân bổ (%) — ${refLabel}`}</div>
                     <Chart height={260}>
@@ -297,7 +310,7 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey 
                         <span className="ml-auto text-slate-600">{money(x.amount)}/tháng</span>
                       </li>))}
                   </ul>
-                </div>
+                </div>}
                 {cmp && actualBlock}
                 <div>
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
@@ -363,6 +376,31 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey 
                           <td className={STICKY1}>Tổng % so KH</td>
                           <td className={STICKY2}>{pctVs(planShownTotal - actSum((x) => x.total), planShownTotal)}</td>
                           {actMonths.map((x, i) => <td key={shown[i].month} className="px-3 text-right">{pctVs(shown[i].total - x.total, shown[i].total)}</td>)}
+                        </tr>}
+                        {withIncome && <tr className={cx("border-t-2 border-teal-500 font-semibold")}>
+                          <td className={STICKY1}>{incomeName} dự kiến</td>
+                          <td className={STICKY2}>{money(sumArr(incPlanMonths))}</td>
+                          {incPlanMonths.map((v, i) => <td key={shown[i].month} className="px-3 text-right">{dash(v)}</td>)}
+                        </tr>}
+                        {withIncome && <tr className={cx("border-t border-teal-300 font-semibold")} title="Thu dự kiến trừ trả nợ kế hoạch">
+                          <td className={STICKY1}>Còn lại dự kiến</td>
+                          <td className={`${STICKY2} ${sumArr(incPlanMonths) - planShownTotal < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(sumArr(incPlanMonths) - planShownTotal)}</td>
+                          {shown.map((r, i) => { const d = incPlanMonths[i] - r.total; return <td key={r.month} className={`px-3 text-right ${d < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(d)}</td> })}
+                        </tr>}
+                        {withIncome && cmp && <tr className={cx("border-t-2 border-teal-500 font-semibold")}>
+                          <td className={STICKY1}>{incomeName} thực tế</td>
+                          <td className={STICKY2}>{dash(sumArr(incActMonths))}</td>
+                          {incActMonths.map((v, i) => <td key={shown[i].month} className="px-3 text-right">{dash(v)}</td>)}
+                        </tr>}
+                        {withIncome && cmp && <tr className={cx("border-t border-teal-300 text-xs")} title="Thu thực tế trừ thu dự kiến: dương = thu nhiều hơn dự kiến">
+                          <td className={STICKY1}>Thu TT − KH</td>
+                          <td className={`${STICKY2} font-semibold ${sumArr(incActMonths) - sumArr(incPlanMonths) < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(sumArr(incActMonths) - sumArr(incPlanMonths))}</td>
+                          {incActMonths.map((v, i) => { const d = v - incPlanMonths[i]; return <td key={shown[i].month} className={`px-3 text-right ${d < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(d)}</td> })}
+                        </tr>}
+                        {withIncome && cmp && <tr className={cx("border-t border-teal-300 font-semibold")} title="Thu thực tế trừ trả nợ thực tế">
+                          <td className={STICKY1}>Còn lại thực tế</td>
+                          <td className={`${STICKY2} ${sumArr(incActMonths) - actSum((x) => x.total) < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(sumArr(incActMonths) - actSum((x) => x.total))}</td>
+                          {actMonths.map((x, i) => { const d = incActMonths[i] - x.total; return <td key={shown[i].month} className={`px-3 text-right ${d < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(d)}</td> })}
                         </tr>}
                       </tbody>
                     </table>
