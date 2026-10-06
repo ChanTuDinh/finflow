@@ -305,6 +305,7 @@ export default function CashFlow({ kind, onImport }) {
       </section>
       {kind === 'bm' && <BmAnalysis rows={rows.filter((r) => pick.isSelected(r.id))} />}
       {kind === 'personal' && <TagAnalysis rows={counted.filter((r) => !isInflow(r) && !isTransfer(r) && !isDebt(r))} />}
+      {kind === 'personal' && <TagAnalysis rows={debtCounted} title="Phân tích trả nợ" icon="💳" theme="rose" totalWord="trả nợ" emptyText="Chưa có khoản trả nợ nào trong kỳ đang chọn." scopeNote="Gồm mọi khoản Trả nợ (Trả nợ BM, Trả nợ cá nhân và dòng Trả nợ cũ); tổng khớp các thẻ Trả nợ ở trên." />}
       {kind === 'personal' && <SpendPlan actualMonthly={avgOver(t.income, incRows)} actualRows={rows.filter((r) => pick.isSelected(r.id) && !isInflow(r) && !isTransfer(r) && !isWalletMove(r))} />}
       {editingCard && <EntryForm kind="accounts" row={editingCard.id ? editingCard : { name: '', bank: '', owner: cardOwner, preset: '', status: 'Active', note: '', badge: '', color: '' }} onClose={() => setEditingCard(null)} />}
       {editing && <EntryForm kind={kind} row={editing.id ? editing : null} onClose={() => setEditing(null)} />}

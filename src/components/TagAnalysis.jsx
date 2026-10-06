@@ -7,10 +7,16 @@ import { Chart } from './ui.jsx'
 // Màu theo thứ tự cố định (bảng màu phân loại đã kiểm tra); lát "tag nhỏ khác" và "chưa gắn tag" dùng xám để không tranh màu với tag thật
 const PALETTE = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7']
 const GREY = { rest: '#64748b', none: '#b6c0cc' }
+// Giao diện theo khối: sky = Phân tích chi tiêu (xanh dương nhạt), rose = Phân tích trả nợ (hồng nhạt)
+const THEMES = {
+  sky: { box: 'border-sky-200 bg-sky-100', hover: 'hover:bg-sky-200', on: 'bg-sky-200', line: 'border-sky-400', stroke: '#e0f2fe' },
+  rose: { box: 'border-rose-200 bg-rose-100', hover: 'hover:bg-rose-200', on: 'bg-rose-200', line: 'border-rose-400', stroke: '#ffe4e6' },
+}
 const pctLabel = (p) => `${(p * 100).toFixed(1)}%`
 
 /** Dropdown "Phân tích chi tiêu cá nhân": biểu đồ tròn chi theo tag (số tiền và %), trên các dòng chi đang được tính (đúng kỳ lọc và đang tick). */
-export default function TagAnalysis({ rows }) {
+export default function TagAnalysis({ rows, title = 'Phân tích chi tiêu cá nhân', icon = '🏷', theme = 'sky', emptyText = 'Chưa có khoản chi nào (ngoài trả nợ) trong kỳ đang chọn.', scopeNote = 'Không gồm các khoản Trả nợ (nên tổng ở đây nhỏ hơn thẻ "Chi" nếu có trả nợ).', totalWord = 'chi' }) {
+  const th = THEMES[theme] || THEMES.sky
   const { money } = useStore()
   const [open, setOpen] = useState(false) // mặc định đóng
   const [sel, setSel] = useState([]) // key các lát đang chọn để xem tổng; rỗng = không chọn gì (biểu đồ hiện bình thường)
@@ -34,10 +40,10 @@ export default function TagAnalysis({ rows }) {
   const pickedPct = b.total > 0 ? pickedAmount / b.total : 0
   const hasSel = picked.length > 0
   return (
-    <section className={`rounded-xl border border-sky-200 bg-sky-100 ${open ? 'space-y-2 p-4' : 'px-4 py-2'}`}>
+    <section className={`rounded-xl border ${th.box} ${open ? 'space-y-2 p-4' : 'px-4 py-2'}`}>
       <div className="flex cursor-pointer select-none items-baseline justify-between gap-2" onClick={() => setOpen((v) => !v)}>
         <h3 className="font-semibold text-slate-700">
-          <span className="mr-1 inline-block w-4 text-slate-600">{open ? '▾' : '▸'}</span>🏷 Phân tích chi tiêu cá nhân
+          <span className="mr-1 inline-block w-4 text-slate-600">{open ? '▾' : '▸'}</span>{icon} {title}
           <span className="ml-2 text-xs font-normal text-slate-600">theo tag · {b.items.length} tag</span>
         </h3>
         <span className="text-sm font-medium text-red-700">{money(b.total)}</span>
@@ -45,10 +51,10 @@ export default function TagAnalysis({ rows }) {
       {open && (
         <div>
           {b.total <= 0
-            ? <div className="text-sm text-slate-600">Chưa có khoản chi nào (ngoài trả nợ) trong kỳ đang chọn.</div>
+            ? <div className="text-sm text-slate-600">{emptyText}</div>
             : <>
                 <div className="mb-1 flex flex-wrap items-center gap-3 text-xs text-slate-700">
-                  <span>Chọn nhiều tag (tick trong danh sách hoặc bấm lát trên biểu đồ) để xem tổng các tag đó chiếm bao nhiêu % tổng chi.</span>
+                  <span>Chọn nhiều tag (tick trong danh sách hoặc bấm lát trên biểu đồ) để xem tổng các tag đó chiếm bao nhiêu % tổng {totalWord}.</span>
                   <button className="text-blue-700 underline" onClick={() => setSel(leaves.map((x) => x.key))}>Chọn tất cả</button>
                   <button className="text-blue-700 underline" onClick={() => setSel([])}>Bỏ chọn</button>
                 </div>
@@ -56,7 +62,7 @@ export default function TagAnalysis({ rows }) {
                   <div className="relative">
                     <Chart height={300}>
                       <PieChart margin={{ top: 16, right: 48, bottom: 16, left: 48 }}>
-                        <Pie data={slices} dataKey="amount" nameKey="name" innerRadius={58} outerRadius={96} paddingAngle={2} stroke="#e0f2fe" strokeWidth={2} isAnimationActive={false} cursor="pointer"
+                        <Pie data={slices} dataKey="amount" nameKey="name" innerRadius={58} outerRadius={96} paddingAngle={2} stroke={th.stroke} strokeWidth={2} isAnimationActive={false} cursor="pointer"
                           onClick={(d) => toggle(d.key ?? d.payload?.key)}
                           label={({ x, y, textAnchor, payload }) => (payload.pct >= 0.04 ? <text x={x} y={y} textAnchor={textAnchor} dominantBaseline="central" fontSize={12} fill="#0b0b0b" opacity={!hasSel || sliceOn(payload) ? 1 : 0.4}>{pctLabel(payload.pct)}</text> : null)} labelLine={false}>
                           {slices.map((x) => <Cell key={x.key} fill={x.color} fillOpacity={!hasSel || sliceOn(x) ? 1 : 0.25} />)}
@@ -67,7 +73,7 @@ export default function TagAnalysis({ rows }) {
                     <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
                       {hasSel
                         ? <><div className="text-2xl font-bold text-slate-900">{pctLabel(pickedPct)}</div><div className="text-xs text-slate-700">{picked.length} tag đã chọn</div></>
-                        : <><div className="text-xs text-slate-700">Tổng chi</div><div className="text-sm font-semibold text-slate-900">100%</div></>}
+                        : <><div className="text-xs text-slate-700">Tổng {totalWord}</div><div className="text-sm font-semibold text-slate-900">100%</div></>}
                     </div>
                   </div>
                   <ul className="text-sm space-y-1">
@@ -75,7 +81,7 @@ export default function TagAnalysis({ rows }) {
                       const isRest = x.kind === 'rest'
                       const sl = isRest ? restOn : on(x.key)
                       const row = (y, checked, indeterminate, indent, color) => (
-                        <label className={`flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 hover:bg-sky-200 ${checked || indeterminate ? 'bg-sky-200' : hasSel ? 'opacity-60' : ''} ${indent ? 'ml-5' : ''}`}>
+                        <label className={`flex cursor-pointer items-center gap-2 rounded px-1 py-0.5 ${th.hover} ${checked || indeterminate ? th.on : hasSel ? 'opacity-60' : ''} ${indent ? 'ml-5' : ''}`}>
                           <input type="checkbox" checked={checked} ref={(el) => { if (el) el.indeterminate = indeterminate && !checked }} onChange={() => toggle(y.key)} />
                           <span className={`inline-block shrink-0 rounded-sm ${indent ? 'h-2.5 w-2.5' : 'h-3 w-3'}`} style={{ background: color }} />
                           <span className={`min-w-0 flex-1 truncate ${indent ? '' : 'font-medium'}`}>{y.name}</span>
@@ -89,17 +95,17 @@ export default function TagAnalysis({ rows }) {
                           {isRest && kids.map((c) => <div key={c.key}>{row(c, on(c.key), false, true, c.color)}</div>)}
                         </li>)
                     })}
-                    <li className={`flex items-center gap-2 border-t border-sky-400 px-1 pt-1.5 ${hasSel ? 'font-bold text-slate-900' : 'font-semibold'}`}>
+                    <li className={`flex items-center gap-2 border-t ${th.line} px-1 pt-1.5 ${hasSel ? 'font-bold text-slate-900' : 'font-semibold'}`}>
                       <span className="inline-block w-[1.875rem] shrink-0" />
-                      <span className="flex-1">{hasSel ? `Tổng ${picked.length} tag đã chọn` : 'Tổng chi'}</span>
+                      <span className="flex-1">{hasSel ? `Tổng ${picked.length} tag đã chọn` : `Tổng ${totalWord}`}</span>
                       <span className="w-14 text-right">{hasSel ? pctLabel(pickedPct) : '100%'}</span>
                       <span className="w-32 text-right whitespace-nowrap text-red-700">{money(hasSel ? pickedAmount : b.total)}</span>
                     </li>
-                    {hasSel && <li className="px-1 text-xs text-slate-600">Trên tổng chi {money(b.total)} (= 100%)</li>}
+                    {hasSel && <li className="px-1 text-xs text-slate-600">Trên tổng {totalWord} {money(b.total)} (= 100%)</li>}
                   </ul>
                 </div>
                 <div className="mt-2 text-xs text-slate-600">
-                  Theo kỳ lọc Năm / Quý / Tháng phía trên và chỉ các dòng đang tick. Không gồm các khoản Trả nợ (nên tổng ở đây nhỏ hơn thẻ "Chi" nếu có trả nợ). Giao dịch có nhiều tag được chia đều cho các tag đó. Tối đa 7 tag lớn nhất có màu riêng; các tag nhỏ hơn gộp vào một lát xám trên biểu đồ nhưng vẫn liệt kê và chọn riêng từng tag trong danh sách.
+                  Theo kỳ lọc Năm / Quý / Tháng phía trên và chỉ các dòng đang tick. {scopeNote} Giao dịch có nhiều tag được chia đều cho các tag đó. Tối đa 7 tag lớn nhất có màu riêng; các tag nhỏ hơn gộp vào một lát xám trên biểu đồ nhưng vẫn liệt kê và chọn riêng từng tag trong danh sách.
                 </div>
               </>}
         </div>)}
