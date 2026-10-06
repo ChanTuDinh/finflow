@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { yearsOf, forYear, tagSlices, analyze } from './bmAnalysis.js'
+import { yearsOf, forYear, tagSlices, analyze, categoriesForTags } from './bmAnalysis.js'
 
 const rows = [
   { date: '2026-03-01', type: 'Income', category: 'Quỹ BM', amount: 600, tag: 'Lương BM' },
@@ -35,4 +35,22 @@ test('tagSlices: gộp tag nhỏ, giữ danh sách con, tổng % = 1', () => {
   assert.deepEqual(r.slices[7].children.map((x) => x.name), ['h', 'i', 'j'])
   assert.ok(Math.abs(r.slices.reduce((a, s) => a + s.pct, 0) - 1) < 1e-9)
   assert.deepEqual(tagSlices([], 7), { total: 0, count: 0, slices: [] })
+})
+
+test('categoriesForTags: phân theo danh mục, chỉ tính phần thuộc tag đã chọn, tag không phân biệt hoa thường', () => {
+  const rs = [
+    { id: 'a', category: 'Quỹ BM', amount: 600, tag: 'Ba Hoà' },
+    { id: 'b', category: 'Chuyển ví', amount: 400, tag: 'ba hoà, Quỹ chung' },
+    { id: 'c', category: 'Quỹ BM', amount: 100, tag: '' },
+  ]
+  const one = categoriesForTags(rs, ['Ba Hoà'])
+  assert.equal(one.total, 800) // 600 + 200 (một nửa của 400)
+  assert.deepEqual(one.items.map((x) => [x.category, x.amount, x.pct]), [['Quỹ BM', 600, 0.75], ['Chuyển ví', 200, 0.25]])
+  assert.equal(one.count, 2)
+  const two = categoriesForTags(rs, ['Ba Hoà', 'Quỹ chung'])
+  assert.equal(two.total, 1000)
+  assert.equal(two.count, 2)
+  const none = categoriesForTags(rs, ['__none'])
+  assert.deepEqual([none.total, none.items[0].category], [100, 'Quỹ BM'])
+  assert.deepEqual(categoriesForTags(rs, []), { total: 0, count: 0, items: [] })
 })
