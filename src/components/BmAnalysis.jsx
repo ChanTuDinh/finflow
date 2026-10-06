@@ -4,14 +4,14 @@ import { useStore } from '../lib/store.jsx'
 import { analyze, yearsOf } from '../lib/bmAnalysis.js'
 import { Chart, SelectField } from './ui.jsx'
 
-// Bảng màu phân loại cố định theo thứ tự; lát "danh mục nhỏ khác" dùng xám
+// Bảng màu phân loại cố định theo thứ tự; lát "tag nhỏ khác" xám đậm, "chưa gắn tag" xám nhạt
 const PALETTE = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7']
-const REST = '#64748b'
+const GREY = { rest: '#64748b', none: '#b6c0cc' }
 const pctLabel = (p) => `${(p * 100).toFixed(1)}%`
 
 function PieBlock({ title, data, tone }) {
   const { money } = useStore()
-  const slices = data.slices.map((x, i) => ({ ...x, color: x.kind === 'rest' ? REST : PALETTE[i % PALETTE.length] }))
+  const slices = data.slices.map((x, i) => ({ ...x, color: x.kind === 'tag' ? PALETTE[i % PALETTE.length] : GREY[x.kind] }))
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -19,7 +19,7 @@ function PieBlock({ title, data, tone }) {
         <div className={`text-sm font-semibold ${tone}`}>{money(data.total)} <span className="text-xs font-normal text-slate-600">· {data.count} giao dịch</span></div>
       </div>
       {data.total <= 0
-        ? <div className="rounded-lg bg-white/60 p-4 text-sm text-slate-600">Chưa có dữ liệu trong năm này.</div>
+        ? <div className="rounded-lg bg-white/60 p-4 text-sm text-slate-600">Chưa có dữ liệu trong năm này (gắn tag cho giao dịch để phân loại).</div>
         : <>
             <Chart height={230}>
               <PieChart margin={{ top: 12, right: 44, bottom: 12, left: 44 }}>
@@ -52,7 +52,7 @@ function PieBlock({ title, data, tone }) {
   )
 }
 
-/** Dropdown "Phân tích thu chi Ví BM" (tab Ví BM): chọn năm, hai biểu đồ tròn Thu và Chi theo danh mục. rows = các dòng Ví BM đang được tính (đang tick). */
+/** Dropdown "Phân tích thu chi Ví BM" (tab Ví BM): chọn năm, hai biểu đồ tròn Thu và Chi theo tag. rows = các dòng Ví BM đang được tính (đang tick). */
 export default function BmAnalysis({ rows }) {
   const { money } = useStore()
   const [open, setOpen] = useState(false) // mặc định đóng
@@ -65,7 +65,7 @@ export default function BmAnalysis({ rows }) {
       <div className="flex cursor-pointer select-none items-baseline justify-between gap-2" onClick={() => setOpen((v) => !v)}>
         <h3 className="font-semibold text-slate-800">
           <span className="mr-1 inline-block w-4 text-slate-600">{open ? '▾' : '▸'}</span>📊 Phân tích thu chi Ví BM
-          <span className="ml-2 text-xs font-normal text-slate-600">theo năm · biểu đồ tròn</span>
+          <span className="ml-2 text-xs font-normal text-slate-600">theo năm · theo tag · biểu đồ tròn</span>
         </h3>
         <span className="text-xs text-slate-600">{open ? 'Bấm để đóng' : `Ròng ${money(a.net)} · bấm để mở`}</span>
       </div>
@@ -80,10 +80,10 @@ export default function BmAnalysis({ rows }) {
             </div>
           </div>
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <PieBlock title="Thu theo danh mục" data={a.income} tone="text-emerald-800" />
-            <PieBlock title="Chi theo danh mục" data={a.expense} tone="text-red-700" />
+            <PieBlock title="Thu theo tag" data={a.income} tone="text-emerald-800" />
+            <PieBlock title="Chi theo tag" data={a.expense} tone="text-red-700" />
           </div>
-          <div className="text-xs text-slate-600">Theo năm đang chọn và các dòng đang tick; không gồm chuyển nội bộ. Tối đa 7 lát, các danh mục nhỏ hơn gộp một lát xám nhưng vẫn liệt kê bên dưới.</div>
+          <div className="text-xs text-slate-600">Theo năm đang chọn và các dòng đang tick; không gồm chuyển nội bộ. Giao dịch nhiều tag được chia đều cho các tag; chưa gắn tag là lát xám nhạt. Tối đa 7 tag có màu riêng, tag nhỏ hơn gộp một lát xám nhưng vẫn liệt kê bên dưới.</div>
         </div>)}
     </section>
   )
