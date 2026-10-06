@@ -1,5 +1,5 @@
 // Forecast chi tiêu cá nhân: chia thu nhập trung bình theo tỷ lệ từng quỹ (Need, Want, ...).
-import { tagBreakdown } from './tags.js'
+import { tagBreakdown, parseTags } from './tags.js'
 import { isDebtPayment } from './schema.js'
 // Forecast cho 5 năm dương lịch kể từ năm hiện tại (mỗi năm đủ 12 tháng T1–T12)
 export const YEARS_AHEAD = 5
@@ -35,11 +35,28 @@ export function newFund(name, funds) {
   return { fund: { key, name: n } }
 }
 
-// Quỹ mặc định của Ví BM (ba mẹ): trùng tên với danh mục Chi của Ví BM (Chi phí sống, Trả nợ) nên thực tế lấy thẳng từ giao dịch
+// Dòng dự đoán mặc định của Ví BM = các TAG của khoản trả nợ (mỗi tag là một khoản vay / người cho vay); thêm tag khác bằng "＋ Thêm tag".
+// Số tiền dự kiến trả mỗi tháng của từng tag do người dùng nhập (mặc định 0); thực tế lấy từ các khoản Trả nợ có tag trùng tên.
 export const BM_FUNDS = [
-  { key: 'sinhhoat', name: 'Chi phí sống', pct: 60, color: '#2a78d6' },
-  { key: 'tranno', name: 'Trả nợ', pct: 40, color: '#eb6834' },
+  { key: 'vay_kn', name: 'Vay KN', pct: 0, color: '#2a78d6' },
+  { key: 'vay_at', name: 'Vay AT', pct: 0, color: '#eb6834' },
+  { key: 'ba_phuoc', name: 'Ba Phuoc', pct: 0, color: '#1baf7a' },
+  { key: 'vay_dn', name: 'Vay DN', pct: 0, color: '#eda100' },
+  { key: 'chi_huong', name: 'Chi Huong', pct: 0, color: '#e87ba4' },
 ]
+
+/** Số tiền dự kiến mỗi tháng của từng dòng (chế độ nhập số tiền thay vì %): { key: số >= 0 }. */
+export function resolveAmounts(saved, funds) {
+  const out = {}
+  for (const f of funds) { const v = Number(saved?.[f.key]); out[f.key] = Number.isFinite(v) && v > 0 ? v : 0 }
+  return out
+}
+/** Từ số tiền dự kiến sang (thu nhập = tổng, tỷ lệ %) để dùng chung bộ tính allocate / buildPlan. */
+export function amountsToPlan(amounts, funds) {
+  const income = funds.reduce((a, f) => a + (amounts[f.key] || 0), 0)
+  const pcts = Object.fromEntries(funds.map((f) => [f.key, income > 0 ? ((amounts[f.key] || 0) / income) * 100 : 0]))
+  return { income, pcts }
+}
 
 /** Tỷ lệ đang dùng: lấy giá trị đã lưu (nếu hợp lệ), thiếu thì dùng mặc định. -> { need: 60, ... } */
 export function resolvePcts(saved, funds = BUCKETS) {
@@ -110,20 +127,39 @@ export function filterActual(rows, { years = [], year = 'all', month = 'all', un
  * Chi tiêu THỰC TẾ theo quỹ: rows = các dòng chi cá nhân (đã loại Trả nợ, Chuyển ví, chuyển khoản), danh mục trùng tên quỹ (Need, Want, ...).
  * Bộ lọc như `filterActual`. Danh mục khác (dòng cũ chưa phân quỹ) vào `unassigned`. Trả { per, unassigned, total, count }.
  */
-export function actualByFund(rows, opts = {}, funds = BUCKETS) {
+export function actualByFund(rows, opts = {}, funds = BUCKETS, matchBy = 'category') {
   const per = Object.fromEntries(funds.map((b) => [b.key, 0]))
-  const byCat = {}
-  for (const f of funds) for (const c of fundCategories(f)) byCat[c] = f.key
+  const byCat = {}, byTag = {}
+  for (const f of funds) { for (const c of fundCategories(f)) byCat[c] = f.key; byTag[normName(f.name)] = f.key }
   let unassigned = 0, count = 0
   for (const r of filterActual(rows, opts)) {
     const amt = Number(r.amount) || 0
+    if (matchBy === 'tag') { // mỗi tag trùng tên một dòng nhận phần của mình (nhiều tag chia đều); tag lạ / không tag vào "chưa phân"
+      const tags = parseTags(r.tag)
+      if (!tags.length) unassigned += amt
+      else for (const t of tags) { const k = byTag[normName(t)]; if (k) per[k] += amt / tags.length; else unassigned += amt / tags.length }
+      count++
+      continue
+    }
     const k = byCat[r.category]
     if (k) per[k] += amt
     else if (isDebtPayment(r.category)) continue // trả nợ chỉ tính khi có quỹ "Trả nợ"
     else unassigned += amt
     count++
   }
+  for (const k of Object.keys(per)) per[k] = Math.round(per[k])
+  unassigned = Math.round(unassigned)
   return { per, unassigned, total: Object.values(per).reduce((a, b) => a + b, 0) + unassigned, count }
+}
+
+/** Các dòng giao dịch thuộc một dòng dự đoán (chế độ theo tag): fundKey hoặc '__un' (chưa phân). Mới nhất trước. */
+export function actualFundRows(rows, opts, fundKey, funds = BUCKETS) {
+  const byTag = {}
+  for (const f of funds) byTag[normName(f.name)] = f.key
+  return filterActual(rows, opts).filter((r) => {
+    const keys = parseTags(r.tag).map((t) => byTag[normName(t)])
+    return fundKey === '__un' ? !keys.length || keys.some((k) => !k) : keys.includes(fundKey)
+  }).sort((a, b) => (b.date || '').localeCompare(a.date || ''))
 }
 
 /** Các tag con của một quỹ (fundKey = key quỹ, hoặc '__un' = chưa phân quỹ): cùng định dạng `tagBreakdown` (số tiền, % trên tổng của quỹ đó). */

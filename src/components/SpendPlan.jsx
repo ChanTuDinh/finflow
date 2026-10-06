@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '../lib/store.jsx'
 import { Cell, Pie, PieChart, Tooltip } from 'recharts'
-import { BUCKETS, YEARS_AHEAD, fundsFrom, newFund, isDebtFund, resolvePcts, sumPcts, allocate, incomeForYear, buildPlan, actualByFund, actualFundTags } from '../lib/spendPlan.js'
+import { BUCKETS, YEARS_AHEAD, fundsFrom, newFund, isDebtFund, resolvePcts, resolveAmounts, amountsToPlan, sumPcts, allocate, incomeForYear, buildPlan, actualByFund, actualFundTags, actualFundRows } from '../lib/spendPlan.js'
 import { Chart, SelectField, FilterRow } from './ui.jsx'
 import { todayIso } from '../lib/format.js'
 
@@ -13,8 +13,10 @@ const num = (v) => (v === '' ? 0 : Number(String(v).replace(/[^\d.]/g, '')) || 0
 const THEMES = { teal: { color: 'teal', stroke: '#ccfbf1' }, violet: { color: 'violet', stroke: '#ede9fe' } }
 
 /** Board 2 (cuối trang Ví cá nhân): Dự đoán chi tiêu cá nhân, có bộ lọc Năm / Tháng riêng, tách khỏi bộ lọc kỳ của board 1. */
-export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey = 'spendPlan', baseFunds = BUCKETS, title = 'Dự đoán chi tiêu cá nhân', theme = 'teal', incomeName = 'Thu nhập', boardNote = 'Board 2 — bộ lọc riêng, không theo Năm / Quý / Tháng phía trên' }) {
+export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey = 'spendPlan', baseFunds = BUCKETS, title = 'Dự đoán chi tiêu cá nhân', mode = 'percent', matchBy = 'category', theme = 'teal', incomeName = 'Thu nhập', boardNote = 'Board 2 — bộ lọc riêng, không theo Năm / Quý / Tháng phía trên' }) {
   const th = THEMES[theme] || THEMES.teal
+  const isAmt = mode === 'amount' // true: mỗi dòng nhập SỐ TIỀN dự kiến / tháng (Ví BM theo tag); false: chia thu nhập theo %
+  const isTag = matchBy === 'tag' // thực tế khớp theo TAG của giao dịch (thay vì danh mục)
   const cx = (c) => c.replace(/teal-/g, `${th.color}-`)
   const { settings, setSettings, money } = useStore()
   const [open, setOpen] = useState(false) // dropdown, mặc định đóng
@@ -26,10 +28,12 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey 
   const [ytdMonth, setYtdMonth] = useState(Number(todayIso().slice(5, 7))) // mặc định tháng hiện tại, chọn được tháng khác
   const saved = settings[planKey] || {}
   const curYear = todayIso().slice(0, 4)
-  const incomeOf = (y) => incomeForYear(saved, y, curYear) // thu nhập TB / tháng dự kiến của từng năm
-  const funds = fundsFrom(saved, baseFunds) // quỹ mặc định của ví + quỹ đã thêm
-  const pcts = resolvePcts(saved.pcts, funds)
-  const total = sumPcts(pcts, funds)
+  const funds = fundsFrom(saved, baseFunds) // quỹ / dòng mặc định của ví + đã thêm
+  const amounts = isAmt ? resolveAmounts(saved.amounts, funds) : null
+  const amtPlan = isAmt ? amountsToPlan(amounts, funds) : null // chế độ số tiền: tổng các dòng đóng vai trò "thu nhập", % suy ra từ số tiền
+  const incomeOf = isAmt ? () => amtPlan.income : (y) => incomeForYear(saved, y, curYear) // thu nhập TB / tháng dự kiến của từng năm
+  const pcts = isAmt ? amtPlan.pcts : resolvePcts(saved.pcts, funds)
+  const total = isAmt ? (amtPlan.income > 0 ? 100 : 0) : sumPcts(pcts, funds)
   const plan = buildPlan(incomeOf, pcts, `${curYear}-01`, YEARS_AHEAD * 12, funds) // theo năm dương lịch: mỗi năm đủ 12 tháng (T1–T12)
   const years = [...new Set(plan.months.map((r) => r.month.slice(0, 4)))]
   const year = years.includes(fYear) ? fYear : 'all' // năm không còn trong danh sách -> về Tất cả
@@ -49,10 +53,10 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey 
   const month = monthNums.includes(fMonth) ? fMonth : 'all'
   const shown = inYear.filter((r) => month === 'all' || r.month.endsWith(`-${month}`))
   // Thực tế phân bổ theo quỹ, cùng bộ lọc Năm / Tháng với kế hoạch để so sánh
-  const act = actualByFund(actualRows, { years, year, month, untilMonth }, funds)
-  const actSlices = [...funds.filter((b) => act.per[b.key] > 0).map((b) => ({ key: b.key, name: b.name, color: b.color, amount: act.per[b.key] })), ...(act.unassigned > 0 ? [{ key: '__un', name: 'Chưa phân quỹ', color: '#b6c0cc', amount: act.unassigned }] : [])]
+  const act = actualByFund(actualRows, { years, year, month, untilMonth }, funds, matchBy)
+  const actSlices = [...funds.filter((b) => act.per[b.key] > 0).map((b) => ({ key: b.key, name: b.name, color: b.color, amount: act.per[b.key] })), ...(act.unassigned > 0 ? [{ key: '__un', name: (isTag ? 'Tag khác / chưa gắn tag' : 'Chưa phân quỹ'), color: '#b6c0cc', amount: act.unassigned }] : [])]
     .map((x) => ({ ...x, pct: act.total > 0 ? x.amount / act.total : 0 }))
-  const actMonths = shown.map((r) => actualByFund(actualRows, { years, year: r.month.slice(0, 4), month: r.month.slice(5) }, funds)) // thực tế từng tháng đang hiển thị (cùng thứ tự `shown`)
+  const actMonths = shown.map((r) => actualByFund(actualRows, { years, year: r.month.slice(0, 4), month: r.month.slice(5) }, funds, matchBy)) // thực tế từng tháng đang hiển thị (cùng thứ tự `shown`)
   const actSum = (f) => actMonths.reduce((a, x) => a + f(x), 0)
   const planShownTotal = shown.reduce((a, r) => a + r.total, 0)
   const hasUnassignedMonths = actMonths.some((x) => x.unassigned > 0)
@@ -69,7 +73,8 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey 
   const STICKY2 = cx('sticky left-36 z-[1] min-w-[9rem] border-r border-teal-300 bg-teal-100 px-3 text-right')
   const actOpts = { years, year, month, untilMonth }
   const selSlice = actSlices.find((x) => x.key === selFund) || null // quỹ được chọn (nếu còn dữ liệu)
-  const fundTags = selSlice ? actualFundTags(actualRows, actOpts, selSlice.key, funds) : null
+  const fundTags = selSlice && !isTag ? actualFundTags(actualRows, actOpts, selSlice.key, funds) : null
+  const fundRows = selSlice && isTag ? actualFundRows(actualRows, actOpts, selSlice.key, funds) : null // chế độ tag: các khoản đã trả của dòng đang chọn
   const pickFund = (k) => setSelFund((cur) => (cur === k ? null : k))
   const periodLabel = `${year === 'all' ? 'tất cả năm' : year}${month !== 'all' ? ` · tháng ${Number(month)}` : ''}${ytd ? ` · T1 → T${ytdMonth}` : ''}`
   const patch = (p) => setSettings((s) => ({ ...s, [planKey]: { ...(s[planKey] || {}), ...p } }))
@@ -91,28 +96,30 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey 
     )
   }
   const setPct = (key, v) => patch({ pcts: { ...pcts, [key]: v === '' ? 0 : Math.max(0, Number(v) || 0) } })
+  const setAmt = (key, v) => patch({ amounts: { ...amounts, [key]: v === '' ? 0 : Math.max(0, Number(String(v).replace(/[^\d.]/g, '')) || 0) } })
   const [addFund, setAddFund] = useState(null) // null = đóng; { name, pct, error } = đang thêm quỹ
   const submitFund = (name, pct) => {
     const r = newFund(name, funds)
     if (r.error) return setAddFund({ name, pct, error: r.error })
-    patch({ extraFunds: [...(saved.extraFunds || []), r.fund], pcts: { ...pcts, [r.fund.key]: Math.max(0, Number(pct) || 0) } })
+    const v = Math.max(0, Number(String(pct).replace(/[^\d.]/g, '')) || 0)
+    patch(isAmt ? { extraFunds: [...(saved.extraFunds || []), r.fund], amounts: { ...amounts, [r.fund.key]: v } } : { extraFunds: [...(saved.extraFunds || []), r.fund], pcts: { ...pcts, [r.fund.key]: v } })
     setAddFund(null)
   }
   const removeFund = (f) => {
-    if (!confirm(`Xoá quỹ "${f.name}" khỏi kế hoạch?\n\nGiao dịch đã ghi không bị xoá.`)) return
-    const { [f.key]: _drop, ...rest } = pcts
-    patch({ extraFunds: (saved.extraFunds || []).filter((x) => x.key !== f.key), pcts: rest })
+    if (!confirm(`Xoá ${isAmt ? 'tag' : 'quỹ'} "${f.name}" khỏi kế hoạch?\n\nGiao dịch đã ghi không bị xoá.`)) return
+    const { [f.key]: _drop, ...rest } = isAmt ? amounts : pcts
+    patch({ extraFunds: (saved.extraFunds || []).filter((x) => x.key !== f.key), [isAmt ? 'amounts' : 'pcts']: rest })
     setSelFund((cur) => (cur === f.key ? null : cur))
   }
-  const hasDebtFund = funds.some(isDebtFund)
+  const hasDebtFund = !isTag && funds.some(isDebtFund)
 
   const actualBlock = (
     <div className={cx("space-y-2 border-t border-teal-300 pt-3")}>
-      <div className="text-sm font-medium text-slate-700">Thực tế phân bổ theo quỹ — {periodLabel} <span className="text-xs font-normal text-slate-600">(chi thật theo danh mục trùng tên quỹ: {funds.map((f) => f.name).join(' / ')}; không gồm Chuyển ví{hasDebtFund ? '' : ' và Trả nợ — thêm quỹ Trả nợ nếu muốn tính'})</span></div>
+      <div className="text-sm font-medium text-slate-700">{isTag ? 'Thực tế trả nợ theo tag' : 'Thực tế phân bổ theo quỹ'} — {periodLabel} <span className="text-xs font-normal text-slate-600">{isTag ? '(các khoản Trả nợ có tag trùng tên tag ở trên; không gồm Chuyển ví)' : `(chi thật theo danh mục trùng tên quỹ: ${funds.map((f) => f.name).join(' / ')}; không gồm Chuyển ví${hasDebtFund ? '' : ' và Trả nợ — thêm quỹ Trả nợ nếu muốn tính'})`}</span></div>
       {act.total <= 0
-        ? <div className="text-sm text-slate-600">Chưa có khoản chi nào trong kỳ này. Gắn danh mục trùng tên quỹ cho giao dịch chi để thấy thực tế phân bổ.</div>
+        ? <div className="text-sm text-slate-600">{isTag ? 'Chưa có khoản trả nợ nào trong kỳ này. Gắn tag trùng tên cho khoản Trả nợ (ô Tag trong form giao dịch) để so với dự kiến.' : 'Chưa có khoản chi nào trong kỳ này. Gắn danh mục trùng tên quỹ cho giao dịch chi để thấy thực tế phân bổ.'}</div>
         : <>
-            <div className="text-xs text-slate-700">Bấm vào một vùng màu (hoặc một dòng bên phải) để xem các tag con của quỹ đó; bấm lại để bỏ chọn.</div>
+            <div className="text-xs text-slate-700">{isTag ? 'Bấm vào một vùng màu (hoặc một dòng bên phải) để xem các khoản đã trả của tag đó; bấm lại để bỏ chọn.' : 'Bấm vào một vùng màu (hoặc một dòng bên phải) để xem các tag con của quỹ đó; bấm lại để bỏ chọn.'}</div>
             <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] gap-4 items-start">
               <Chart height={260}>
                 <PieChart margin={{ top: 16, right: 40, bottom: 16, left: 40 }}>
@@ -139,6 +146,20 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey 
                     <span className="inline-block h-3 w-3 shrink-0" /><span className="flex-1">Tổng chi thực tế</span><span className="w-14 text-right">100%</span><span className="w-32 text-right whitespace-nowrap">{money(act.total)}</span>
                   </li>
                 </ul>
+                {selSlice && fundRows && (
+                  <div className={cx("rounded-lg border border-teal-300 bg-white/60 p-3")}>
+                    <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2 text-sm">
+                      <span className="flex items-center gap-2 font-semibold"><span className="inline-block h-3 w-3 rounded-sm" style={{ background: selSlice.color }} />Các khoản đã trả — {selSlice.name}</span>
+                      <span className="text-xs text-slate-700">{money(selSlice.amount)} · {(selSlice.pct * 100).toFixed(1)}% tổng đã trả · {fundRows.length} khoản</span>
+                    </div>
+                    <table className="w-full text-sm">
+                      <thead className="text-left text-slate-700"><tr><th className="py-0.5 pr-3">Ngày</th><th className="pr-3 text-right">Số tiền</th><th className="pr-3">Tag</th><th>Ghi chú</th></tr></thead>
+                      <tbody>
+                        {fundRows.map((r) => (
+                          <tr key={r.id} className={cx("border-t border-teal-200")}><td className="py-1 pr-3 whitespace-nowrap">{r.date}</td><td className="pr-3 text-right whitespace-nowrap">{money(r.amount)}</td><td className="pr-3">{String(r.tag || '')}</td><td className="text-slate-700">{r.note}</td></tr>))}
+                      </tbody>
+                    </table>
+                  </div>)}
                 {selSlice && fundTags && (
                   <div className={cx("rounded-lg border border-teal-300 bg-white/60 p-3")}>
                     <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2 text-sm">
@@ -190,7 +211,7 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey 
         </label>
       </FilterRow>
       <div className="space-y-4">
-          {year === 'all'
+          {!isAmt && (year === 'all'
             ? <div className="space-y-1">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <label className="text-sm">{incomeName} trung bình / tháng — {refLabel}
@@ -208,24 +229,28 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey 
                   {incomeName} dự kiến nhập riêng cho từng năm (năm = tháng × 12).
                   {actualMonthly > 0 && <button className="text-blue-600" onClick={() => setIncome(year, actualMonthly)}>Lấy từ dữ liệu thực tế cho {year}: {money(actualMonthly)}/tháng</button>}
                 </div>
-              </>}
+              </>)}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="text-left text-slate-700"><tr><th className="py-1 pr-3">TT</th><th className="pr-3">Quỹ</th><th className="pr-3">% đề xuất</th><th className="pr-3 text-right">/ tháng ({refLabel})</th><th className="text-right">/ năm ({refLabel})</th><th className="w-8" /></tr></thead>
+              <thead className="text-left text-slate-700"><tr><th className="py-1 pr-3">TT</th><th className="pr-3">{isAmt ? 'Tag' : 'Quỹ'}</th>{isAmt ? <th className="pr-3">Dự kiến trả / tháng</th> : <><th className="pr-3">% đề xuất</th><th className="pr-3 text-right">/ tháng ({refLabel})</th></>}<th className="text-right">/ năm ({isAmt ? 'dự kiến' : refLabel})</th><th className="w-8" /></tr></thead>
               <tbody>
                 {funds.map((b, i) => (
                   <tr key={b.key} className={cx("border-t border-teal-200")}>
                     <td className="py-1 pr-3">{i + 1}</td>
                     <td className="pr-3 font-medium"><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ background: b.color }} />{b.name}</td>
-                    <td className="pr-3"><input className="input !w-20" inputMode="decimal" value={pcts[b.key]} onChange={(e) => setPct(b.key, e.target.value)} /></td>
-                    <td className="pr-3 text-right">{money(per[b.key])}</td>
+                    {isAmt
+                      ? <td className="pr-3"><input className="input !w-40" inputMode="numeric" placeholder="0" value={amounts[b.key] || ''} onChange={(e) => setAmt(b.key, e.target.value)} /></td>
+                      : <><td className="pr-3"><input className="input !w-20" inputMode="decimal" value={pcts[b.key]} onChange={(e) => setPct(b.key, e.target.value)} /></td>
+                          <td className="pr-3 text-right">{money(per[b.key])}</td></>}
                     <td className="text-right">{money(per[b.key] * 12)}</td>
-                    <td className="pl-2 text-right">{b.custom && <button type="button" className="text-red-700" title={`Xoá quỹ ${b.name}`} onClick={() => removeFund(b)}>✕</button>}</td>
+                    <td className="pl-2 text-right">{b.custom && <button type="button" className="text-red-700" title={`Xoá ${isAmt ? 'tag' : 'quỹ'} ${b.name}`} onClick={() => removeFund(b)}>✕</button>}</td>
                   </tr>))}
                 <tr className={cx("border-t border-teal-400 font-semibold")}>
                   <td /><td>Tổng</td>
-                  <td className={total === 100 ? '' : 'text-red-600'}>{total}%</td>
-                  <td className="pr-3 text-right">{money(perTotal)}</td>
+                  {isAmt
+                    ? <td className="pr-3 font-semibold">{money(perTotal)} / tháng</td>
+                    : <><td className={total === 100 ? '' : 'text-red-600'}>{total}%</td>
+                        <td className="pr-3 text-right">{money(perTotal)}</td></>}
                   <td className="text-right">{money(perTotal * 12)}</td><td />
                 </tr>
               </tbody>
@@ -234,24 +259,25 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey 
           <div className="flex flex-wrap items-center gap-2 text-sm">
             {addFund
               ? <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); submitFund(addFund.name, addFund.pct) }}>
-                  <input autoFocus className="input !w-44" placeholder="Tên quỹ (vd. Trả nợ)" value={addFund.name} onChange={(e) => setAddFund({ ...addFund, name: e.target.value, error: '' })} />
-                  <input className="input !w-20" inputMode="decimal" placeholder="% " value={addFund.pct} onChange={(e) => setAddFund({ ...addFund, pct: e.target.value, error: '' })} />
-                  <span className="text-slate-700">%</span>
+                  <input autoFocus className="input !w-44" placeholder={isAmt ? 'Tên tag (vd. Vay KN)' : 'Tên quỹ (vd. Trả nợ)'} value={addFund.name} onChange={(e) => setAddFund({ ...addFund, name: e.target.value, error: '' })} />
+                  <input className={isAmt ? 'input !w-40' : 'input !w-20'} inputMode="decimal" placeholder={isAmt ? 'Số tiền / tháng' : '% '} value={addFund.pct} onChange={(e) => setAddFund({ ...addFund, pct: e.target.value, error: '' })} />
+                  <span className="text-slate-700">{isAmt ? '₫ / tháng' : '%'}</span>
                   <button type="submit" className="btn">Thêm</button>
                   <button type="button" className="btn-ghost" onClick={() => setAddFund(null)}>Huỷ</button>
                   {addFund.error && <span className="text-red-700">{addFund.error}</span>}
                 </form>
               : <>
-                  <button type="button" className="btn-ghost" onClick={() => setAddFund({ name: '', pct: '' })}>＋ Thêm quỹ</button>
+                  <button type="button" className="btn-ghost" onClick={() => setAddFund({ name: '', pct: '' })}>{isAmt ? '＋ Thêm tag' : '＋ Thêm quỹ'}</button>
                 </>}
+            {isTag && <span className="text-xs text-slate-700">Thực tế lấy từ các khoản <b>Trả nợ</b> có tag trùng tên tag. Nhập số tiền dự kiến trả / tháng cho từng tag; thêm tag khác bằng "＋ Thêm tag".</span>}
             {hasDebtFund && <span className="text-xs text-slate-700">Quỹ "Trả nợ": thực tế lấy từ các khoản Trả nợ. Quỹ khác: gắn danh mục cùng tên quỹ cho khoản chi.</span>}
           </div>
-          {total !== 100 && <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm p-2">Tổng tỷ lệ đang là {total}% (nên là 100%). {total > 100 ? `Vượt thu nhập ${money(perTotal - income)}/tháng.` : `Còn chưa phân bổ ${money(income - perTotal)}/tháng.`}</div>}
+          {!isAmt && total !== 100 && <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm p-2">Tổng tỷ lệ đang là {total}% (nên là 100%). {total > 100 ? `Vượt thu nhập ${money(perTotal - income)}/tháng.` : `Còn chưa phân bổ ${money(income - perTotal)}/tháng.`}</div>}
           {plan.total > 0
             ? <>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
                   <div>
-                    <div className="text-sm font-medium text-slate-700 mb-1">Cơ cấu phân bổ (%) — {refLabel}</div>
+                    <div className="text-sm font-medium text-slate-700 mb-1">{isAmt ? 'Cơ cấu dự kiến trả nợ / tháng (%)' : `Cơ cấu phân bổ (%) — ${refLabel}`}</div>
                     <Chart height={260}>
                       <PieChart margin={{ top: 16, right: 40, bottom: 16, left: 40 }}>
                         <Pie data={slices} dataKey="value" nameKey="name" innerRadius={44} outerRadius={80} paddingAngle={2} stroke={th.stroke} strokeWidth={2}
@@ -314,7 +340,7 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey 
                         })}
                         {cmp && hasUnassignedMonths && (
                           <tr className={cx("border-t-2 border-teal-400 text-slate-700")}>
-                            <td className={STICKY1}><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ background: '#b6c0cc' }} />Chưa phân quỹ <span className="text-xs">TT</span></td>
+                            <td className={STICKY1}><span className="mr-2 inline-block h-2.5 w-2.5 rounded-sm" style={{ background: '#b6c0cc' }} />{(isTag ? 'Tag khác / chưa gắn tag' : 'Chưa phân quỹ')} <span className="text-xs">TT</span></td>
                             <td className={`${STICKY2} font-semibold`}>{dash(actSum((x) => x.unassigned))}</td>
                             {actMonths.map((x, i) => <td key={shown[i].month} className="px-3 text-right">{dash(x.unassigned)}</td>)}
                           </tr>)}
@@ -343,7 +369,7 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey 
                   </div>
                 </div>
               </>
-            : <><div className="text-sm text-slate-600">Nhập thu nhập trung bình dự kiến của từng năm để xem forecast từng tháng.</div>{cmp && actualBlock}</>}
+            : <><div className="text-sm text-slate-600">{isAmt ? 'Nhập số tiền dự kiến trả mỗi tháng cho từng tag để xem dự đoán dòng tiền trả nợ.' : 'Nhập thu nhập trung bình dự kiến của từng năm để xem forecast từng tháng.'}</div>{cmp && actualBlock}</>}
           <div className="text-xs text-slate-600">Thiết lập lưu trong trình duyệt này (không nằm trong file sao lưu).</div>
         </div>
       </>}

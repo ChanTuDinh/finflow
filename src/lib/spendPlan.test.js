@@ -119,18 +119,27 @@ test('quỹ Trả nợ lấy thực tế từ các khoản trả nợ; không c�
   assert.deepEqual(m.actualFundTags(rows, opts, '__un', funds).untagged.amount, 50)
 })
 
-test('Ví BM: quỹ mặc định + quỹ thêm; quỹ Trả nợ nhận khoản Trả nợ của Ví BM', async () => {
+test('Ví BM: dòng dự đoán theo TAG, số tiền dự kiến mỗi tháng, thực tế khớp theo tag', async () => {
   const m = await import('./spendPlan.js')
-  const funds = m.fundsFrom({ extraFunds: [{ key: 'x_du_phong', name: 'Dự phòng' }] }, m.BM_FUNDS)
-  assert.deepEqual(funds.map((f) => f.name), ['Chi phí sống', 'Trả nợ', 'Dự phòng'])
-  const pcts = m.resolvePcts({}, funds)
-  assert.deepEqual([pcts.sinhhoat, pcts.tranno, pcts.x_du_phong, m.sumPcts(pcts, funds)], [60, 40, 0, 100])
+  const funds = m.fundsFrom({ extraFunds: [{ key: 'x_ba_hoa', name: 'Ba Hoa' }] }, m.BM_FUNDS)
+  assert.deepEqual(funds.map((f) => f.name), ['Vay KN', 'Vay AT', 'Ba Phuoc', 'Vay DN', 'Chi Huong', 'Ba Hoa'])
+  const amounts = m.resolveAmounts({ vay_kn: 5000000, vay_at: 2500000, x_ba_hoa: -1, junk: 9 }, funds)
+  assert.deepEqual([amounts.vay_kn, amounts.vay_at, amounts.x_ba_hoa, amounts.vay_dn], [5000000, 2500000, 0, 0])
+  const { income, pcts } = m.amountsToPlan(amounts, funds)
+  assert.equal(income, 7500000)
+  const plan = m.buildPlan(() => income, pcts, '2026-01', 2, funds)
+  assert.equal(plan.months[0].amounts.vay_kn, 5000000) // nhập 5 triệu thì kế hoạch đúng 5 triệu / tháng
+  assert.equal(plan.months[0].amounts.vay_at, 2500000)
+  assert.equal(plan.months[1].total, 7500000)
   const rows = [
-    { date: '2026-05-01', category: 'Chi phí sống', amount: 300 },
-    { date: '2026-05-05', category: 'Trả nợ', amount: 100 },
-    { date: '2026-05-06', category: 'Khác', amount: 7 },
+    { id: 'a', date: '2026-03-05', category: 'Trả nợ', amount: 5000000, tag: 'vay kn' },
+    { id: 'b', date: '2026-03-06', category: 'Trả nợ', amount: 2000000, tag: 'Vay AT, Khác' },
+    { id: 'c', date: '2026-03-07', category: 'Trả nợ', amount: 700000, tag: '' },
   ]
-  const a = m.actualByFund(rows, { years: ['2026'] }, funds)
-  assert.deepEqual([a.per.sinhhoat, a.per.tranno, a.unassigned, a.total], [300, 100, 7, 407])
+  const opts = { years: ['2026'], year: '2026' }
+  const a = m.actualByFund(rows, opts, funds, 'tag')
+  assert.deepEqual([a.per.vay_kn, a.per.vay_at, a.unassigned, a.total], [5000000, 1000000, 1700000, 7700000])
+  assert.deepEqual(m.actualFundRows(rows, opts, 'vay_at', funds).map((r) => r.id), ['b'])
+  assert.deepEqual(m.actualFundRows(rows, opts, '__un', funds).map((r) => r.id), ['c', 'b'])
   assert.equal(m.fundsFrom({}).length, 6) // ví cá nhân vẫn 6 quỹ mặc định
 })
