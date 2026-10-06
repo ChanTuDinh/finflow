@@ -358,34 +358,29 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey 
                             {actMonths.map((x, i) => <td key={shown[i].month} className="px-3 text-right">{dash(x.unassigned)}</td>)}
                           </tr>)}
                         <tr className={cx("border-t-2 border-teal-500 font-semibold")}>
-                          <td className={STICKY1}>{cmp ? 'Tổng KH' : 'Tổng'}</td>
+                          <td className={STICKY1}>{withIncome ? (cmp ? 'Tổng chi KH' : 'Tổng chi') : cmp ? 'Tổng KH' : 'Tổng'}</td>
                           <td className={STICKY2}>{money(planShownTotal)}</td>
                           {shown.map((r) => <td key={r.month} className="px-3 text-right">{money(r.total)}</td>)}
                         </tr>
                         {cmp && <tr className={cx("border-t border-teal-300 font-semibold")}>
-                          <td className={STICKY1}>Tổng thực tế</td>
+                          <td className={STICKY1}>{withIncome ? 'Tổng chi thực tế' : 'Tổng thực tế'}</td>
                           <td className={STICKY2}>{money(actSum((x) => x.total))}</td>
                           {actMonths.map((x, i) => <td key={shown[i].month} className="px-3 text-right">{money(x.total)}</td>)}
                         </tr>}
                         {cmp && <tr className={cx("border-t border-teal-300 font-semibold")} title="Kế hoạch trừ thực tế: dương = còn trong ngân sách, âm = vượt kế hoạch">
-                          <td className={STICKY1}>Tổng KH − TT</td>
+                          <td className={STICKY1}>{withIncome ? 'Tổng chi KH − TT' : 'Tổng KH − TT'}</td>
                           <td className={`${STICKY2} ${planShownTotal - actSum((x) => x.total) < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(planShownTotal - actSum((x) => x.total))}</td>
                           {actMonths.map((x, i) => { const d = shown[i].total - x.total; return <td key={shown[i].month} className={`px-3 text-right ${d < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(d)}</td> })}
                         </tr>}
                         {cmp && <tr className={cx("border-t border-teal-300 font-semibold")} title="(KH − TT) / KH: ▲ xanh = còn trong ngân sách, ▼ đỏ = vượt kế hoạch">
-                          <td className={STICKY1}>Tổng % so KH</td>
+                          <td className={STICKY1}>{withIncome ? 'Tổng chi % so KH' : 'Tổng % so KH'}</td>
                           <td className={STICKY2}>{pctVs(planShownTotal - actSum((x) => x.total), planShownTotal)}</td>
                           {actMonths.map((x, i) => <td key={shown[i].month} className="px-3 text-right">{pctVs(shown[i].total - x.total, shown[i].total)}</td>)}
                         </tr>}
                         {withIncome && <tr className={cx("border-t-2 border-teal-500 font-semibold")}>
-                          <td className={STICKY1}>{incomeName} dự kiến</td>
+                          <td className={STICKY1}>{incomeName} dự kiến (KH)</td>
                           <td className={STICKY2}>{money(sumArr(incPlanMonths))}</td>
                           {incPlanMonths.map((v, i) => <td key={shown[i].month} className="px-3 text-right">{dash(v)}</td>)}
-                        </tr>}
-                        {withIncome && <tr className={cx("border-t border-teal-300 font-semibold")} title="Thu dự kiến trừ trả nợ kế hoạch">
-                          <td className={STICKY1}>Còn lại dự kiến</td>
-                          <td className={`${STICKY2} ${sumArr(incPlanMonths) - planShownTotal < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(sumArr(incPlanMonths) - planShownTotal)}</td>
-                          {shown.map((r, i) => { const d = incPlanMonths[i] - r.total; return <td key={r.month} className={`px-3 text-right ${d < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(d)}</td> })}
                         </tr>}
                         {withIncome && cmp && <tr className={cx("border-t-2 border-teal-500 font-semibold")}>
                           <td className={STICKY1}>{incomeName} thực tế</td>
@@ -397,8 +392,13 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey 
                           <td className={`${STICKY2} font-semibold ${sumArr(incActMonths) - sumArr(incPlanMonths) < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(sumArr(incActMonths) - sumArr(incPlanMonths))}</td>
                           {incActMonths.map((v, i) => { const d = v - incPlanMonths[i]; return <td key={shown[i].month} className={`px-3 text-right ${d < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(d)}</td> })}
                         </tr>}
-                        {withIncome && cmp && <tr className={cx("border-t border-teal-300 font-semibold")} title="Thu thực tế trừ trả nợ thực tế">
-                          <td className={STICKY1}>Còn lại thực tế</td>
+                        {withIncome && <tr className={cx("border-t-2 border-teal-500 font-bold")} title="Thu dự kiến trừ trả nợ kế hoạch">
+                          <td className={STICKY1}>Thu − Chi dự kiến</td>
+                          <td className={`${STICKY2} ${sumArr(incPlanMonths) - planShownTotal < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(sumArr(incPlanMonths) - planShownTotal)}</td>
+                          {shown.map((r, i) => { const d = incPlanMonths[i] - r.total; return <td key={r.month} className={`px-3 text-right ${d < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(d)}</td> })}
+                        </tr>}
+                        {withIncome && cmp && <tr className={cx("border-t border-teal-500 font-bold")} title="Thu thực tế trừ trả nợ thực tế">
+                          <td className={STICKY1}>Thu − Chi thực tế</td>
                           <td className={`${STICKY2} ${sumArr(incActMonths) - actSum((x) => x.total) < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(sumArr(incActMonths) - actSum((x) => x.total))}</td>
                           {actMonths.map((x, i) => { const d = incActMonths[i] - x.total; return <td key={shown[i].month} className={`px-3 text-right ${d < 0 ? 'font-bold text-red-700' : 'text-emerald-800'}`}>{signed(d)}</td> })}
                         </tr>}
