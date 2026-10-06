@@ -10,7 +10,8 @@ const num = (v) => (v === '' ? 0 : Number(String(v).replace(/[^\d.]/g, '')) || 0
 // Giao diện theo ví: teal = Ví cá nhân (xanh ngọc), violet = Ví BM (tím). Các lớp màu viết sẵn là "teal-*" rồi đổi tên màu lúc chạy,
 // nên danh sách lớp của màu còn lại phải xuất hiện nguyên văn trong file để Tailwind sinh CSS:
 // bg-violet-100 border-violet-200 border-violet-300 border-violet-400 border-violet-500 hover:bg-violet-200 bg-violet-200 ring-violet-500 !bg-violet-50
-const THEMES = { teal: { color: 'teal', stroke: '#ccfbf1' }, violet: { color: 'violet', stroke: '#ede9fe' } }
+// bg-orange-100 border-orange-200 border-orange-300 border-orange-400 border-orange-500 hover:bg-orange-200 bg-orange-200 ring-orange-500 !bg-orange-50
+const THEMES = { teal: { color: 'teal', stroke: '#ccfbf1' }, violet: { color: 'violet', stroke: '#ede9fe' }, orange: { color: 'orange', stroke: '#ffedd5' } }
 
 /** Board 2 (cuối trang Ví cá nhân): Dự đoán chi tiêu cá nhân, có bộ lọc Năm / Tháng riêng, tách khỏi bộ lọc kỳ của board 1. */
 export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey = 'spendPlan', baseFunds = BUCKETS, title = 'Dự đoán chi tiêu cá nhân', mode = 'percent', matchBy = 'category', withIncome = false, incomeRows = [], theme = 'teal', incomeName = 'Thu nhập', boardNote = 'Board 2 — bộ lọc riêng, không theo Năm / Quý / Tháng phía trên' }) {
@@ -281,10 +282,10 @@ export default function SpendPlan({ actualMonthly = 0, actualRows = [], planKey 
           {!isAmt && total !== 100 && <div className="rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-sm p-2">Tổng tỷ lệ đang là {total}% (nên là 100%). {total > 100 ? `Vượt thu nhập ${money(perTotal - income)}/tháng.` : `Còn chưa phân bổ ${money(income - perTotal)}/tháng.`}</div>}
           {withIncome && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-              <div className="rounded-lg border border-violet-300 bg-white p-2"><div className="text-xs text-slate-700">{incomeName} dự kiến / tháng</div><div className="font-semibold">{expIncome ? money(expIncome) : '–'}</div></div>
-              <div className="rounded-lg border border-violet-300 bg-white p-2"><div className="text-xs text-slate-700">Trả nợ dự kiến / tháng</div><div className="font-semibold">{money(perTotal)}</div></div>
-              <div className="rounded-lg border border-violet-300 bg-white p-2"><div className="text-xs text-slate-700">Còn lại / tháng</div><div className={`font-semibold ${expIncome - perTotal < 0 ? 'text-red-700' : 'text-emerald-800'}`}>{signed(expIncome - perTotal)}</div></div>
-              <div className="rounded-lg border border-violet-300 bg-white p-2"><div className="text-xs text-slate-700">Trả nợ / {incomeName.toLowerCase()}</div><div className="font-semibold">{expIncome > 0 ? `${((perTotal / expIncome) * 100).toFixed(1)}%` : '—'}</div></div>
+              <div className={cx("rounded-lg border border-teal-300 bg-white p-2")}><div className="text-xs text-slate-700">{incomeName} dự kiến / tháng</div><div className="font-semibold">{expIncome ? money(expIncome) : '–'}</div></div>
+              <div className={cx("rounded-lg border border-teal-300 bg-white p-2")}><div className="text-xs text-slate-700">Trả nợ dự kiến / tháng</div><div className="font-semibold">{money(perTotal)}</div></div>
+              <div className={cx("rounded-lg border border-teal-300 bg-white p-2")}><div className="text-xs text-slate-700">Còn lại / tháng</div><div className={`font-semibold ${expIncome - perTotal < 0 ? 'text-red-700' : 'text-emerald-800'}`}>{signed(expIncome - perTotal)}</div></div>
+              <div className={cx("rounded-lg border border-teal-300 bg-white p-2")}><div className="text-xs text-slate-700">Trả nợ / {incomeName.toLowerCase()}</div><div className="font-semibold">{expIncome > 0 ? `${((perTotal / expIncome) * 100).toFixed(1)}%` : '—'}</div></div>
             </div>)}
           {(plan.total > 0 || (withIncome && expIncome > 0))
             ? <>
