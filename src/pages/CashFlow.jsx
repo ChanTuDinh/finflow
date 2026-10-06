@@ -11,6 +11,7 @@ import FilterBar from '../components/FilterBar.jsx'
 import BankBadge from '../components/BankBadge.jsx'
 import SpendPlan from '../components/SpendPlan.jsx'
 import TagAnalysis from '../components/TagAnalysis.jsx'
+import BmAnalysis from '../components/BmAnalysis.jsx'
 import { parseTags, tagCounts } from '../lib/tags.js'
 import { buildCsvRows, CSV_HEADER } from '../lib/csvImport.js'
 
@@ -302,6 +303,7 @@ export default function CashFlow({ kind, onImport }) {
           {groups.map((g) => g.rows.length > 0 || g.always ? table(g) : null)}
         </div>}
       </section>
+      {kind === 'bm' && <BmAnalysis rows={rows.filter((r) => pick.isSelected(r.id))} />}
       {kind === 'personal' && <TagAnalysis rows={counted.filter((r) => !isInflow(r) && !isTransfer(r) && !isDebt(r))} />}
       {kind === 'personal' && <SpendPlan actualMonthly={avgOver(t.income, incRows)} actualRows={rows.filter((r) => pick.isSelected(r.id) && !isInflow(r) && !isTransfer(r) && !isWalletMove(r))} />}
       {editingCard && <EntryForm kind="accounts" row={editingCard.id ? editingCard : { name: '', bank: '', owner: cardOwner, preset: '', status: 'Active', note: '', badge: '', color: '' }} onClose={() => setEditingCard(null)} />}
