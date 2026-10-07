@@ -33,7 +33,7 @@ const TEAL_TABS = new Set(['personal', 'debts', 'forecast', 'savings', 'forecast
 
 export default function App() {
   const [page, setPage] = useState('dashboard')
-  const { mode, status, refresh, data } = useStore()
+  const { mode, status, refresh, data, settings } = useStore()
   const [lastBk, setLastBk] = useState(getLastBackup)
   const bk = backupStatus(lastBk)
   return (
@@ -46,7 +46,7 @@ export default function App() {
         {mode === 'sheets' && <button className="btn-ghost" onClick={refresh} disabled={status.loading}>↻ Tải lại</button>}
         {mode === 'demo' && (
           <button className={bk.stale ? 'inline-flex items-center rounded-lg px-3 py-1.5 text-sm font-medium border border-amber-400 bg-amber-100 text-amber-900 hover:bg-amber-200' : 'btn-ghost'}
-            title="Dữ liệu chỉ lưu trong trình duyệt này — tải file sao lưu" onClick={() => { downloadJson(backupFileName(), makeBackup(data)); setLastBk(setLastBackup()) }}>
+            title="Dữ liệu chỉ lưu trong trình duyệt này — tải file sao lưu" onClick={() => { downloadJson(backupFileName(), makeBackup(data, settings)); setLastBk(setLastBackup()) }}>
             ⬇ Sao lưu <span className="ml-1 text-xs font-normal opacity-80">({backupLabel(bk)})</span>
           </button>
         )}

@@ -4,11 +4,20 @@ import { EMPTY_DATA, TABS } from './schema.js'
 export const BACKUP_KINDS = Object.keys(TABS) // personal, business, debts, savings, goals, accounts, rules, debts_bm, payments, bm
 const clean = (rows) => (rows || []).map(({ _row, ...r }) => r) // bỏ số hàng trong Sheet
 
-/** Toàn bộ dữ liệu -> object lưu được ra file JSON. */
-export function makeBackup(data) {
+// Thiết lập các bảng Dự đoán (thu nhập dự kiến từng năm, số tiền / % từng quỹ, tag) nằm trong settings, đi cùng file sao lưu
+export const PLAN_KEYS = ['spendPlan', 'bmDebtPlan']
+export const pickPlans = (settings) => Object.fromEntries(PLAN_KEYS.filter((k) => settings?.[k] && typeof settings[k] === 'object').map((k) => [k, settings[k]]))
+
+/** Toàn bộ dữ liệu (+ thiết lập các bảng Dự đoán) -> object lưu được ra file JSON. */
+export function makeBackup(data, settings = {}) {
   const out = {}
   for (const k of BACKUP_KINDS) out[k] = clean(data[k])
-  return { app: 'finflow', version: 1, exportedAt: new Date().toISOString(), data: out }
+  return { app: 'finflow', version: 1, exportedAt: new Date().toISOString(), data: out, plans: pickPlans(settings) }
+}
+
+/** Thiết lập các bảng Dự đoán trong file sao lưu ({} nếu file cũ không có). */
+export function parsePlans(text) {
+  try { return pickPlans(JSON.parse(text)?.plans) } catch { return {} }
 }
 
 /** Nội dung file sao lưu -> dữ liệu dùng được. Báo lỗi tiếng Việt nếu không phải file của FinFlow. */

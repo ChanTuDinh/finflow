@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { makeBackup, parseBackup, planMigration, countRows, BACKUP_KINDS } from './backup.js'
+import { makeBackup, parseBackup, parsePlans, planMigration, countRows, BACKUP_KINDS } from './backup.js'
 
 const sample = () => ({
   personal: [{ id: 'p1', date: '2026-01-01', type: 'Income', category: 'Lương', amount: 100, _row: 2 }],
@@ -60,4 +60,14 @@ test('nhắc sao lưu: chưa từng / mới sao lưu / quá 7 ngày', () => {
   assert.equal(backupStatus('2026-10-03T12:00:00Z', now).stale, true)
   assert.equal(backupLabel(backupStatus(null, now)), 'chưa sao lưu')
   assert.equal(backupLabel(backupStatus('2026-10-07T12:00:00Z', now)), '3 ngày trước')
+})
+
+test('sao lưu mang theo thiết lập các bảng Dự đoán và khôi phục lại được', () => {
+  const settings = { currency: 'VND', clientId: 'x', spendPlan: { incomeByYear: { 2026: 50e6 } }, bmDebtPlan: { amounts: { vaykn: 9.5e6 }, incomeByYear: { 2027: 10e6 } } }
+  const b = makeBackup(sample(), settings)
+  assert.deepEqual(Object.keys(b.plans).sort(), ['bmDebtPlan', 'spendPlan'])
+  assert.ok(!('clientId' in b.plans))
+  assert.deepEqual(parsePlans(JSON.stringify(b)), { spendPlan: settings.spendPlan, bmDebtPlan: settings.bmDebtPlan })
+  assert.deepEqual(parsePlans(JSON.stringify({ app: 'finflow', data: {} })), {}) // file cũ không có plans
+  assert.deepEqual(parsePlans('không phải json'), {})
 })

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../lib/store.jsx'
-import { makeBackup, parseBackup, downloadJson, backupFileName, countRows, BACKUP_KINDS, getLastBackup, setLastBackup, backupStatus, backupLabel } from '../lib/backup.js'
+import { makeBackup, parseBackup, parsePlans, downloadJson, backupFileName, countRows, BACKUP_KINDS, getLastBackup, setLastBackup, backupStatus, backupLabel } from '../lib/backup.js'
 import { SHEETS_ENABLED } from '../lib/config.js'
 import { Field } from '../components/ui.jsx'
 import { TABS } from '../lib/schema.js'
@@ -12,7 +12,7 @@ export default function Settings() {
   const localCounts = local ? BACKUP_KINDS.map((k) => [TABS[k].tab, local[k]?.length || 0]).filter(([, n]) => n > 0) : []
   const [lastBk, setLastBk] = useState(getLastBackup)
   const bk = backupStatus(lastBk)
-  const saveBackup = () => { downloadJson(backupFileName(), makeBackup(data)); setLastBk(setLastBackup()) }
+  const saveBackup = () => { downloadJson(backupFileName(), makeBackup(data, settings)); setLastBk(setLastBackup()) }
   const set = (k) => (e) => setSettings((s) => ({ ...s, [k]: e.target.value.trim() }))
   return (
     <div className="space-y-4 max-w-xl">
@@ -33,8 +33,8 @@ export default function Settings() {
                 const file = e.target.files?.[0]; e.target.value = ''
                 if (!file) return
                 try {
-                  const restored = parseBackup(await file.text())
-                  if (confirm(`Thay TOÀN BỘ dữ liệu hiện tại (${countRows(data)} dòng) bằng dữ liệu trong file (${countRows(restored)} dòng)?\n\nNên tải file sao lưu dữ liệu hiện tại trước.`)) { restoreLocal(restored); setMsg({ text: `Đã khôi phục ${countRows(restored)} dòng dữ liệu từ file.`, error: false }) }
+                  const text = await file.text(), restored = parseBackup(text), plans = parsePlans(text)
+                  if (confirm(`Thay TOÀN BỘ dữ liệu hiện tại (${countRows(data)} dòng) bằng dữ liệu trong file (${countRows(restored)} dòng)?\n\nNên tải file sao lưu dữ liệu hiện tại trước.`)) { restoreLocal(restored); if (Object.keys(plans).length) setSettings((s) => ({ ...s, ...plans })); setMsg({ text: `Đã khôi phục ${countRows(restored)} dòng dữ liệu${Object.keys(plans).length ? ' và thiết lập các bảng Dự đoán' : ''} từ file.`, error: false }) }
                 } catch (err) { setMsg({ text: err.message, error: true }) }
               }} />
             </label>
